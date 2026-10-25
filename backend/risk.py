@@ -47,6 +47,29 @@ def propose(*, bars, horizon, kind, as_of, entry, equity, cash_cap,
                         minimum=minimum, tick=tick, fee_bps=fee_bps)
 
 
+def price_signal(clean, *, horizon="swing"):
+    """Pure OHLC hypothesis; caller validates provenance and time separately."""
+    with localcontext() as context:
+        context.prec = 34
+        fast, slow = (20, 50) if horizon == "swing" else (10, 30)
+        if horizon not in {"swing", "intraday"} or len(clean) < slow+1:
+            raise ValueError("Insufficient price history or invalid horizon")
+        tr = [max(h-l, abs(h-clean[i-1][2]), abs(l-clean[i-1][2]))
+              for i, (h, l, _) in enumerate(clean) if i]
+        atr = sum(tr[:14], Decimal(0)) / 14
+        for value in tr[14:]:
+            atr = (atr*13 + value) / 14
+        if atr <= 0:
+            raise ValueError("Insufficient positive volatility")
+        closes = [b[2] for b in clean]
+        fast_mean = sum(closes[-fast:], Decimal(0)) / fast
+        slow_mean = sum(closes[-slow:], Decimal(0)) / slow
+        breakout = max(b[0] for b in clean[-21:-1])
+        signal = "entry_candidate" if closes[-1] > fast_mean > slow_mean and closes[-1] > breakout else "exit_review" if closes[-1] < slow_mean else "hold"
+        return {"atr": atr, "fast_mean": fast_mean, "slow_mean": slow_mean,
+                "breakout": breakout, "signal": signal}
+
+
 def _propose(**inputs):
     bars, horizon, kind = inputs["bars"], inputs["horizon"], inputs["kind"]
     if horizon not in {"swing", "intraday"} or kind not in {"etf", "crypto"}:
@@ -89,18 +112,9 @@ def _propose(**inputs):
     max_age = 4 * 86400 if horizon == "swing" else 600
     if (now-timestamp(bars[-1]["closed_at"])).total_seconds() > max_age:
         raise ValueError("Latest completed bar is stale")
-    tr = [max(h-l, abs(h-clean[i-1][2]), abs(l-clean[i-1][2]))
-          for i, (h, l, _) in enumerate(clean) if i]
-    atr = sum(tr[:14], Decimal(0)) / 14
-    for value in tr[14:]:
-        atr = (atr*13 + value) / 14
-    if atr <= 0:
-        raise ValueError("Insufficient positive volatility")
-    closes = [b[2] for b in clean]
-    fast_mean = sum(closes[-fast:], Decimal(0)) / fast
-    slow_mean = sum(closes[-slow:], Decimal(0)) / slow
-    breakout = max(b[0] for b in clean[-21:-1])
-    signal = "entry_candidate" if closes[-1] > fast_mean > slow_mean and closes[-1] > breakout else "exit_review" if closes[-1] < slow_mean else "hold"
+    indicators = price_signal(clean, horizon=horizon)
+    atr = indicators["atr"];signal = indicators["signal"]
+    fast_mean, slow_mean, breakout = (indicators[k] for k in ("fast_mean", "slow_mean", "breakout"))
     entry, equity, cash, cap, step, minimum, tick = (number(inputs[k]) for k in
         ("entry", "equity", "cash_cap", "notional_cap", "increment", "minimum", "tick"))
     if min(entry, equity, step, minimum, tick) <= 0 or min(cash, cap) < 0:

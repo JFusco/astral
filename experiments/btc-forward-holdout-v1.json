@@ -1,0 +1,53 @@
+{
+  "id": "btc-forward-holdout-v1",
+  "strategy_manifest_sha256": "a1cd3a0ed46e16460f8d7aa47f54ee795239b4405456b63bc766a46223ee7f08",
+  "source_sha256": {
+    "backend/portfolio_replay.py": "4370c1cb9f54592e71c4f9899147bffc27ae24b07bb078165ec577e6a7fb7697",
+    "backend/replay_runner.py": "1bd1d4186107f6e41147bb7796e291d17cc0a158e8e85a4584e8f9fe8cf181cd",
+    "backend/risk.py": "8e2bad813392d48c294586678c13250eedaee29fcfeb348b61b1b263d127b4ee",
+    "backend/timing.py": "56e705a51b34981b96870b39fcb868493b8e7bc48c0f3bc3738a4dcf01216c18",
+    "backend/research.py": "3ea068b9a252265685f47a8bb2b884b137bbeedd1b6251cf9e393b19a5e41e11",
+    "backend/experiment.py": "ead8700b0a9a2bc6ad006cf911683d31bda5ed9a50b014cdafbae9ecddb32103"
+  },
+  "starts_at": "2026-10-25T11:30:31.730361+00:00",
+  "ends_at": "2026-11-08T11:30:31.730361+00:00",
+  "baseline_event_seq": 30772,
+  "symbol": "BTC",
+  "horizon": "daily swing",
+  "model_arm": "deterministic no-model baseline",
+  "source": "Existing Alpaca US quote arrivals and registered prospective research packets",
+  "policy": "Fixed future evaluation window; never move cutoff, tune strategy or replace missing observations",
+  "execution_model": {
+    "initial_cash": "100000",
+    "cap_usd": "25",
+    "quantity_step": "0.000000001",
+    "minimum_quantity": "0.000000001",
+    "price_tick": "0.01",
+    "fee_bps": "25",
+    "fee_mode": "quote",
+    "spread_multiple": "1",
+    "slippage_bps": "0",
+    "depth_fraction": "0.01",
+    "latency_seconds": 5,
+    "cancel_latency_seconds": 5,
+    "ttl_seconds": 60,
+    "tif": "ioc",
+    "max_entry_orders_per_packet": 3,
+    "max_exit_orders": 3,
+    "gap_seconds": 30
+  },
+  "criteria": {
+    "automatic_promotion": false,
+    "profitability_pass": false,
+    "minimum_observation_days": 14,
+    "max_quote_gap_seconds": 30,
+    "coverage": "Retain all gaps, rejects, expired evidence and unliquidated inventory",
+    "review": "Require adequate qualified-trade, cost and regime coverage; no trade count or return automatically proves an edge"
+  },
+  "exclusions": [
+    "Previously inspected history is development data only",
+    "Actual crypto depth units remain unverified",
+    "Queue priority, hidden fills during outages and impact require additional validation"
+  ],
+  "sha256": "9f1ef5dd67a954a91ceda569cb34ae6f554729d96ab08f534fbca3602b01548b"
+}

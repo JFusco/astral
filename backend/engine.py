@@ -4,6 +4,7 @@ import time
 import hashlib
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal, ROUND_DOWN, ROUND_UP
+from pathlib import Path
 
 from .broker import AlpacaPaper, Simulator, BrokerFailure, TERMINAL, D
 from .config import SYMBOLS
@@ -13,6 +14,11 @@ from .inventory import attribute, book_for
 from .research import screen
 from .codex_worker import CodexReviewer
 from .timing import decide as timing_decision
+from . import experiment
+from .public_context import read_context
+from .replay_runner import build_report as build_replay_report, report_state as replay_state
+from .readiness import view as readiness_view
+from .liquidity_runner import observe as observe_liquidity
 
 
 class RuleViolation(Exception):
@@ -44,6 +50,18 @@ class Engine:
         self.identity_checked = False
         self.reviewer = CodexReviewer(store)
         self.research_lock = asyncio.Lock()
+        self.liquidity_report = None
+        self.local_adapter_source_sha256 = None
+
+    def adapter_source_hashes(self):
+        # Local files only; this does not attest the separate collector process.
+        if self.local_adapter_source_sha256 is None:
+            names = ("public_context", "calendar_evidence", "event_sources", "intelligence",
+                     "calendar_context", "bea_calendar", "market_depth", "trade_history", "broker")
+            self.local_adapter_source_sha256 = {
+                "backend/"+name+".py": hashlib.sha256(Path(__file__).with_name(name+".py").read_bytes()).hexdigest()
+                for name in names}
+        return self.local_adapter_source_sha256
 
     def worker(self, name, status, detail="", started=None):
         self.workers[name] = {"name": name, "status": status, "detail": detail, "at": utcnow(),
@@ -82,7 +100,50 @@ class Engine:
             self.tasks.append(asyncio.create_task(self.loop("exit_monitor", self.exit_cycle, 2)))
         self.worker("research", "waiting" if self.settings.enable_research else "disabled", "Source-backed screening; missing calendars veto picks")
         if self.settings.enable_research and self.settings.mode == "alpaca":
+            try:await self.refresh_event_context()
+            except ValueError:self.worker("event_context","error","Collector unavailable; dependent evidence blocked")
+            self.tasks.append(asyncio.create_task(self.loop("event_context", self.refresh_event_context, 60)))
+            self.tasks.append(asyncio.create_task(self.loop("liquidity_experiment", self.liquidity_cycle, 15)))
             self.tasks.append(asyncio.create_task(self.loop("research", self.research_cycle, 900)))
+            self.worker("portfolio_replay", "waiting", "Offline hypothetical model; no broker execution or learning promotion")
+            try:
+                await self.replay_cycle()
+            except Exception:
+                self.worker("portfolio_replay", "error", "Offline report unavailable; registered window and trading controls preserved")
+            self.tasks.append(asyncio.create_task(self.loop("portfolio_replay", self.replay_cycle, 900)))
+
+    async def refresh_event_context(self):
+        context=await read_context()
+        from .calendar_evidence import retain_scopes
+        with self.store.transaction():
+            self.store.put("public_research_context",context)
+            retain_scopes(self.store,context,utcnow())
+        self.worker("event_context","healthy" if context["status"]=="available" else "error","Scoped sources refreshed; missing categories remain blocked")
+        if context["status"]!="available":raise ValueError("Public event collector unavailable")
+
+    async def liquidity_cycle(self):
+        self.liquidity_report=await asyncio.to_thread(observe_liquidity,self.settings.db_path)
+        self.worker("liquidity_experiment","recording","Separate quote/cost experiment; no orders or modeled fills")
+
+    def liquidity_view(self):
+        if not self.liquidity_report or self.settings.mode!="alpaca" or not self.settings.configured:return None
+        report={**self.liquidity_report}
+        if report.get("status")=="collecting" and age(report.get("last_observed_at"))>45:report["status"]="stale"
+        return report
+
+    def replay_view(self):
+        report = replay_state()
+        # A report is visible only in the ledger that recorded its receipt.
+        # Unconfigured accounts, simulator books and unrelated DBs have no binding.
+        if self.settings.mode != "alpaca" or not self.settings.configured:
+            return None
+        return report if report and self.store.get("portfolio_replay_receipt") == report.get("receipt") else None
+
+    async def replay_cycle(self):
+        summary = await asyncio.to_thread(build_replay_report, self.settings.db_path)
+        self.store.put("portfolio_replay_receipt", summary["receipt"])
+        self.worker("portfolio_replay", "healthy",
+                    f"Offline model: {summary['synthetic_scenarios']} synthetic scenarios; zero broker writes; forward window {summary['forward']['status']}")
 
     async def stop(self):
         for task in self.tasks: task.cancel()
@@ -305,7 +366,7 @@ class Engine:
             book = book_for(intent)
             own = D(attribution["books"].get(symbol, {}).get(book, "0"))
             if book in {"swing", "intraday"}:
-                if any(d["symbol"] == symbol for d in attribution["differences"]+attribution["errors"]):
+                if any(d.get("symbol") in (symbol, None) for d in attribution["differences"]+attribution["errors"]):
                     raise RuleViolation("Strategy inventory differs from broker; reconcile fees or external activity")
                 available = min(available, max(D(0), own-pending_sell_books.get(book, D(0))-pending_sell_books.get("external", D(0))))
             else:
@@ -430,8 +491,29 @@ class Engine:
         self.store.put("news_coverage", {"status": "available", "at": utcnow(), "scope": "Latest 20 metadata records; not exhaustive news coverage"})
 
     async def refresh_fees(self):
-        after = (datetime.now(timezone.utc)-timedelta(days=3)).isoformat()
+        # Preserve unresolved fees from old fills even after the rolling window
+        # passes. No missing fee is replaced by a calculated adjustment.
+        earliest = self.store.rows("SELECT MIN(json_extract(payload,'$.at')) at FROM fills")[0]["at"]
+        start = datetime.now(timezone.utc)-timedelta(days=3)
+        if earliest:
+            start = min(start, datetime.fromisoformat(earliest.replace("Z", "+00:00"))-timedelta(days=1))
+        after = start.isoformat()
         items = await self.broker.fee_activities(after)
+        from .fee_evidence import record_fee
+        batch = {};conflicts = set()
+        for item in items:
+            # Revision evidence and a conflict latch commit before application;
+            # a failure cannot roll back the evidence that caused the veto.
+            record_fee(self.store, item)
+            canonical = json.dumps(item, sort_keys=True, separators=(",", ":"), allow_nan=False)
+            if item["id"] in batch and batch[item["id"]][0] != canonical:
+                conflicts.add(item["id"])
+            batch[item["id"]] = (canonical, item)
+        if conflicts:
+            self.store.put("fee_reconciliation_required", {"ids": sorted(conflicts), "at": utcnow(),
+                           "reason": "Conflicting provider fees in one batch; review retained revisions"})
+            raise ValueError("Conflicting fee batch; retained revisions require reconciliation review")
+        items = [item for _, item in batch.values()]
         with self.store.transaction():
             for item in items:
                 if not item.get("id") or item.get("activity_type") not in {"CFEE", "FEE"}:
@@ -498,10 +580,18 @@ class Engine:
                            "entries_halted": self.store.get("halted", False) or bool(self.store.get("risk_latch")),
                            "pending_order": any(symbol_for(json.loads(r["raw"]).get("symbol", json.loads(r["request"]).get("payload", {}).get("symbol", ""))) == symbol for r in active)}
                 result = timing_decision(**context)
+                # Preserve downstream diagnostic evidence even when attribution
+                # imposes a final wait. This never authorizes a bypass or fill.
+                result["before_inventory_gate"] = {"action": result["action"], "reason": result["reason"]}
+                deterministic = timing_decision(**{**context, "research_qualified": bool(packet.get("eligible", False))})
+                result["deterministic_arm"] = {"action": deterministic["action"], "reason": deterministic["reason"]}
+                result["inventory_gate_passed"] = not (inventory["differences"] or inventory["errors"])
                 if inventory["differences"] or inventory["errors"]:
                     result.update(action="wait", reason="Inventory reconciliation required before strategy timing")
                 self.store.db.execute("INSERT INTO timing(at,symbol,strategy,result,context) VALUES(?,?,?,?,?)", (now, symbol, horizon, dumps(result), dumps(context)))
                 rows.append({"symbol": symbol, "strategy": horizon, **result})
+                if horizon=="swing" and symbol=="BTC" and packet:
+                    experiment.observe(self.store, packet, result, context)
         self.store.event("timing_shadow", {"decisions": len(rows), "execution_enabled": False})
         return rows
 
@@ -510,10 +600,19 @@ class Engine:
             raise RuleViolation("Connected Alpaca research is disabled")
         if self.research_lock.locked(): raise RuleViolation("A research cycle is already running")
         async with self.research_lock:
+            frozen = experiment.register(self.store)
+            public_context = await read_context()
+            self.store.put("public_research_context", public_context)
+            from .calendar_evidence import retain_scopes
+            retain_scopes(self.store, public_context, utcnow())
             history = {}
             for symbol in SYMBOLS:
                 try: history[symbol] = await self.broker.research_bars(symbol)
                 except BrokerFailure: history[symbol] = None
+            # History pagination may take minutes; never screen with the old
+            # quote/account snapshot captured before the data download.
+            await self.refresh_quotes()
+            await self.reconcile()
             snap = self.store.get("account_snapshot", {})
             quotes = self.store.get("quotes", {})
             metadata = self.store.get("assets", {})
@@ -522,7 +621,13 @@ class Engine:
             now = utcnow();packets = []
             for symbol in SYMBOLS:
                 packet = screen(symbol, quotes.get(symbol, {}), history[symbol], items, self.store.get("news_coverage"),
-                                self.store.get("event_calendars", {}).get(symbol), metadata.get(symbol, {}), snap.get("account", {}), now)
+                                self.store.get("event_calendars", {}).get(symbol), metadata.get(symbol, {}), snap.get("account", {}), now,
+                                public_context=public_context, experiment=frozen if frozen and symbol==frozen["symbol"] else None)
+                packet["evidence_adapter_versions"] = {"depth": quotes.get(symbol, {}).get("size_unit_version", "unverified"),
+                                                       "public_context": "scoped-calendar-context-v4",
+                                                       "local_source_file_sha256": self.adapter_source_hashes()}
+                if any(s.get("id")=="bea-calendar" for s in public_context.get("sources", [])):
+                    packet["facts"]["calendar_scope"] = "FOMC/BEA, NY Fed key BLS releases and Alpaca maintenance; protocol watches are context only, complete coverage still unknown"
                 result = await self.shadow({"client_order_id": "astral-research-"+symbol, "symbol": symbol, "side": "buy",
                                            "notional": packet["facts"].get("proposed_notional", "25"), "execution": "bounded",
                                            "ttl_seconds": 60, "strategy_id": "swing"})
@@ -530,12 +635,22 @@ class Engine:
                 packet["eligible"] = not packet["vetoes"]
                 packet["input_hash"] = hashlib.sha256(dumps(packet).encode()).hexdigest()
                 packets.append(packet)
-            review = await self.reviewer.review(packets) if self.settings.enable_codex_research else {"status": "disabled", "execution_enabled": False}
+            eligible = [p for p in packets if p["eligible"]]
+            review = {"status": "disabled", "execution_enabled": False}
+            if self.settings.enable_codex_research:
+                review = await self.reviewer.review(eligible) if eligible else {"status": "no-eligible-packets", "execution_enabled": False}
             with self.store.transaction():
                 self.store.put("research_packets", packets)
                 self.store.put("research_review", review)
                 self.store.db.execute("INSERT INTO research(at,packet,result,usage) VALUES(?,?,?,?)", (now, dumps(packets), dumps(review), dumps(review.get("usage", {}))))
                 self.store.event("research_cycle", {"symbols": len(packets), "eligible": sum(p["eligible"] for p in packets), "review_status": review["status"]})
+            if frozen and history.get(frozen["symbol"]):
+                try:
+                    diagnostic = experiment.diagnose(history[frozen["symbol"]])
+                except ValueError as exc:
+                    diagnostic = {"status": "unavailable", "reason": str(exc)}
+                self.store.put("experiment_diagnostic", diagnostic)
+            self.timing_cycle()
             self.worker("research", "healthy", "Evidence screens recorded; agent cannot override vetoes")
             return {"packets": packets, "review": review}
 
@@ -685,6 +800,11 @@ class Engine:
                 "connected": healthy, "as_of": snap.get("at"), "server_time": utcnow(), "halted": self.store.get("halted", False) or bool(self.store.get("risk_latch")),
                 "risk_policy": self.risk_policy(),
                 "inventory": self.inventory(), "exit_plans": list(self.store.get("exit_plans", {}).values()),
+                "experiment": experiment.state(self.store),
+                "portfolio_replay": self.replay_view(),
+                "liquidity_experiment": self.liquidity_view(),
+                "readiness": readiness_view(self.store) if self.settings.mode == "alpaca" and self.settings.configured else None,
+                "execution_pilot": self.store.get("execution_pilot"),
                 "shadow": {"enabled": self.settings.enable_shadow, "counts": self.store.rows("SELECT json_extract(result,'$.decision') decision,COUNT(*) count FROM shadow GROUP BY decision"),
                            "recent": [{"at": r["at"], "intent": json.loads(r["intent"]), "result": json.loads(r["result"]), "input_hash": r["input_hash"]} for r in self.store.rows("SELECT * FROM shadow ORDER BY id DESC LIMIT 16")]},
                 "fee_coverage": self.store.get("fee_coverage"),

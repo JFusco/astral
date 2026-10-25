@@ -1,6 +1,6 @@
 {
   "scope": "local persistent simulator and separate authenticated Alpaca PAPER lifecycle; no live trading",
-  "tests_passed": 106,
+  "tests_passed": 146,
   "crash_recovery": {
     "cash_preserved": true,
     "quantities_and_basis_preserved": true,
@@ -90,5 +90,335 @@
       "new_model_calls_enabled": false,
       "result": "in-progress; final private runtime receipt required"
     }
+  },
+  "local_intelligence": {
+    "date_utc": "2026-10-25",
+    "public_sources_verified_http_200": 13,
+    "sources": [
+      "Federal Reserve releases",
+      "Federal Reserve speeches",
+      "BLS releases",
+      "SEC 8-K",
+      "SEC 10-Q",
+      "CoinDesk",
+      "Cointelegraph",
+      "Ethereum Foundation",
+      "Bitcoin Core",
+      "Coinbase status",
+      "Kraken status",
+      "Solana status",
+      "Alpaca status"
+    ],
+    "independent_service_port": 8768,
+    "separate_database": true,
+    "overnight_trading_process_restarted": false,
+    "pilot_decision_inputs_changed": false,
+    "research_packet_integration": "deferred until baseline review",
+    "orders_or_model_calls_enabled": false,
+    "automated_tests": [
+      "malformed and oversized XML",
+      "entity declaration rejection",
+      "unsafe links and redirects",
+      "missing publication timestamps",
+      "component outages and maintenance",
+      "content deduplication and revisions",
+      "publisher reversion",
+      "conditional revalidation",
+      "429 backoff",
+      "cached evidence and stale status",
+      "SEC contact and 403 failure retention"
+    ],
+    "limitations": [
+      "bounded metadata only",
+      "no complete calendars",
+      "no extracted financial statements or issuer holdings",
+      "no on-chain analytics",
+      "not installed as login service"
+    ]
+  },
+  "stage2_validation": {
+    "date_utc": "2026-10-25",
+    "baseline": {
+      "stopped_by_user": true,
+      "checkpoints": 335,
+      "hash_chain_verified": true,
+      "broker_get_requests": 16500,
+      "orders": 0,
+      "fills": 0,
+      "api_or_worker_errors": 0,
+      "observed_gaps": 0,
+      "eight_hour_completion_claimed": false
+    },
+    "reconciliation": {
+      "confirmed_gross_execution_records": 4,
+      "gross_fills_match_cumulative_orders": true,
+      "broker_positions": 0,
+      "confirmed_fee_rows": 0,
+      "unexplained_btc_qty": "-0.000000774",
+      "per_fill_upward_rounding_fee_hypothesis_matches": true,
+      "hypothesis_is_confirmed_fee": false,
+      "ledger_adjustment_created": false
+    },
+    "connected_shadow": {
+      "duration_seconds": 60,
+      "broker_get_requests": 71,
+      "broker_write_requests": 0,
+      "new_local_orders": 0,
+      "new_shadow_decisions": 56,
+      "downstream_timing_decisions": 96,
+      "eligible_symbols": [],
+      "new_model_calls": 0
+    },
+    "synthetic_new_tests": 15,
+    "pilot_decision": "NO-GO; accounting, source and strategy gates remain",
+    "profitability_validated": false
+  },
+  "execution_pilot": {
+    "date_utc": "2026-10-25",
+    "user_selected_scope": "$25 BTC execution test first, then research-driven comparison",
+    "result": "completed-round-trip-flat-confirmed",
+    "buy_quantity": "0.000311568",
+    "buy_average": "80195.191636946",
+    "sell_quantity": "0.000310787",
+    "sell_average": "80073.58",
+    "entry_gross_value_usd": "24.986255467939991328",
+    "entry_permits": 1,
+    "exit_permits": 1,
+    "both_orders": "filled",
+    "equity_change_usd": "-0.17",
+    "fees_reconciled": false,
+    "research_execution_enabled": false,
+    "model_calls": 0,
+    "profitability_validated": false
+  },
+  "trade_derived_history": {
+    "provider": "Alpaca US",
+    "bar_semantics": "executed-trades-only",
+    "connected_readback": [
+      {
+        "symbol": "BTC",
+        "executed_trades": 93735,
+        "completed_daily_bars": 100,
+        "input_sha256": "64d056937bc3d666f172bdf122da6f0011e63ae5959f50251cd086e19485e429",
+        "complete_page_traversal": true
+      },
+      {
+        "symbol": "ETH",
+        "executed_trades": 34350,
+        "completed_daily_bars": 100,
+        "input_sha256": "fcd2f5258a5e762f57a54047a159053ce95115e0687eef506fc782979061594b",
+        "complete_page_traversal": true
+      },
+      {
+        "symbol": "SOL",
+        "executed_trades": 25611,
+        "completed_daily_bars": 100,
+        "input_sha256": "0b0b9501522d05d4523d68ef31bcbc5a2ab10be6e054f8afe9003316cac2380e",
+        "complete_page_traversal": true
+      }
+    ],
+    "raw_batches_retained": true,
+    "quote_midpoints_used": false,
+    "research_profitability_validated": false
+  },
+  "frozen_strategy_followup": {
+    "date_utc": "2026-10-25",
+    "experiment": "btc-daily-swing-v1",
+    "manifest_sha256": "a1cd3a0ed46e16460f8d7aa47f54ee795239b4405456b63bc766a46223ee7f08",
+    "local_tests_passed": 158,
+    "existing_warnings": 1,
+    "retrospective_daily_bars": 100,
+    "retrospective_prefixes": 50,
+    "raw_signals": {
+      "hold": 46,
+      "entry_candidate": 1,
+      "exit_review": 3
+    },
+    "historical_fills_assumed": false,
+    "untouched_holdout": false,
+    "prospective_observations_initial": 1,
+    "research_interval_seconds": 900,
+    "new_broker_orders": 0,
+    "new_confirmed_fills": 0,
+    "new_model_calls": 0,
+    "public_sources_fresh_at_check": 14,
+    "fomc_connected": true,
+    "bls_ics_http_status": 403,
+    "calendar_complete": false,
+    "fee_activity_records": 0,
+    "unreconciled_btc_quantity": "0.000001555",
+    "orders_enabled": false,
+    "profitability_validated": false,
+    "desktop_screenshot": "outputs/astral-frozen-strategy-desktop.jpg"
+  },
+  "portfolio_replay_followup": {
+    "date_utc": "2026-10-25",
+    "local_tests_passed": 197,
+    "existing_warnings": 1,
+    "synthetic_scenarios": 16,
+    "execution_model": "portfolio-replay-v1",
+    "frozen_strategy_unchanged": true,
+    "source_quotes_at_connected_check": 266,
+    "source_research_packets": 2,
+    "observed_hypothetical_orders": 0,
+    "observed_hypothetical_fills": 0,
+    "new_broker_orders": 0,
+    "new_broker_fills": 0,
+    "broker_counts_before": {
+      "orders": 4,
+      "fills": 4
+    },
+    "broker_counts_after": {
+      "orders": 4,
+      "fills": 4
+    },
+    "initial_observed_gap_seconds": 55.236066,
+    "coverage_issues_retained": true,
+    "future_window_start": "2026-10-25T11:30:31.730361+00:00",
+    "future_window_end": "2026-11-08T11:30:31.730361+00:00",
+    "future_status": "collecting",
+    "future_quotes_at_connected_check": 41,
+    "future_matured": false,
+    "orders_enabled": false,
+    "model_enabled": false,
+    "worker_refresh_seconds": 900,
+    "profitability_validated": false,
+    "automatic_promotion": false,
+    "remaining_limits": [
+      "Fee/depth/calendar/liquidity gates remain",
+      "Real queue, impact, replenishment, hidden outage fills and fee rounding unvalidated",
+      "Insufficient prospective trade and regime evidence"
+    ],
+    "desktop_screenshot": "outputs/astral-portfolio-replay-desktop.jpg"
+  },
+  "readiness_gates_followup": {
+    "checked_at": "2026-10-25T12:15:17.259572+00:00",
+    "local_tests_passed": 223,
+    "existing_warnings": 1,
+    "test_scope": "Synthetic failure cases and separate connected GET-only readback; no strategy profitability claim",
+    "connected_paper": {
+      "service_version": "0.2",
+      "alive": true,
+      "paper_only": true,
+      "mode": "alpaca",
+      "configured": true,
+      "broker_ready": true,
+      "orders_enabled": false,
+      "uptime_seconds": 370
+    },
+    "new_broker_orders": 0,
+    "new_broker_fills": 0,
+    "new_model_calls": 0,
+    "cumulative_order_rows": 4,
+    "cumulative_fill_rows": 4,
+    "provider_partial_execution_activities": 8,
+    "broker_positions": 0,
+    "broker_open_orders": 0,
+    "confirmed_fee_records": 0,
+    "unexplained_btc_qty": "0.000001555",
+    "fee_hypothesis_confirmed": false,
+    "depth_validated_at_check": true,
+    "depth_validation_required_each_snapshot": true,
+    "liquidity": {
+      "passed": false,
+      "average_daily_dollars": "205874.6094304360118151074",
+      "required_average_daily_dollars": "1000000",
+      "threshold_changed": false,
+      "venue": "alpaca-us",
+      "top_one_percent_cap_usd": "0.8050107078",
+      "buy_one_percent_capacity_usd": "2692.2000283118506",
+      "sell_one_percent_capacity_usd": "5346.707774344413",
+      "minimum_tradable_notional_usd": "0.995660909156914",
+      "top_cap_fits_venue_minimum": false,
+      "provider_minimum_usd_note": "Alpaca FAQ describes a $1 minimum; verify current instrument metadata before an order"
+    },
+    "event_categories_verified": [
+      "fomc",
+      "bea"
+    ],
+    "event_categories_missing": [
+      "bls",
+      "scheduled-protocol",
+      "venue-maintenance"
+    ],
+    "public_sources_connected": 15,
+    "calendar_catalogs": [
+      {
+        "source_id": "fomc-calendar",
+        "event_count": 57,
+        "retained_body_sha256": "88e5250cd209ea7f7413fcefc336a2409db9b74b6076cbd7aae90f6e300559e2"
+      },
+      {
+        "source_id": "bea-calendar",
+        "event_count": 13,
+        "retained_body_sha256": "f39b919abbdf951a886ce202d49a25ab2644bd945bc39174624121c23ea89cdb"
+      }
+    ],
+    "retained_calendar_bodies": 2,
+    "frozen_strategy_code_matches": true,
+    "forward_window_code_matches": true,
+    "adapter_manifest": "experiments/gate-data-adapters-v1.json",
+    "adapter_hashes_match": true,
+    "forward_window": {
+      "starts_at": "2026-10-25T11:30:31.730361+00:00",
+      "ends_at": "2026-11-08T11:30:31.730361+00:00",
+      "sha256": "9f1ef5dd67a954a91ceda569cb34ae6f554729d96ab08f534fbca3602b01548b"
+    },
+    "numerical_strategy_rules_changed": false,
+    "current_signal": "exit_review",
+    "research_pilot_decision": "NO-GO; fee, liquidity, event, entry and execution-supervision gates remain",
+    "connected_receipt": "runtime/gate-readiness-connected-check.json",
+    "fee_readback": "runtime/gate-investigation-readback.json",
+    "fee_audit": "runtime/gate-fee-audit.json",
+    "research_cycle": "runtime/gate-research-command.json",
+    "desktop_screenshot": "outputs/astral-readiness-gates-desktop.jpg",
+    "gate_detail_screenshot": "outputs/astral-readiness-gates-detail.jpg",
+    "browser_verified": "Gate evidence dialog shows fee difference, normalized fresh depth, unchanged volume/caps and missing calendar categories",
+    "profitability_validated": false
+  },
+  "event_liquidity_followup": {
+    "at": "2026-10-25T12:55:14.616890+00:00",
+    "tests_passed": 243,
+    "existing_warnings": 1,
+    "public_sources_connected": 21,
+    "new_public_sources": 6,
+    "broker_counts": {
+      "orders": 4,
+      "fills": 4,
+      "activities": 0
+    },
+    "new_orders": 0,
+    "new_fills": 0,
+    "new_trading_model_calls": 0,
+    "orders_enabled": false,
+    "broker_positions": 0,
+    "btc_verified_categories": [
+      "fomc",
+      "bea",
+      "venue-maintenance"
+    ],
+    "btc_missing_categories": [
+      "bls",
+      "scheduled-protocol"
+    ],
+    "nyfed_scope": "Five October BLS-origin releases; partial key-series context, complete BLS gate remains blocked",
+    "protocol_scope": "Official document watches only; TBA, proposals and quarter/year are not exact activations",
+    "liquidity_manifest_sha256": "faf158f4972a33bb2bbcdb154ab68a024a6181eaaf5d91d6fefecb9304b296f4",
+    "liquidity_samples_at_check": 8,
+    "liquidity_baseline_passes": 0,
+    "liquidity_challenger_quote_feasible": 4,
+    "liquidity_scenarios": 7,
+    "liquidity_status": "collecting",
+    "liquidity_window_start": "2026-10-25T12:52:45.889976+00:00",
+    "liquidity_window_end": "2026-11-08T12:52:45.889976+00:00",
+    "sample_gaps": 0,
+    "invalid_samples": 4,
+    "original_strategy_code_matches": true,
+    "original_forward_code_matches": true,
+    "original_forward_cutoff_unchanged": "2026-11-08T11:30:31.730361+00:00",
+    "receipt": "runtime/event-liquidity-connected-check.json",
+    "screenshot": "outputs/astral-liquidity-experiment-desktop.jpg",
+    "profitability_validated": false,
+    "research_paper_trade": "NO-GO; fee, baseline liquidity, complete event coverage, entry and supervised-execution gates remain"
   }
 }

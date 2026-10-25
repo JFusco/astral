@@ -10,11 +10,23 @@ from .config import SYMBOLS
 RESEARCH_VERSION = "research-evidence-v1"
 
 
-def screen(symbol, quote, history, news, news_coverage, calendar, metadata, account, as_of):
+def screen(symbol, quote, history, news, news_coverage, calendar, metadata, account, as_of, *, public_context=None, experiment=None):
     now = timestamp(as_of)
     vetoes, facts, bars = [], {}, []
     kind = SYMBOLS[symbol][1]
+    if public_context:
+        from .public_context import evidence_for
+        context_evidence, context_vetoes, status = evidence_for(symbol, public_context, as_of)
+        vetoes.extend(context_vetoes)
+        facts.update(public_context_status=status, public_context_records=len(context_evidence),
+                     calendar_scope="FOMC meeting dates only; remaining macro and instrument events unknown")
+    else: context_evidence=[]
     evidence = [{"id": "quote:"+symbol, "source": quote.get("source"), "at": quote.get("at"), "kind": "quote"}]
+    evidence.extend(context_evidence)
+    if experiment:
+        facts.update(experiment_id=experiment["id"], experiment_manifest=experiment["manifest_sha256"],
+                     experiment_code_matches=experiment["code_matches"], experiment_notional_cap_usd=experiment["notional_cap_usd"])
+        if not experiment["code_matches"]: vetoes.append("Frozen strategy code changed; new experiment registration required")
     try:
         bid, ask = D(quote["bid"]), D(quote["ask"])
         if bid <= 0 or ask < bid: raise ValueError("Invalid quote")
@@ -45,17 +57,21 @@ def screen(symbol, quote, history, news, news_coverage, calendar, metadata, acco
             if end > now: continue
             bars.append({"symbol": symbol, "source": "alpaca", "feed": history["source"], "adjustment": "raw",
                          "at": start.isoformat(), "closed_at": end.isoformat(), "known_at": history["received_at"],
+                         "observed_dollar_volume": raw.get("dollar_volume"),
                          **{k: str(raw[r]) for k, r in (("open","o"),("high","h"),("low","l"),("close","c"),("volume","v"))}})
+        if history.get("input_sha256"): facts["history_input_sha256"] = history["input_sha256"]
         bars = bars[-90:]
         if len(bars) < 51: raise ValueError("Insufficient completed daily history")
-        dollar_volumes = [D(b["volume"])*D(b["close"]) for b in bars[-21:]]
+        dollar_volumes = [D(b["observed_dollar_volume"]) if b["observed_dollar_volume"] is not None else D(b["volume"])*D(b["close"]) for b in bars[-21:]]
         avg = sum(dollar_volumes[:-1], Decimal(0))/20
         if avg <= 0: raise ValueError("Invalid dollar volume")
         facts.update(avg_daily_dollar_volume_20=str(avg), latest_daily_dollar_volume=str(dollar_volumes[-1]),
+                     dollar_volume_method="Sum of executed price times size" if all(b["observed_dollar_volume"] is not None for b in bars[-21:]) else "Daily close times volume proxy",
                      relative_dollar_volume=str(dollar_volumes[-1]/avg), volume_scope=history["coverage"],
                      history_source=history["source"], latest_closed_daily_bar=bars[-1]["closed_at"])
         if avg < 1000000: vetoes.append("Observed average daily dollar volume below $1m research threshold")
         full_value_cap = min(D("1000"), D(account["equity"])*D("0.0025")/D("1.003"))
+        if experiment: full_value_cap = min(full_value_cap, D(experiment["notional_cap_usd"]))
         if depth_cap is not None: full_value_cap = min(full_value_cap, depth_cap)
         planner = propose(bars=bars, horizon="swing", kind=kind, as_of=as_of, entry=str(ask*D("1.001")),
                           equity=account["equity"], cash_cap=account["cash"], notional_cap=str(full_value_cap),
@@ -64,7 +80,7 @@ def screen(symbol, quote, history, news, news_coverage, calendar, metadata, acco
                      target=planner["target_reference"], cost_hurdle=planner["cost_hurdle_passed"],
                      proposed_quantity=planner["quantity"], proposed_notional=planner["notional"],
                      planned_loss_budget=planner["planned_loss_budget"], planned_stress_loss=planner["planned_stress_loss"],
-                     sizing_reason="Minimum of ATR loss budget, own cash and unprotected swing full-value cap; quantity rounded down. Current portfolio gate can veto.")
+                     sizing_reason="Minimum of ATR loss budget, own cash, registered experiment cap when present, and unprotected swing full-value cap; quantity rounded down. Current portfolio gate can veto.")
         if planner["signal"] != "entry_candidate": vetoes.append("Frozen price/volatility hypothesis has no entry candidate")
         evidence.append({"id": "history:"+symbol, "source": history["source"], "at": history["received_at"], "kind": "daily-bars"})
     except (ValueError, KeyError, TypeError) as exc:

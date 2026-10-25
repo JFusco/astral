@@ -9,3 +9,9 @@ __pycache__/
 *.sqlite*
 *.lock
 *.tar.gz
+
+# Local screenshots, generated outputs and retained project archives.
+outputs/
+screenshots/
+archives/
+.DS_Store

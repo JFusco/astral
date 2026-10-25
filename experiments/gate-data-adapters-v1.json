@@ -1,0 +1,33 @@
+{
+  "id": "gate-data-adapters-v1",
+  "registered_at": "2026-10-25T12:09:01.813508+00:00",
+  "strategy_manifest_sha256": "a1cd3a0ed46e16460f8d7aa47f54ee795239b4405456b63bc766a46223ee7f08",
+  "source_sha256": {
+    "backend/broker.py": "1482e6897e6fc1f5b95bd4c3eddfe21f2f82c24e3e07dc41fa17831c3b0395ae",
+    "backend/market_depth.py": "9442c726349419ed3f240ef443f1e459dbb6a79a2311c3fe553808cbc460cc5c",
+    "backend/fee_evidence.py": "15dfa7aea6f11f56e0f768e7bca55dd44a3944e3b7ce7f2ac8e5fe2086a29f95",
+    "backend/inventory.py": "8386d80a443aea6389b8a0bd1dbb88c8ba2290825cc4cac778d86f402470d436",
+    "backend/calendar_evidence.py": "aafe635567a53163c1546fa6f868f94ccedc4b8649f89e0bf72f49ffb248be3f",
+    "backend/bea_calendar.py": "37eed62488ad33c8537dc7d3667219503ede177ae33421fcc0edbd3347db506b",
+    "backend/intelligence.py": "41025fd686c33b2fdc1c2a7256bf0577a6d62b46da631a7af741bc14597ed7ef",
+    "backend/public_context.py": "cc1e0e9773cefc890dc359850eba661ca26278a47c3b3aa348965e38b28ff385",
+    "backend/readiness.py": "b04f971ab0cfaf7742787c50584b40f3328039bdd4f9644bf99d4128a7e7a216",
+    "backend/engine.py": "79c52e2d347d0fbe1c78965cadc15ea47420220e139bf7c1d0c49a9266c4d1f6"
+  },
+  "original_strategy_rule_files_changed": false,
+  "liquidity_thresholds_changed": false,
+  "execution_enabled": false,
+  "normalization": "Only future fresh matching Alpaca US quotes/books acquire base-asset units; old quote events are never rewritten",
+  "unit_contract_sources": [
+    "https://docs.alpaca.markets/us/docs/real-time-crypto-pricing-data",
+    "https://alpaca.markets/learn/visualizing-orderbook-data-with-alpaca-crypto-api"
+  ],
+  "official_api_spec_sha256": "2856fc7ed4dc6aa55a7b5db453a3cb8c5e9270b56e0679ded695bd926ec4e7dc",
+  "fee_adjustment_policy": "Only confirmed provider records; no inferred quantities or baseline reset",
+  "calendar_scope": "Retained currently published FOMC and BEA categories; complete coverage remains blocked",
+  "original_forward_window": {
+    "starts_at": "2026-10-25T11:30:31.730361+00:00",
+    "ends_at": "2026-11-08T11:30:31.730361+00:00",
+    "sha256": "9f1ef5dd67a954a91ceda569cb34ae6f554729d96ab08f534fbca3602b01548b"
+  }
+}

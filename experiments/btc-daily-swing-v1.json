@@ -1,0 +1,58 @@
+{
+  "id": "btc-daily-swing-v1",
+  "symbol": "BTC",
+  "venue": "Alpaca US PAPER",
+  "horizon": "daily swing",
+  "frozen_at": "2026-10-25T11:07:43.931135+00:00",
+  "source_sha256": {
+    "backend/risk.py": "8e2bad813392d48c294586678c13250eedaee29fcfeb348b61b1b263d127b4ee",
+    "backend/timing.py": "56e705a51b34981b96870b39fcb868493b8e7bc48c0f3bc3738a4dcf01216c18",
+    "backend/research.py": "3ea068b9a252265685f47a8bb2b884b137bbeedd1b6251cf9e393b19a5e41e11",
+    "backend/experiment.py": "ead8700b0a9a2bc6ad006cf911683d31bda5ed9a50b014cdafbae9ecddb32103"
+  },
+  "notional_cap_usd": "25",
+  "risk_budget_equity_fraction": "0.0025",
+  "model_arm": "deterministic no-model baseline",
+  "data": "Same-venue executed-trade daily UTC bars, at most 90 completed bars; no invented missing days",
+  "indicators": {
+    "atr": "Wilder14",
+    "trend": [
+      20,
+      50
+    ],
+    "breakout": "close strictly above prior 20 highs"
+  },
+  "entry": "Closed-bar candidate, cost hurdle, subsequent fresh quote and all news/calendar/portfolio/depth/liquidity gates",
+  "exit": {
+    "stop_atr_multiple": "2",
+    "reward_stop_multiple": "2",
+    "max_holding_days": 10,
+    "trend": "close below SMA50",
+    "cooldown_minutes": 5
+  },
+  "cost_assumptions": {
+    "fee_bps_per_side": "25",
+    "slippage_bps_round_trip": "10",
+    "crypto_gap_stress_bps": "200",
+    "fees_confirmed": false
+  },
+  "forward": {
+    "minimum_observation_days": 14,
+    "poll_seconds": 900,
+    "scope": "Evidence and veto observations only; no simulated or broker fills",
+    "restart_gaps": "Retain and report; never backfill prospective observations"
+  },
+  "acceptance": {
+    "infrastructure": "Every observation retains source times, revision hashes, code match, sizing and final veto; zero broker writes",
+    "strategy": "No promotion until realistic portfolio/cost replay, chronological holdout and adequate prospective/regime coverage are separately reviewed"
+  },
+  "known_limitations": [
+    "Historical price dataset was inspected before registration; it is development data, not an untouched holdout",
+    "Complete financial/protocol/macro calendars, quote depth units and fee attribution remain unresolved",
+    "Realistic portfolio replay and protective execution validation remain outstanding"
+  ],
+  "execution_enabled": false,
+  "automatic_promotion": false,
+  "learning_enabled": false,
+  "manifest_sha256": "a1cd3a0ed46e16460f8d7aa47f54ee795239b4405456b63bc766a46223ee7f08"
+}

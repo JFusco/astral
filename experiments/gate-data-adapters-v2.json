@@ -1,0 +1,25 @@
+{
+  "id": "gate-data-adapters-v2",
+  "registered_at": "2026-10-25T12:52:36.401343+00:00",
+  "supersedes_for_future_data": "015d37ca508e43e9c401b3fd1f1bbc5164acc1b20884511bd159153e47bd3c8a",
+  "previous_manifest_preserved": true,
+  "source_sha256": {
+    "backend/event_sources.py": "bc98c7d3d493b6f57f15fcf306b9c457c206f5aab39669e061ca89f33bc7629f",
+    "backend/calendar_evidence.py": "87de226c75296699ef94e418532a5cacb228c74f8efabcd3113d9e219fd99acb",
+    "backend/intelligence.py": "6b0b8ccc85b1b6914ad8f0c3da39cdfd9e36475a17739c285d2519c2f999e06c",
+    "backend/public_context.py": "3bbdf432ade1dd4d6a024214359523cf8e8f66cf2a381343daced324dcb78976",
+    "backend/readiness.py": "26a4cb81a3812b58951e5087e9de6f562c77d40ffa5fd24b66dad290d2999006",
+    "backend/engine.py": "1ed589efd184cdc43550037ac1c4fd3f4f6a1975e60954ebc53a181a42262271"
+  },
+  "execution_enabled": false,
+  "original_strategy_rules_changed": false,
+  "public_context_version": "scoped-calendar-context-v3",
+  "complete_category_added": "Alpaca published upcoming AND active maintenance",
+  "partial_context": [
+    "NY Fed key BLS releases",
+    "Bitcoin BIPs",
+    "Bitcoin Core software lifecycle",
+    "Ethereum roadmap"
+  ],
+  "denied_bls_ics_retried": false
+}

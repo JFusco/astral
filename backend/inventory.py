@@ -20,6 +20,8 @@ def book_for(intent):
 def attribute(store, snapshot):
     orders = {r["client_id"]: r for r in store.rows("SELECT * FROM orders")}
     balances, owners, errors, entries = {}, {}, [], {}
+    if store.get("fee_reconciliation_required"):
+        errors.append({"reason": "Confirmed fee revision requires reconciliation review"})
     for row in store.rows("SELECT payload FROM fills ORDER BY rowid"):
         fill = json.loads(row["payload"])
         order = orders[fill["client_id"]]

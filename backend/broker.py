@@ -113,6 +113,33 @@ class AlpacaPaper:
                                       "bid_size": str(q.get("bs", "")), "ask_size": str(q.get("as", "")),
                                       "size_unit": "unverified",
                                       "received_at": utcnow(), "source": "alpaca-us" if "/crypto/" in path else "alpaca-"+self.settings.equity_feed}
+        # Keep the raw quote timestamp. Book validation may normalize quantity
+        # units only for a fresh, matching snapshot from this execution venue.
+        from .market_depth import validate_book
+        try:
+            raw_books = await self.request("GET", "/v1beta3/crypto/us/latest/orderbooks", data=True,
+                                           params={"symbols": "BTC/USD,ETH/USD,SOL/USD"})
+            received = utcnow()
+            for symbol in ("BTC", "ETH", "SOL"):
+                q = result.get(symbol)
+                if not q: continue
+                try:
+                    raw_book = raw_books["orderbooks"][SYMBOLS[symbol][0]]
+                    depth = validate_book(symbol, raw_book, q, received_at=received)
+                    q.update(size_unit="base_asset", size_unit_version=depth["version"],
+                             size_unit_basis=depth["unit_basis"], size_unit_sources=depth["unit_sources"],
+                             depth=depth)
+                    # Retain the exact source snapshot once per content hash.
+                    self.store.db.execute("CREATE TABLE IF NOT EXISTS depth_snapshots(id TEXT PRIMARY KEY,at TEXT NOT NULL,symbol TEXT NOT NULL,payload TEXT NOT NULL)")
+                    from .store import dumps
+                    self.store.db.execute("INSERT OR IGNORE INTO depth_snapshots VALUES(?,?,?,?)",
+                                          (depth["raw_sha256"], received, symbol, dumps(raw_book)))
+                except (ValueError, KeyError, TypeError):
+                    q["depth_status"] = "unverified; stale, missing or inconsistent book"
+        except BrokerFailure:
+            # A missing book does not invent units or hide otherwise useful prices.
+            for symbol in ("BTC", "ETH", "SOL"):
+                if symbol in result: result[symbol]["depth_status"] = "book readback unavailable"
         return result
 
     async def snapshot(self):
@@ -160,6 +187,8 @@ class AlpacaPaper:
     async def research_bars(self, symbol):
         from datetime import datetime, timezone, timedelta
         broker_symbol, kind = SYMBOLS[symbol]
+        if kind == 'crypto':
+            return await self.crypto_trade_history(symbol)
         end = datetime.now(timezone.utc)-timedelta(minutes=20 if kind == "etf" else 2)
         path = "/v2/stocks/bars" if kind == "etf" else "/v1beta3/crypto/us/bars"
         params = {"symbols": broker_symbol, "timeframe": "1Day", "start": (end-timedelta(days=100)).isoformat(),
@@ -173,6 +202,59 @@ class AlpacaPaper:
         return {"rows": rows, "source": "alpaca-"+(self.settings.equity_feed if kind == "etf" else "us"),
                 "bar_semantics": "executed-trades-only" if kind == "etf" else "trades-and-quote-midpoints",
                 "received_at": utcnow(), "coverage": "IEX exchange only; not consolidated volume" if kind == "etf" and self.settings.equity_feed == "iex" else "Selected execution/data venue", "end": end.isoformat()}
+
+    async def crypto_trade_history(self,symbol):
+        from datetime import datetime,timezone,timedelta
+        from .trade_history import aggregate_daily
+        from .store import dumps
+        broker_symbol,kind=SYMBOLS[symbol]
+        if kind!='crypto':raise BrokerFailure('Trade-derived crypto history requires a crypto symbol')
+        cached=self.store.get('trade_history:'+symbol)
+        if cached and cached.get('complete_page_traversal') and cached.get('bar_semantics')=='executed-trades-only':
+            from .risk import timestamp
+            age=(datetime.now(timezone.utc)-timestamp(cached['received_at'])).total_seconds()
+            today=datetime.now(timezone.utc).replace(hour=0,minute=0,second=0,microsecond=0)
+            if 0<=age<1500 and timestamp(cached['end'])>=today:
+                return cached
+        end=datetime.now(timezone.utc)-timedelta(minutes=2)
+        start=(end-timedelta(days=100)).replace(hour=0,minute=0,second=0,microsecond=0)
+        records=[];tokens=set();token=None
+        for _ in range(12):
+            params={'symbols':broker_symbol,'start':start.isoformat(),'end':end.isoformat(),'sort':'asc','limit':10000}
+            if token:params['page_token']=token
+            raw=await self.request('GET','/v1beta3/crypto/us/trades',data=True,params=params)
+            if not isinstance(raw,dict) or not isinstance(raw.get('trades',{}).get(broker_symbol,[]),list):
+                raise BrokerFailure('Crypto trade history response unavailable')
+            records.extend(raw.get('trades',{}).get(broker_symbol,[]))
+            token=raw.get('next_page_token')
+            if not token:break
+            if token in tokens:raise BrokerFailure('Crypto trade pagination did not advance')
+            tokens.add(token)
+        else:raise BrokerFailure('Crypto trade history page budget reached; no complete-history claim')
+        try:history=aggregate_daily(records,start=start.isoformat(),end=end.isoformat(),known_at=utcnow())
+        except ValueError as exc:raise BrokerFailure('Crypto execution history failed provenance validation') from exc
+        # Keep legacy full batches intact. New batches share immutable UTC days;
+        # each partial-day version and full input hash remains reconstructible.
+        import hashlib,json
+        self.store.db.execute('CREATE TABLE IF NOT EXISTS market_batches(id TEXT PRIMARY KEY,at TEXT NOT NULL,symbol TEXT NOT NULL,payload TEXT NOT NULL)')
+        self.store.db.execute('CREATE TABLE IF NOT EXISTS market_trade_days(id TEXT PRIMARY KEY,at TEXT NOT NULL,symbol TEXT NOT NULL,payload TEXT NOT NULL)')
+        self.store.db.execute('CREATE TABLE IF NOT EXISTS market_batch_maps(id TEXT PRIMARY KEY,at TEXT NOT NULL,symbol TEXT NOT NULL,payload TEXT NOT NULL)')
+        days={}
+        for row in records:days.setdefault(row['t'][:10],[]).append(row)
+        with self.store.transaction():
+            keys=[]
+            for day in sorted(days):
+                payload=json.dumps(days[day],sort_keys=True,separators=(',',':'),allow_nan=False)
+                key=symbol+':'+day+':'+hashlib.sha256(payload.encode()).hexdigest()
+                self.store.db.execute('INSERT OR IGNORE INTO market_trade_days VALUES(?,?,?,?)',(key,history['received_at'],symbol,payload))
+                keys.append(key)
+            mapping={k:history[k] for k in ('input_sha256','start','end','received_at')}
+            mapping['day_keys']=keys
+            self.store.db.execute('INSERT OR IGNORE INTO market_batch_maps VALUES(?,?,?,?)',
+                                  (symbol+':'+history['input_sha256'],history['received_at'],symbol,dumps(mapping)))
+        self.store.put('trade_history:'+symbol,history)
+        self.store.event('trade_history_readback',{'symbol':symbol,'records':history['trade_count'],'bars':len(history['rows']),'hash':history['input_sha256']})
+        return history
 
     async def close(self):
         await self.http.aclose()
