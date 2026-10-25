@@ -1,0 +1,22 @@
+{
+  "scope": "local persistent simulator and separate authenticated Alpaca PAPER lifecycle; no live trading",
+  "tests_passed": 42,
+  "crash_recovery": {
+    "cash_preserved": true,
+    "quantities_and_basis_preserved": true,
+    "fill_identity_preserved": true,
+    "duplicate_fills": false
+  },
+  "sse": {
+    "ledger_ids": true,
+    "state_push": true
+  },
+  "browser_disconnection": {
+    "orders_disabled": true,
+    "no_simulator_fallback": true
+  },
+  "browser_order_controls": {"synthetic_passive_cancel_confirmed": true, "synthetic_exit_confirmed": true},
+  "broker_readback": "authenticated paper account, assets, quotes, positions and orders verified",
+  "broker_paper_lifecycle": {"date_utc": "2026-10-25", "symbol": "BTC/USD", "buy_qty": "0.000309121", "buy_avg": "80789.055333025", "exit_qty": "0.000308347", "exit_avg": "80785.24", "both_orders": "filled", "final_positions": 0, "final_working_orders": 0, "equity_change_usd": "-0.13", "fees": "not reconciled; equity change is not net profit"},
+  "cloud_backend": "not deployed"
+}

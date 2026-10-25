@@ -1,0 +1,1 @@
+"""ASTRAL paper-only service."""

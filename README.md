@@ -1,13 +1,120 @@
-# ASTRAL trading command prototype
+# ASTRAL trading command
 
-Private static interface prototype for the paper-first trading architecture in `../../reports/Paper trading bot architecture.md`.
+ASTRAL now includes a Python service, durable SQLite records, a paper-only Alpaca adapter, a separate persistent simulator, and a dashboard connected through server-sent events.
 
-Run locally with `python3 -m http.server 4173 --directory dist`, then open `http://localhost:4173`.
+**Current milestone:** manual order lifecycle and recovery, plus deterministic research proposals. Authenticated Alpaca paper readback and a small BTC buy/exit were verified on October 24, 2026 EDT (October 25 UTC); both orders filled and the final account had no positions or working orders. Automated swing/intraday execution, trained learning policies, filings/issuer/macro adapters and an authenticated cloud backend are not enabled. The hosted Sites URL remains a labelled browser preview; its static hosting does not run this Python service.
 
-This is a browser simulation. Prices, news, telemetry and fills are synthetic; no broker, model or news API is connected. There are no real orders, real API charges, backend workers, historical strategy tests or durable trading records. The prototype pauses price updates in a hidden tab and resets on reload. A 24/7 production service must run separately from the UI.
+## Persistent simulator
 
-The interface contains a perspective-projected 3D canvas universe, selectable assets, simulated trade events and accounting, entry halt, pause/resume, news filters/details, portfolio chart periods, system/source/strategy panels, and saved motion settings. Buys bloom as nebulas; sells create expanding supernova rings. Reduced motion removes orbital movement and bursts.
+From this directory:
 
-`dist/core.js` owns synthetic portfolio accounting and simple illustrative risk limits. `dist/app.js` owns UI events and rendering. `dist/styles.css` owns the responsive layout. Google Fonts is the only external display dependency; system fonts provide a fallback.
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+ASTRAL_MODE=simulator ASTRAL_ENABLE_PAPER_ORDERS=true .venv/bin/uvicorn backend.app:app --host 127.0.0.1 --port 8765 --workers 1 --timeout-graceful-shutdown 5
+```
 
-The diagram, sources, proposed backend, current provider limits, estimates, learning loop and acceptance gates are in the research blueprint. No simulator behavior should be treated as live execution evidence.
+Open **http://127.0.0.1:8765**. This mode never contacts Alpaca. It begins with $100,000 synthetic cash and zero positions. Quotes are synthetic; fills use a simple bid/ask model and a simulated 25-bps cash fee for crypto. It does not model real liquidity, partial-fill probability, queue priority or exchange calendars. Use Local buy/sell for controlled tests; there are no automatic random backend trades.
+
+The book survives browser reloads and process restarts. Recording continues without an open browser. Use one process: a database lock prevents two executors sharing a book. Separate databases are enforced for Alpaca and simulator modes.
+
+## Alpaca paper connection
+
+Create your own [Paper Only account](https://docs.alpaca.markets/us/docs/paper-trading) and generate its separate paper credentials from **Home → API Keys → Generate New Keys**. Confirm the displayed endpoint is the paper endpoint. Keep keys in the local ignored `.env`, out of chat, screenshots, browser application forms and source code. Skip file creation if `.env` already exists; never overwrite configured credentials.
+
+```sh
+test -e .env || install -m 600 .env.example .env
+```
+
+Edit `.env` locally: set `ALPACA_PAPER_API_KEY` and `ALPACA_PAPER_SECRET_KEY`; leave `ASTRAL_MODE=alpaca` and `ASTRAL_ENABLE_PAPER_ORDERS=false`. Run:
+
+```sh
+.venv/bin/uvicorn backend.app:app --host 127.0.0.1 --port 8765 --workers 1 --timeout-graceful-shutdown 5
+```
+
+Confirm account equity/cash, positions, session, assets, quote freshness and reconciled orders before restarting with `ASTRAL_ENABLE_PAPER_ORDERS=true` for a controlled paper lifecycle. There is no live mode, arbitrary execution URL or funds-transfer route. Execution is fixed at `https://paper-api.alpaca.markets`; generic legacy keys are not silently reused.
+
+Initial allowlist: BTC/USD, ETH/USD, SOL/USD; SPY, QQQ, GLD, TLT, IWM. This is engineering scope, not instrument advice. Each is checked against venue metadata. Equity orders use whole shares and the regular session. Crypto uses venue increments, market/limit and GTC/IOC. Missing crypto precision disables that instrument. Equity IOC, fractional shares, brackets, stops and extended hours are not assumed.
+
+The adapter polls REST: quotes every 5 seconds, reconciliation every 10 seconds, with bounded backoff, separate quotas, recovery capacity, API outcome records and 429 cooldown. These are application budgets, not provider entitlements. Verify IEX/SIP and account limits. Full broker WebSocket ingestion remains a later improvement. Sources: [order state](https://docs.alpaca.markets/us/docs/orders-at-alpaca), [client-ID lookup](https://docs.alpaca.markets/us/reference/getorderbyclientorderid), [equity quotes](https://docs.alpaca.markets/us/reference/stocklatestquotes-1), [crypto quotes](https://docs.alpaca.markets/us/reference/cryptolatestquotes-1).
+
+## Risk and recovery
+
+- Intent/client ID commits before POST. Repeating the same ID returns its state; changing its intent is rejected. An uncertain POST is never blindly resubmitted. A 404 lookup after a timeout leaves it uncertain and blocks new buys.
+- Startup verifies account identity and reads orders/positions before new risk. The database binds to the first paper account observed. External working orders reserve exposure; this service does not cancel them.
+- Observed partial fills deduplicate from cumulative order readback. Incremental prices derive from cumulative notional; these are not exchange execution IDs. Unknown fees remain unknown. Cancel requests retain reservations until terminal readback, including fills during cancellation. Limit expiry requests cancellation after 60 seconds by default.
+- Orders need fresh quotes (15 seconds), recent account readback (30 seconds), valid metadata/session, sensible spread and available quantity. Future-dated quotes fail. Entry halt persists; sells remain subject to their own safety checks.
+- First-release paper limits: $1,000 planned order notional ($100 for market orders); 50% gross exposure; 10% ETF/5% crypto per instrument; 25% economic group; four working orders before more buys are blocked. At a 1% UTC-day equity decline or 5% high-water drawdown, a persisted circuit latches and blocks new buys. A rebound, restart, midnight or the entry switch cannot clear it. Reviewed reset tooling remains future work; preserve the ledger. Cash-flow-adjusted performance is not available, so transfers can conservatively trigger a halt. These are illustrative controls, not guaranteed loss caps. Market fills can exceed sizing references. Automatic stop-loss/flattening strategies are not implemented.
+- Account restriction flags and crypto status must permit the order. New buys must fit local unreserved own cash and broker buying power. Broker buying power already includes its reservations, so only the new order is compared against it. Missing values block entries. Rounded limits stay inside their configured price collar.
+- Alpaca equity change is labelled separately from profit: cash flows and complete historical fees are not reconciled yet. Broker valuation marks and execution quotes have distinct timestamps.
+
+## Deterministic research algorithms
+
+`backend/risk.py` is a pure Decimal calculator with fixed arithmetic precision and an explicit decision time. It has no network, clock, random or submission side effects. ATR14 uses the mean of the first 14 true ranges, then Wilder smoothing. Swing uses daily SMA20/SMA50; intraday uses five-minute SMA10/SMA30. A long candidate needs close above both ordered averages and above the previous 20 highs. Otherwise it returns hold or exit-review. These are research hypotheses, not validated trading edges.
+
+Sizing divides a planned-loss budget (0.25% swing / 0.10% intraday equity) by ATR stop distance plus round-trip fees, adverse slippage and gap stress. Defaults assume crypto fees of 25bps per side, 10bps adverse slippage and an extra 1% ETF / 2% crypto gap. Cash and $1,000 notional caps further constrain quantity, which floors to venue increments. A candidate also needs positive modeled net target reward and net reward/stressed loss of at least 1. These arbitrary paper defaults are not optimality claims or loss guarantees.
+
+`POST /api/risk/plan` accepts `{symbol, horizon, bars}` and records a research result with a version, input SHA-256, intermediate values and current execution-gate result. Every bar requires decimal-string OHLC/volume, symbol/source/feed/`adjustment:"raw"`, `at`, `closed_at`, and `known_at` timestamps. Swing needs at least 51 bars, intraday 31. Reject malformed, nonfinite, stale, future, unordered, mixed-source and zero-volume evidence. Intraday missing intervals are rejected for crypto and within an ETF session date. ETF daily bars allow a positive duration up to 24 hours; a full exchange-calendar adapter is still needed.
+
+Historical bars are caller-supplied and unverified; automatic historical acquisition is not connected. The endpoint additionally requires a fresh connected account and quote. It never submits, even when a candidate passes. Stop/target references are **not protective orders**. Aggregate planned-stop risk and strategy-specific inventory attribution must be implemented before autonomous execution. Learning promotions remain disabled.
+
+Sources: [CME sizing](https://www.cmegroup.com/education/courses/trade-and-risk-management/proper-position-size), [Fidelity ATR](https://www.fidelity.com/learning-center/trading-investing/technical-analysis/technical-indicator-guide/atr), [FINRA stop risks](https://www.finra.org/investors/insights/stop-orders-factors-consider-during-volatile-markets), [Alpaca account](https://docs.alpaca.markets/us/docs/account-plans), [paper assumptions](https://docs.alpaca.markets/us/docs/paper-trading).
+
+Alpaca's [official MCP](https://alpaca.markets/mcp-server) can support interactive agent inspection/research. The official hosted paper endpoint is `https://paper-api.alpaca.markets/mcp`. It is not connected here. Enabling a separate MCP trading tool would bypass this application's risk authority; keep execution in the engine. Codex MCP OAuth does not automatically authenticate this Python REST adapter.
+
+## Records, news, learning and cost
+
+Private ignored `runtime/` databases use SQLite WAL/full synchronization and restricted permissions. For online backup, use SQLite's backup API rather than copying only the main database file:
+
+```sh
+.venv/bin/python - <<'PY'
+import sqlite3
+with sqlite3.connect('runtime/astral-alpaca.sqlite') as source:
+    with sqlite3.connect('runtime/astral-alpaca-backup.sqlite') as target:
+        source.backup(target)
+PY
+```
+
+The ledger retains quotes/source/arrival times, equity snapshots, intents, risk vetoes with exact input snapshots, order states, observed fills, API outcomes and service errors. SSE reconnect replays event IDs; historical fills do not trigger fresh visual bursts.
+
+News is off by default. After entitlement verification, `ASTRAL_ENABLE_NEWS=true` enables Alpaca metadata ingestion with IDs, source URLs, symbols, publication/update/first-seen times and revision history. Full-text rights are not assumed. Connected backend mode shows no fictional articles. SEC/issuer/macro/project adapters remain planned.
+
+Learning currently records a decision dataset. No labels, trained policy, autonomous strategy changes or promotions are claimed. No model workers are enabled and no paid model calls occur, so actual model API spend is $0. Hosting/data charges remain unknown. See `../../reports/Paper trading bot architecture.md` for the broader design and conditional budget.
+
+## Local API and deployment
+
+`GET /api/health` distinguishes process liveness from broker readiness. `GET /api/state` supplies the dashboard; `/api/events` streams ledger IDs/state with `Last-Event-ID` recovery. POST controls: `/api/orders`, `/api/orders/{client_id}/cancel`, `/api/halt`, `/api/reconcile`. They require the same origin and `X-Astral-Intent: paper-only`.
+
+Bind to loopback. Host/origin checks and no wildcard CORS are not multi-user authentication. Do not expose the API directly to the internet. The private Sites preview is not an authentication proxy for localhost. A remote deployment needs authenticated ingress, secrets, backups and external monitoring. Supabase is unnecessary for this single-process milestone; managed Postgres can be considered when deployment/concurrency requires it.
+
+`Dockerfile` and `compose.yaml` provide a single service, persistent volume, loopback-only published port, restart policy and process health check:
+
+```sh
+docker compose up --build -d
+```
+
+The Compose environment comes from ignored `.env`. Docker deployment was not executed here. A laptop can sleep; local success does not prove 24/7 availability. An always-on host, authenticated remote ingress and external alerting have not been provisioned.
+
+## Verification
+
+```sh
+.venv/bin/python -m pip install -r requirements-dev.txt
+.venv/bin/python -m pytest -q
+node --check dist/app.js
+node --check dist/backend.js
+```
+
+This machine's macOS Python 3.13 readline extension crashes pytest before collection. The verified process-local workaround changes neither the application nor machine configuration:
+
+```sh
+.venv/bin/python - <<'PY'
+import sys
+sys.modules['readline'] = None
+import pytest
+raise SystemExit(pytest.main(['-q']))
+PY
+```
+
+42 tests cover persistence/accounting, concurrent idempotency, lost responses, unknown lookups, halt/sell, stale/future data, cash/exposure/loss checks, partial fills, cancel races/expiry, account/mode binding, local API boundaries, missing credentials, fixed hosts, 429 cooldown, provider rejection, metadata refresh, event replay, exclusive executor ownership, exact ATR arithmetic, reproducibility under changed ambient precision, bad bars, cost hurdles, lot sizing, account restrictions, buying-power reservations and circuit latching. One dependency deprecation warning remains in Starlette's httpx test client.
+
+`evidence/verification.json` distinguishes local tests/crash recovery from the separately completed broker-paper lifecycle. Alpaca paper omits market impact, queue priority and latency slippage; its fills do not validate profitability. Docker/remote deployment, protective orders, autonomous strategy profitability and automated learning remain unverified.

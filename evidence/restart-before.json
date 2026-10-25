@@ -1,0 +1,16 @@
+{
+  "mode": "simulator",
+  "cash": 99749.63364142393,
+  "fills": 1,
+  "fill_ids": [
+    "astral-64801cea-b0dd-4ded-9d57-a5db12dd9797:0.003695"
+  ],
+  "positions": [
+    [
+      "BTC",
+      0.003695,
+      250.3663585760591
+    ]
+  ],
+  "sequence": 37
+}

@@ -1,0 +1,11 @@
+.venv/
+.env
+.env.*
+!.env.example
+runtime/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.sqlite*
+*.lock
+*.tar.gz
