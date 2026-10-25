@@ -53,3 +53,9 @@ Tax analysis remains advisory. A proposed hypothetical tax ledger should show pr
 ## Boundaries
 
 The local conditional exit monitor is opt-in and depends on the running process, fresh data and venue acceptance. An IOC can expire or partially fill, which requires attention; the monitor never promises a stop-price fill or silently resubmits an uncertain exit. It is disabled in shadow sessions. The service on a laptop is not proven 24/7 operation. Always-on hosting, authenticated ingress, external alerts, complete event data, realistic fills, tax-lot accounting and strategy performance remain release gates.
+
+## Overnight observation
+
+The eight-hour watcher reads the existing localhost lab, with no order-control route. Every minute it verifies paper/read-only/shadow configuration, verifies model calls and local exits remain off, audits ledger request outcomes including lost responses, and records feed freshness, inventory, selection vetoes and timing. It writes hash-linked, synchronized checkpoints and an atomic private `runtime/overnight-latest.json`. Missing service or market data produces a degraded sample; unsafe configuration or a new local intent fails the experiment. A stopped watcher is detectable by the last checkpoint timestamp; it cannot alert while the whole host is unavailable.
+
+On macOS, the actual run uses a bounded `caffeinate -i -t 28800` wrapper around `.venv/bin/python scripts/overnight_watch.py --hours 8 --interval 60`. Keep the Mac powered, online and its lid open. The wrapper only prevents idle sleep. The underlying read-only lab continues after the recording window; this is not cloud uptime proof. In the morning inspect status, gaps, request methods, new intents, inventory differences and last checkpoint before judging the run. Shadow probes are independent checks, not an executable strategy or simulated account return.

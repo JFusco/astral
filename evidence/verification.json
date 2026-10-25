@@ -1,6 +1,6 @@
 {
   "scope": "local persistent simulator and separate authenticated Alpaca PAPER lifecycle; no live trading",
-  "tests_passed": 99,
+  "tests_passed": 106,
   "crash_recovery": {
     "cash_preserved": true,
     "quantities_and_basis_preserved": true,
@@ -81,6 +81,14 @@
       "forward strategy validation",
       "tax-lot advisory implementation",
       "always-on hosting and external alerts"
-    ]
+    ],
+    "overnight_observer": {
+      "permission_expansion_tests": 6,
+      "lost_write_and_http_failure_audit_test": true,
+      "duration_hours": 8,
+      "broker_orders_enabled": false,
+      "new_model_calls_enabled": false,
+      "result": "in-progress; final private runtime receipt required"
+    }
   }
 }
