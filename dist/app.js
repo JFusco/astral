@@ -2,6 +2,7 @@ import {createPortfolio,totals,fill} from './core.js';
 import {connectBackend} from './backend.js';
 import {connectHealth} from './health-client.js';
 import {mountAppShell} from './app-shell.js';
+import {finishBoot} from './ui.js';
 mountAppShell();
 
 const $=s=>document.querySelector(s);const $$=s=>[...document.querySelectorAll(s)];
@@ -350,3 +351,6 @@ if(localView&&!explicitDemo){connectHealth({onState:s=>{healthState=s;healthAvai
 backend=connectBackend({onState:applyBackendState,onFill:backendFill,onDisconnect:()=>{backendAvailable=false;if(backendState){renderBackendLabels();renderLab();renderBackendNews();}},onPreview:()=>{backendConnecting=false;if(explicitDemo){$('.mode-badge>div').innerHTML='EXPLICIT DEMO<span>Synthetic prices, news and fills</span>';$('#intelligence-status').textContent='Example headlines · no live feed';}else{renderUnavailable();renderActivity();renderNews();}}});
 const requestedView=new URLSearchParams(location.search).get('view');
 if(requestedView==='settings')openSettings();else if(['strategies','intelligence','system'].includes(requestedView))openView(requestedView);
+
+if(!explicitDemo&&!backendState)renderUnavailable();
+finishBoot();

@@ -1,16 +1,8 @@
 import {mountAppShell} from './app-shell.js';
-import {mountReportPage} from './ui.js';
+import {mountReportPage,finishBoot} from './ui.js';
+import {reportPages} from './report-pages.js';
 mountAppShell('learning');
-mountReportPage({title:'Learning',subtitle:'Offline evidence readiness and checks of recorded model research.',
-  cards:[
-    {label:'OUTCOME READINESS',id:'outcome-status',value:'Unknown',note:'Reconciled financial labels are required',tone:'text-status-unknown'},
-    {label:'RESOLVED NET P&L LABELS',id:'outcome-count',note:'Approvals and fills are not profit labels'},
-    {label:'MODEL CONTRACTS CHECKED',id:'model-count',note:'Existing receipts only; no new model calls'},
-    {label:'MODEL USEFULNESS',id:'usefulness-status',value:'Unknown',note:'Requires comparable, reconciled outcome pairs',tone:'text-status-unknown'},
-  ],sections:[{title:'Data and outcomes',id:'learning-outcomes'},{title:'Model research quality',id:'model-quality'},
-    {title:'Evidence inventory',id:'learning-inventory',subtitle:'Counts at the saved cutoff'},{title:'Recorded usage and costs',id:'learning-usage'}],
-  wide:{title:'Protected evidence',id:'protected-evidence',subtitle:'Reserved forward windows'},
-  limits:'<p>This page displays a saved offline audit. It cannot train, promote a strategy, change risk limits, call a model or place a trade.</p><p>Refresh reads the saved snapshot again. Protected outcome bodies and raw model prompts are not exposed here. A contract pass checks consistency with supplied evidence; it does not establish narrative truth or predictive skill.</p><div id="learning-issues"></div>'});
+mountReportPage(reportPages.learning);
 const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const label=v=>String(v).replaceAll('_',' ');
 const counts=values=>Object.keys(values||{}).length?`<dl class="report-counts space-y-2 [&>div]:flex [&>div]:justify-between [&>div]:gap-4 [&_dt]:capitalize [&_dd]:font-display [&_dd]:text-ink [&_dd]:tabular-nums">${Object.entries(values).map(([key,value])=>`<div><dt>${esc(label(key))}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl>`:'<p>No records in this category.</p>';
@@ -40,6 +32,6 @@ async function refresh(){
   }catch(error){
     $('#learning-connection').textContent='Learning report unavailable';$('#report-notice').classList.add('unavailable');
     $('#report-notice').textContent=error.message+'. Any figures already displayed are retained from the previous response.';
-  }finally{pending=false;$('#refresh-report').disabled=false;}
+  }finally{pending=false;$('#refresh-report').disabled=false;finishBoot();}
 }
 $('#refresh-report').onclick=refresh;refresh();

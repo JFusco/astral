@@ -34,7 +34,16 @@ export function summaryCard({label,id,note,noteId='',value='—',tone=''}){
 export function panel({title,id,subtitle=''}){
   return `<section class="panel ${ui.panel}"><div class="panel-heading ${ui.panelHeading}"><h2 class="${ui.sectionTitle}">${escapeHtml(title)}</h2>${subtitle?`<span class="text-caption text-muted">${escapeHtml(subtitle)}</span>`:''}</div><div id="${escapeHtml(id)}" class="panel-body ${ui.panelBody}">No report loaded.</div></section>`;
 }
-export function mountReportPage({title,subtitle,cards,sections,wide,limits}){
-  document.querySelector('main').innerHTML=pageHeader({title,subtitle,eyebrow:`APPLICATION / ${title.toUpperCase()}`,action:`<button class="${ui.button}" id="refresh-report">Refresh report</button>`})+
+export function renderReportPage({title,subtitle,cards,sections,wide,limits}){
+  return pageHeader({title,subtitle,eyebrow:`APPLICATION / ${title.toUpperCase()}`,action:`<button class="${ui.button}" id="refresh-report">Refresh report</button>`})+
     `<div class="report-notice ${ui.notice}" id="report-notice" role="status">Reading the latest saved report. Refresh does not start an evaluation.</div><section class="${ui.summaryGrid}" aria-label="${escapeHtml(title)} summary">${cards.map(summaryCard).join('')}</section><div class="${ui.columns}">${sections.map(panel).join('')}</div>${panel(wide)}<section class="report-limits mt-6 space-y-4 border-t border-line py-6 text-body leading-relaxed text-muted"><h2 class="${ui.sectionTitle}">Evaluation boundaries</h2>${limits}</section><footer class="bottom-bar ${ui.footer}"><span>${escapeHtml(title.toUpperCase())} / SAVED LOCAL REPORT</span><span id="report-updated">Waiting for a saved report</span></footer>`;
+}
+
+export function mountReportPage(config){
+  const main=document.querySelector('main');
+  if(main.dataset.reportLayout==='ready')return;
+  main.innerHTML=renderReportPage(config);
+}
+export function finishBoot(){
+  Promise.race([document.fonts.ready,new Promise(resolve=>setTimeout(resolve,400))]).then(()=>document.dispatchEvent(new Event('astral:ready')));
 }

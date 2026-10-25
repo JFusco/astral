@@ -1,6 +1,6 @@
 import {createHealthGalaxy} from './health-galaxy.js';
 import {connectHealth} from './health-client.js';
-import {ui,pageHeader,statusClass,statusDot,topicClass} from './ui.js';
+import {ui,pageHeader,statusClass,statusDot,topicClass,finishBoot} from './ui.js';
 import {mountAppShell} from './app-shell.js';
 mountAppShell('health');
 document.querySelector('.intro').outerHTML=pageHeader({title:'App health',eyebrow:'APPLICATION / HEALTH',subtitle:'Live checks for the application, data, workers and connected services.',action:'<div class="text-right text-xxs tracking-widest text-cyan">LIVE STATUS<span class="mt-2 block text-caption tracking-normal text-muted">Assessments every 10 seconds</span></div>'});
@@ -52,7 +52,7 @@ function render(){
   inspect();
   $('#changes').innerHTML=(state?.changes||[]).filter(r=>topic==='all'||current.some(n=>n.id===r.payload.id)).slice(0,4).map(r=>`<div class="flex justify-between gap-3 py-2 text-caption text-muted"><strong class="font-normal text-ink">${esc(r.payload.name)}</strong><span>${esc(r.payload.previous)} → ${esc(r.payload.status)} · ${esc(new Date(r.at).toLocaleTimeString())}</span></div>`).join('')||'No status changes recorded.';
 }
-connectHealth({onState:s=>{state=s;connected=true;received=Date.now();if(s.sequence!==lastSequence&&s.heartbeat_live){lastSequence=s.sequence;lastPulse=performance.now();}render();},onDisconnect:()=>{connected=false;render();}});
+connectHealth({onState:s=>{state=s;connected=true;received=Date.now();if(s.sequence!==lastSequence&&s.heartbeat_live){lastSequence=s.sequence;lastPulse=performance.now();}render();finishBoot();},onDisconnect:()=>{connected=false;render();finishBoot();}});
 setInterval(()=>{if(state&&!live())render();},1000);
 $('#all-filter').onclick=()=>{issuesOnly=false;$('#all-filter').setAttribute('aria-pressed','true');$('#issue-filter').setAttribute('aria-pressed','false');render();};
 $('#issue-filter').onclick=()=>{issuesOnly=true;$('#all-filter').setAttribute('aria-pressed','false');$('#issue-filter').setAttribute('aria-pressed','true');render();};

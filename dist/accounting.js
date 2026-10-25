@@ -1,15 +1,8 @@
 import {mountAppShell} from './app-shell.js';
-import {ui,mountReportPage} from './ui.js';
+import {ui,mountReportPage,finishBoot} from './ui.js';
+import {reportPages} from './report-pages.js';
 mountAppShell('accounting');
-mountReportPage({title:'Accounting',subtitle:'Recorded costs, gross trade records and unresolved money evidence.',
-  cards:[
-    {label:'PERSONAL MONTHLY BUDGET',id:'personal-budget',note:'Known subscription inputs; coverage may be incomplete',tone:'text-accent'},
-    {label:'RECORDED ACTUAL CHARGES',id:'actual-charges',note:'Confirmed records; budgets are not invoices',tone:'data-[state=unknown]:text-status-unknown'},
-    {label:'NET TRADING P&L',id:'net-pnl',value:'Unknown',note:'Requires reconciled fees, basis and cash flows',tone:'data-[state=unknown]:text-status-unknown'},
-    {label:'CUSTODY RECONCILIATION',id:'custody-status',note:'No report loaded',noteId:'fill-count',tone:'data-[state=issue]:text-status-down'},
-  ],sections:[{title:'Unresolved records',id:'account-issues'},{title:'Operating costs',id:'operating-costs'}],
-  wide:{title:'Gross matches by book',id:'gross-matches',subtitle:'Before fees · retained source records'},
-  limits:'<p id="money-reason">Net results require reconciled money evidence.</p><p>Source CSVs and gross lot matches are preparation records, not certified tax lots or a filing. Subscription funding notes do not create payment or reimbursement transactions.</p><p>This page displays an on-demand saved snapshot. Refresh does not run an evaluation, change a ledger, call a model or enable trading.</p>'});
+mountReportPage(reportPages.accounting);
 const custody=document.createElement('div');custody.id='custody-differences';custody.className=ui.panelBody+' overflow-x-auto';document.querySelector('#account-issues').after(custody);
 const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const amounts=v=>v&&Object.keys(v).length?Object.entries(v).map(([currency,value])=>`${currency} ${value}`).join(' · '):'Unknown';
@@ -43,7 +36,7 @@ async function refresh(){
   }catch(error){
     $('#accounting-connection').textContent='● Accounting report unavailable';
     $('#report-notice').classList.add('unavailable');$('#report-notice').textContent=error.message+'. Any figures already displayed are retained from the previous response.';
-  }finally{pending=false;$('#refresh-report').disabled=false;}
+  }finally{pending=false;$('#refresh-report').disabled=false;finishBoot();}
 }
 $('#refresh-report').onclick=refresh;
 refresh();

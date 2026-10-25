@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "npm run build:css",
-    "build:css": "node scripts/copy-ui-fonts.mjs && tailwindcss -i frontend/styles/app.css -o dist/app.css --minify",
+    "build:css": "node scripts/copy-ui-fonts.mjs && node scripts/render-ui-shell.mjs && tailwindcss -i frontend/styles/app.css -o dist/app.css --minify",
     "dev:css": "tailwindcss -i frontend/styles/app.css -o dist/app.css --watch"
   },
   "devDependencies": {
