@@ -82,7 +82,7 @@ def test_cost_hurdle_prevents_an_uneconomic_candidate():
 
 def test_venue_power_is_not_double_reserved(engine):
     from dataclasses import replace
-    run(engine.place(intent(execution="patient")))
+    run(engine.place(intent(execution="patient", notional=100)))
     engine.settings = replace(engine.settings, mode="alpaca", api_key="fixture", secret_key="fixture")
     snap = engine.store.get("account_snapshot")
     snap["account"].update(crypto_status="ACTIVE", non_marginable_buying_power="260")

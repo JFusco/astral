@@ -25,7 +25,16 @@ class Intent(BaseModel):
     notional: float = Field(gt=0, le=1000, allow_inf_nan=False)
     execution: Literal["patient", "bounded", "market"] = "bounded"
     ttl_seconds: int = Field(default=60, ge=10, le=300)
-    strategy_id: Literal["manual", "lifecycle_test"] = "manual"
+    strategy_id: Literal["manual", "lifecycle_test", "swing", "intraday"] = "manual"
+
+
+class ExitPlan(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: str = Field(pattern=r"^[a-zA-Z0-9-]{8,25}$")
+    symbol: Literal["BTC", "ETH", "SOL", "SPY", "QQQ", "GLD", "TLT", "IWM"]
+    strategy_id: Literal["manual", "swing", "intraday"] = "manual"
+    stop_price: float = Field(gt=0, allow_inf_nan=False)
+    target_price: float | None = Field(default=None, gt=0, allow_inf_nan=False)
 
 
 class Halt(BaseModel):
@@ -144,6 +153,18 @@ def create_app(settings=None, broker_factory=None, background=True):
         e = request.app.state.engine
         async with e.lock:
             return e.plan(body.model_dump())
+
+    @app.post("/api/risk/shadow")
+    async def shadow(body: Intent, request: Request):
+        return await request.app.state.engine.shadow(body.model_dump())
+
+    @app.post("/api/exits")
+    async def exits(body: ExitPlan, request: Request):
+        return await request.app.state.engine.arm_exit(body.model_dump())
+
+    @app.post("/api/research/run", status_code=202)
+    async def research(request: Request):
+        return request.app.state.engine.start_research()
 
     @app.post("/api/reconcile")
     async def reconcile(request: Request):

@@ -5,7 +5,7 @@ from decimal import Decimal, InvalidOperation, ROUND_DOWN, localcontext
 import hashlib
 import json
 
-VERSION = "deterministic-risk-v2"
+VERSION = "deterministic-risk-v3"
 
 
 def number(value):

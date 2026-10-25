@@ -23,5 +23,6 @@ export function connectBackend({onState,onFill,onDisconnect,onPreview}) {
   return {async order(intent){const order=await request('/api/orders',intent);accept(await request('/api/state'));return order;},
     async halt(halted){await request('/api/halt',{halted});accept(await request('/api/state'));},
     async cancel(clientId){const order=await request(`/api/orders/${encodeURIComponent(clientId)}/cancel`,{});accept(await request('/api/state'));return order;},
-    async reconcile(){accept(await request('/api/reconcile',{}));},close(){source?.close();}};
+    async reconcile(){accept(await request('/api/reconcile',{}));},
+    async research(){return await request('/api/research/run',{});},close(){source?.close();}};
 }

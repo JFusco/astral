@@ -20,6 +20,10 @@ class Settings:
     secret_key: str = field(default="", repr=False)
     enable_orders: bool = False
     enable_news: bool = False
+    enable_shadow: bool = False
+    enable_exit_monitor: bool = False
+    enable_research: bool = False
+    enable_codex_research: bool = False
     equity_feed: str = "iex"
     crypto_location: str = "us"
     max_order: Decimal = Decimal("1000")
@@ -29,6 +33,8 @@ class Settings:
     max_snapshot_age: float = 30
     quote_interval: float = 5
     reconcile_interval: float = 10
+    shadow_interval: float = 60
+    max_unprotected_risk: Decimal = Decimal("0.005")
 
     def __post_init__(self):
         if self.mode not in {"alpaca", "simulator"}:
@@ -39,6 +45,12 @@ class Settings:
             raise ValueError("Maximum gross exposure must be in (0, 0.5]")
         if not Decimal("0") < self.max_order <= Decimal("1000"):
             raise ValueError("This first paper release caps each order at $1,000")
+        if not Decimal("0") < self.max_unprotected_risk <= Decimal("0.005"):
+            raise ValueError("Unprotected full-value risk is capped at 0.5% of equity")
+        if self.enable_shadow and self.enable_orders:
+            raise ValueError("Shadow sessions require paper orders disabled")
+        if self.enable_exit_monitor and not self.enable_orders:
+            raise ValueError("Exit monitoring requires explicitly enabled paper orders")
 
     @property
     def configured(self):
@@ -60,4 +72,8 @@ class Settings:
                    secret_key=os.getenv("ALPACA_PAPER_SECRET_KEY", ""),
                    enable_orders=os.getenv("ASTRAL_ENABLE_PAPER_ORDERS", "false").lower() == "true",
                    enable_news=os.getenv("ASTRAL_ENABLE_NEWS", "false").lower() == "true",
+                   enable_shadow=os.getenv("ASTRAL_ENABLE_SHADOW", "false").lower() == "true",
+                   enable_exit_monitor=os.getenv("ASTRAL_ENABLE_EXIT_MONITOR", "false").lower() == "true",
+                   enable_research=os.getenv("ASTRAL_ENABLE_RESEARCH", "false").lower() == "true",
+                   enable_codex_research=os.getenv("ASTRAL_ENABLE_CODEX_RESEARCH", "false").lower() == "true",
                    equity_feed=os.getenv("ASTRAL_EQUITY_FEED", "iex"))

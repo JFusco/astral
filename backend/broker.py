@@ -50,6 +50,8 @@ class AlpacaPaper:
         self.metadata = {}
 
     async def request(self, method, path, *, data=False, critical=False, **kwargs):
+        if method != "GET" and not self.settings.enable_orders:
+            raise BrokerFailure("Read-only adapter blocks broker writes", 403)
         if not self.settings.configured:
             raise BrokerFailure("Alpaca paper credentials are not configured")
         pool = "data" if data else "trading"
@@ -82,7 +84,11 @@ class AlpacaPaper:
             raise BrokerFailure("Alpaca request outcome is unavailable; reconcile before resubmission") from exc
 
     async def load_assets(self):
+        from .universe import discover_crypto
+        self.metadata = {}
         cryptos = await self.request("GET", "/v2/assets", params={"asset_class": "crypto", "status": "active"})
+        if not isinstance(cryptos, list): raise BrokerFailure("Crypto asset discovery response unavailable")
+        self.store.put("crypto_universe", discover_crypto(cryptos, utcnow()))
         by_symbol = {a["symbol"]: a for a in cryptos or []}
         for symbol, (broker_symbol, kind) in SYMBOLS.items():
             raw = by_symbol.get(broker_symbol) if kind == "crypto" else await self.request("GET", "/v2/assets/"+quote(broker_symbol, safe=""))
@@ -104,6 +110,8 @@ class AlpacaPaper:
                 symbol = next((s for s, v in SYMBOLS.items() if v[0] == broker_symbol), None)
                 if symbol:
                     result[symbol] = {"bid": str(q["bp"]), "ask": str(q["ap"]), "at": q["t"],
+                                      "bid_size": str(q.get("bs", "")), "ask_size": str(q.get("as", "")),
+                                      "size_unit": "unverified",
                                       "received_at": utcnow(), "source": "alpaca-us" if "/crypto/" in path else "alpaca-"+self.settings.equity_feed}
         return result
 
@@ -133,7 +141,38 @@ class AlpacaPaper:
 
     async def news(self):
         return await self.request("GET", "/v1beta1/news", data=True,
-                                  params={"symbols": ",".join(SYMBOLS), "limit": 20, "include_content": "false", "sort": "desc"})
+                                  params={"symbols": ",".join(b.replace("/", "") for b, _ in SYMBOLS.values()), "limit": 20, "include_content": "false", "sort": "desc"})
+
+    async def fee_activities(self, after):
+        result, token = [], None
+        for _ in range(5):
+            params = {"activity_types": "CFEE,FEE", "after": after, "direction": "asc", "page_size": 100}
+            if token: params["page_token"] = token
+            page = await self.request("GET", "/v2/account/activities", params=params, critical=True)
+            if not isinstance(page, list): raise BrokerFailure("Fee activity response unavailable")
+            result.extend(page)
+            if len(page) < 100: return result
+            next_token = page[-1].get("id")
+            if not next_token or next_token == token: raise BrokerFailure("Fee activity pagination did not advance")
+            token = next_token
+        raise BrokerFailure("Fee activity page budget reached; coverage incomplete")
+
+    async def research_bars(self, symbol):
+        from datetime import datetime, timezone, timedelta
+        broker_symbol, kind = SYMBOLS[symbol]
+        end = datetime.now(timezone.utc)-timedelta(minutes=20 if kind == "etf" else 2)
+        path = "/v2/stocks/bars" if kind == "etf" else "/v1beta3/crypto/us/bars"
+        params = {"symbols": broker_symbol, "timeframe": "1Day", "start": (end-timedelta(days=100)).isoformat(),
+                  "end": end.isoformat(), "limit": 1000, "sort": "asc"}
+        if kind == "etf": params.update(feed=self.settings.equity_feed, adjustment="raw")
+        raw = await self.request("GET", path, data=True, params=params)
+        if not isinstance(raw, dict) or raw.get("next_page_token"):
+            raise BrokerFailure("Research history incomplete or outside bounded page budget")
+        rows = raw.get("bars", {}).get(broker_symbol, [])
+        if not rows: raise BrokerFailure("No research history for symbol")
+        return {"rows": rows, "source": "alpaca-"+(self.settings.equity_feed if kind == "etf" else "us"),
+                "bar_semantics": "executed-trades-only" if kind == "etf" else "trades-and-quote-midpoints",
+                "received_at": utcnow(), "coverage": "IEX exchange only; not consolidated volume" if kind == "etf" and self.settings.equity_feed == "iex" else "Selected execution/data venue", "end": end.isoformat()}
 
     async def close(self):
         await self.http.aclose()

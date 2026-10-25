@@ -33,6 +33,10 @@ class Store:
           CREATE TABLE IF NOT EXISTS equity(id INTEGER PRIMARY KEY,at TEXT NOT NULL,value TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS observations(id INTEGER PRIMARY KEY,at TEXT NOT NULL,request TEXT NOT NULL,outcome TEXT NOT NULL,context TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS news(id TEXT NOT NULL,revision TEXT NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(id,revision));
+          CREATE TABLE IF NOT EXISTS activities(id TEXT PRIMARY KEY,type TEXT NOT NULL,at TEXT NOT NULL,payload TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS shadow(id INTEGER PRIMARY KEY,at TEXT NOT NULL,intent TEXT NOT NULL,result TEXT NOT NULL,context TEXT NOT NULL,input_hash TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS research(id INTEGER PRIMARY KEY,at TEXT NOT NULL,packet TEXT NOT NULL,result TEXT NOT NULL,usage TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS timing(id INTEGER PRIMARY KEY,at TEXT NOT NULL,symbol TEXT NOT NULL,strategy TEXT NOT NULL,result TEXT NOT NULL,context TEXT NOT NULL);
         """)
         with self.transaction():
             existing = self.get("mode")

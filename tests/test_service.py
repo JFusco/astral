@@ -126,8 +126,8 @@ def test_stale_account_and_closed_etf_session(engine):
 
 
 def test_pending_cash_reservation_and_short_prevention(engine):
-    assert run(engine.place(intent(execution="patient", notional=1000)))["status"] == "new"
-    snap = engine.store.get("account_snapshot");snap["account"]["cash"] = "1100"
+    assert run(engine.place(intent(execution="patient", notional=400)))["status"] == "new"
+    snap = engine.store.get("account_snapshot");snap["account"]["cash"] = "600"
     engine.store.put("account_snapshot", snap)
     with pytest.raises(RuleViolation, match="unreserved cash"):
         run(engine.place(intent("astral-next1234", notional=250)))
@@ -136,9 +136,9 @@ def test_pending_cash_reservation_and_short_prevention(engine):
 
 
 def test_loss_guard_and_total_exposure_include_working_orders(engine):
-    run(engine.place(intent(execution="patient", notional=1000)))
+    run(engine.place(intent(execution="patient", notional=400)))
     snap = engine.store.get("account_snapshot")
-    snap["positions"] = [{"symbol": "TLT", "qty": "530", "market_value": "49000", "cost_basis": "49000", "unrealized_pl": "0"}]
+    snap["positions"] = [{"symbol": "TLT", "qty": "530", "market_value": "49500", "cost_basis": "49500", "unrealized_pl": "0"}]
     engine.store.put("account_snapshot", snap)
     with pytest.raises(RuleViolation, match="Aggregate exposure"):
         run(engine.place(intent("astral-cap12345")))
@@ -230,7 +230,7 @@ def test_live_host_configuration_rejected(monkeypatch):
 
 
 def test_adapter_fixed_hosts_no_post_retries_and_cooldown(tmp_path):
-    cfg = Settings(mode="alpaca", db_path=tmp_path/"adapter.sqlite", api_key="secret-key", secret_key="secret-value")
+    cfg = Settings(mode="alpaca", db_path=tmp_path/"adapter.sqlite", api_key="secret-key", secret_key="secret-value", enable_orders=True)
     store = Store(cfg.db_path, cfg.mode);seen = []
     def handle(request):
         seen.append((request.method, request.url.host))

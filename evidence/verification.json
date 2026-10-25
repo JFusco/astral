@@ -1,6 +1,6 @@
 {
   "scope": "local persistent simulator and separate authenticated Alpaca PAPER lifecycle; no live trading",
-  "tests_passed": 42,
+  "tests_passed": 99,
   "crash_recovery": {
     "cash_preserved": true,
     "quantities_and_basis_preserved": true,
@@ -15,8 +15,72 @@
     "orders_disabled": true,
     "no_simulator_fallback": true
   },
-  "browser_order_controls": {"synthetic_passive_cancel_confirmed": true, "synthetic_exit_confirmed": true},
+  "browser_order_controls": {
+    "synthetic_passive_cancel_confirmed": true,
+    "synthetic_exit_confirmed": true
+  },
   "broker_readback": "authenticated paper account, assets, quotes, positions and orders verified",
-  "broker_paper_lifecycle": {"date_utc": "2026-10-25", "symbol": "BTC/USD", "buy_qty": "0.000309121", "buy_avg": "80789.055333025", "exit_qty": "0.000308347", "exit_avg": "80785.24", "both_orders": "filled", "final_positions": 0, "final_working_orders": 0, "equity_change_usd": "-0.13", "fees": "not reconciled; equity change is not net profit"},
-  "cloud_backend": "not deployed"
+  "broker_paper_lifecycle": {
+    "date_utc": "2026-10-25",
+    "symbol": "BTC/USD",
+    "buy_qty": "0.000309121",
+    "buy_avg": "80789.055333025",
+    "exit_qty": "0.000308347",
+    "exit_avg": "80785.24",
+    "both_orders": "filled",
+    "final_positions": 0,
+    "final_working_orders": 0,
+    "equity_change_usd": "-0.13",
+    "fees": "not reconciled; equity change is not net profit"
+  },
+  "cloud_backend": "not deployed",
+  "risk_lab": {
+    "date_utc": "2026-10-25",
+    "tests_scope": "synthetic fixtures; no live-market edge claim",
+    "connected_bounded_session": {
+      "duration_seconds": 90,
+      "broker_get_requests": 91,
+      "broker_write_requests": 0,
+      "new_local_orders": 0,
+      "risk_probes": 80,
+      "risk_probe_outcomes": {
+        "veto": 80
+      },
+      "timing_outcomes": {
+        "wait": 144
+      },
+      "eligible_symbols": [],
+      "profitability_validated": false
+    },
+    "cli_worker": {
+      "model": "gpt-6.1-sol",
+      "effort": "high",
+      "status": "reviewed-abstain",
+      "input_tokens": 23192,
+      "output_tokens": 406,
+      "reasoning_tokens": 224,
+      "actual_usd": null,
+      "billing": "Signed-in subscription; exact attributable USD unavailable"
+    },
+    "inventory": {
+      "status": "needs-review",
+      "symbol": "BTC",
+      "unresolved_delta_qty": "-0.000000774",
+      "confirmed_fee_cause": false
+    },
+    "connected_catalog": {
+      "listings": 73,
+      "metadata_eligible": 36,
+      "new_execution_authorizations": 0
+    },
+    "remaining_gates": [
+      "trade-derived crypto bars",
+      "verified normalized quote sizes and executable depth",
+      "event calendar adapters",
+      "realistic execution simulation",
+      "forward strategy validation",
+      "tax-lot advisory implementation",
+      "always-on hosting and external alerts"
+    ]
+  }
 }
