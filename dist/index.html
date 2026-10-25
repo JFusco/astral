@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#070c13" />
+  <meta name="description" content="ASTRAL trading command. A private, simulated prototype of a continuously observed portfolio and living market universe." />
+  <title>ASTRAL / Trading command</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"></div>
+  <aside class="rail" aria-label="Workspace navigation">
+    <a href="#overview" class="brandmark" aria-label="Astral overview">A<span></span></a>
+    <button class="rail-button active" data-view="overview" aria-label="Overview" title="Overview"><span class="icon-grid"></span></button>
+    <button class="rail-button" data-view="strategies" aria-label="Strategy allocations" title="Strategy allocations">⌁</button>
+    <button class="rail-button" data-view="intelligence" aria-label="Intelligence sources" title="Intelligence sources">◉</button>
+    <button class="rail-button" data-view="system" aria-label="System telemetry" title="System telemetry">⌘</button>
+    <div class="rail-spacer"></div>
+    <button class="rail-button" id="settings-button" aria-label="Display settings" title="Display settings">⚙</button>
+    <div class="avatar" title="Private workspace">JF</div>
+  </aside>
+
+  <div class="workspace" id="overview">
+    <header class="topbar">
+      <div class="wordmark">ASTRAL<span class="wordmark-rule"></span><span class="wordmark-sub">TRADING COMMAND</span></div>
+      <div class="top-actions">
+        <span class="connection"><i></i><span id="stream-status">SIMULATION STREAM</span></span>
+        <span class="clock" id="clock">00:00:00 UTC</span>
+        <button class="icon-button" id="pause-button" aria-label="Pause simulation" title="Pause simulation">Ⅱ</button>
+        <button class="halt-button" id="halt-button"><span>◈</span> Halt entries</button>
+      </div>
+    </header>
+
+    <main>
+      <div class="page-heading">
+        <div><div class="eyebrow">ONE PORTFOLIO. EVERY OPPORTUNITY.</div><h1>Your market universe<span>.</span></h1></div>
+        <div class="mode-badge"><span class="mode-orb"></span><div>PAPER LAB<span>Simulated prices, news & fills</span></div><span class="mode-lock">⌑</span></div>
+      </div>
+
+      <section class="metrics" aria-label="Portfolio overview">
+        <div class="metric"><div class="metric-label">PORTFOLIO VALUE<span>↗</span></div><div class="metric-value" id="equity">$108,562.00</div><div class="metric-bottom"><span class="gain" id="equity-change">+$8,562.00 (8.56%)</span><span>since inception</span></div><svg class="mini-chart" viewBox="0 0 140 45" aria-hidden="true"><path d="M0 42 L9 36 L17 38 L29 27 L37 29 L45 23 L53 26 L64 21 L74 22 L83 13 L95 15 L105 8 L115 12 L126 3 L140 1" /></svg></div>
+        <div class="metric"><div class="metric-label">NET PROFIT / LOSS<span>◷</span></div><div class="metric-value positive" id="net-profit">+$8,562.00</div><div class="metric-bottom"><span id="realized">$6,752 realized</span><span id="unrealized">$1,810 open</span></div><div class="metric-note">Trading fees included · before operating costs</div></div>
+        <div class="metric"><div class="metric-label">CAPITAL AT WORK<span>◎</span></div><div class="metric-value" id="deployed">$36,562.00</div><div class="capital-track"><span id="capital-bar"></span></div><div class="metric-bottom"><span id="cash">$72,000 available</span><span id="exposure">33.7% exposure</span></div></div>
+        <button class="metric health-metric" id="health-card"><div class="metric-label">SYSTEM HEARTBEAT<span class="live-dot"></span></div><div class="metric-value">6 <span class="metric-dim">/ 6 online</span></div><div class="heartbeat-line"><svg viewBox="0 0 250 30" aria-hidden="true"><path d="M0 16 L70 16 L78 12 L83 22 L90 3 L97 27 L103 13 L110 16 L250 16" /></svg><span></span></div><div class="metric-bottom"><span class="gain" id="health-label">All systems nominal</span><span>Demo telemetry ↗</span></div></button>
+      </section>
+
+      <div class="primary-grid">
+        <section class="panel universe-panel" aria-labelledby="universe-title">
+          <div class="panel-heading universe-heading"><div><span class="label-dot"></span><h2 id="universe-title">Market universe</h2><span class="panel-subtitle">8 tracked assets</span></div><button class="text-button" id="orbit-reset">Reset orbit ↻</button></div>
+          <div class="universe-stage" id="universe-stage">
+            <canvas id="universe" aria-label="Interactive 3D market universe. Select an asset from the positions list for accessible details."></canvas>
+            <div class="scene-corner top-left">ORBITAL VIEW <span>03.14 / 24.7</span></div>
+            <div class="scene-corner top-right"><i></i> OBSERVING</div>
+            <div class="scene-title" aria-hidden="true"><span class="core-symbol">A</span><span class="scene-core-label">PORTFOLIO CORE</span></div>
+            <div id="orbit-labels"></div>
+            <div class="scene-event" id="scene-event"><i></i><span>Every signal has a story.</span></div>
+            <div class="scene-bottom"><span><i class="legend-dot cyan"></i> ETF <i class="legend-dot violet"></i> CRYPTO <i class="legend-dot lime"></i> FILL EVENT</span><span>DRAG TO ORBIT · SCROLL TO ZOOM</span></div>
+          </div>
+          <div class="universe-toolbar"><div class="selected-symbol"><span id="selected-icon">₿</span><div><strong id="selected-name">Bitcoin</strong><span id="selected-ticker">BTC / USD</span></div><div class="selected-quote"><strong id="selected-price">$67,500.00</strong><span id="selected-change" class="gain">+2.84%</span></div></div><div class="demo-controls"><button id="demo-buy"><span>＋</span> Demo buy</button><button id="demo-sell"><span>−</span> Demo sell</button></div></div>
+        </section>
+
+        <section class="panel positions-panel" aria-labelledby="positions-title">
+          <div class="panel-heading"><div><h2 id="positions-title">Open positions</h2><span class="count-badge" id="positions-count">6</span></div><span class="tiny-live">● SIM</span></div>
+          <div class="position-columns"><span>ASSET / QUANTITY</span><span>VALUE / OPEN P&L</span></div>
+          <div id="positions"></div>
+          <div class="positions-footer"><span>Portfolio risk</span><strong id="risk-state">WITHIN LIMITS</strong><div class="risk-meter"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span class="footnote">Demo risk profile · spot & unleveraged</span></div>
+        </section>
+      </div>
+
+      <div class="secondary-grid">
+        <section class="panel performance-panel" aria-labelledby="performance-title">
+          <div class="panel-heading"><div><h2 id="performance-title">Portfolio trajectory</h2></div><div class="segmented" aria-label="Chart period"><button data-period="1H">1H</button><button class="selected" data-period="1D">1D</button><button data-period="1W">1W</button></div></div>
+          <div class="chart-summary"><strong id="trajectory-value">+8.56%</strong><span>ILLUSTRATIVE EQUITY CURVE</span></div>
+          <div class="chart-wrap"><svg id="equity-chart" viewBox="0 0 540 124" role="img" aria-label="Illustrative simulated portfolio equity curve"><defs><linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#b9f47b" stop-opacity=".2"/><stop offset="100%" stop-color="#b9f47b" stop-opacity="0"/></linearGradient></defs><g class="chart-grid"><path d="M0 20H540 M0 60H540 M0 100H540" /></g><path id="chart-area" fill="url(#chartFill)"/><path id="chart-line" fill="none" stroke="#b9f47b" stroke-width="2"/><circle id="chart-point" r="3.5" fill="#d7ffa8"/></svg></div>
+          <div class="chart-axis"><span id="chart-start">00:00</span><span id="chart-middle">12:00</span><span>NOW</span></div>
+          <div class="strategy-pills"><button data-view="strategies"><i></i> Core / swing <span>70%</span></button><button data-view="strategies"><i></i> Opportunity / intraday <span>30%</span></button></div>
+        </section>
+
+        <section class="panel activity-panel" aria-labelledby="activity-title">
+          <div class="panel-heading"><div><h2 id="activity-title">Execution stream</h2></div><span class="tiny-live"><i></i> SIMULATED</span></div>
+          <div class="activity-list" id="activity"></div>
+          <div class="panel-footer">FILL EVENTS DRIVE THE UNIVERSE <span>↗</span></div>
+        </section>
+
+        <section class="panel news-panel" aria-labelledby="news-title">
+          <div class="panel-heading"><div><h2 id="news-title">Intelligence feed</h2></div><button class="text-button" data-view="intelligence">Sources ↗</button></div>
+          <div class="news-filters" aria-label="News category"><button class="selected" data-news="all">All signals</button><button data-news="markets">Markets</button><button data-news="crypto">Crypto</button></div>
+          <div id="news"></div>
+        </section>
+      </div>
+
+      <footer class="bottom-bar"><span><span class="label-dot"></span> ASTRAL IS OBSERVING <span class="muted">/</span> <span id="event-count">0</span> events processed</span><span>NO BROKER CONNECTED <span class="muted">·</span> ALL FIGURES ARE SIMULATED <span class="version">v0.1 / PAPER LAB</span></span></footer>
+    </main>
+  </div>
+
+  <dialog id="detail-dialog"><div class="dialog-top"><div><div class="eyebrow" id="dialog-eyebrow">MISSION CONTROL</div><h2 id="dialog-title">System telemetry</h2></div><button class="icon-button" id="close-dialog" aria-label="Close dialog">✕</button></div><div id="dialog-content"></div></dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
