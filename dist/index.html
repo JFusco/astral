@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#070c13" />
   <meta name="description" content="ASTRAL trading command. A private, simulated prototype of a continuously observed portfolio and living market universe." />
   <title>ASTRAL / Trading command</title>
-  <link rel="stylesheet" href="./styles.css?v=risk-lab-v3" />
+  <link rel="stylesheet" href="./styles.css?v=feed-status-v4" />
 </head>
 <body>
   <div class="ambient" aria-hidden="true"></div>
@@ -25,7 +25,7 @@
     <header class="topbar">
       <div class="wordmark">ASTRAL<span class="wordmark-rule"></span><span class="wordmark-sub">TRADING COMMAND</span></div>
       <div class="top-actions">
-        <span class="connection"><i></i><span id="stream-status">SIMULATION STREAM</span></span>
+        <span class="connection"><i></i><span id="stream-status">CHECKING CONNECTION</span></span>
         <span class="clock" id="clock">00:00:00 UTC</span>
         <button class="icon-button" id="pause-button" aria-label="Pause simulation" title="Pause simulation">Ⅱ</button>
         <button class="halt-button" id="halt-button"><span>◈</span> Halt entries</button>
@@ -33,16 +33,17 @@
     </header>
 
     <main>
+      <section class="connection-notice" id="connection-notice" role="status" hidden><div><strong id="connection-notice-title">Live dashboard runs on this Mac</strong><p id="connection-notice-copy">This hosted preview has no connection to the local trading service.</p></div><a href="http://127.0.0.1:8766/" target="_blank" rel="noopener">Open live local dashboard ↗</a></section>
       <div class="page-heading">
         <div><div class="eyebrow">ONE PORTFOLIO. EVERY OPPORTUNITY.</div><h1>Your market universe<span>.</span></h1></div>
-        <div class="mode-badge"><span class="mode-orb"></span><div>PAPER LAB<span>Simulated prices, news & fills</span></div><span class="mode-lock">⌑</span></div>
+        <div class="mode-badge"><span class="mode-orb"></span><div>BACKEND REQUIRED<span>Checking local service connection</span></div><span class="mode-lock">⌑</span></div>
       </div>
 
       <section class="metrics" aria-label="Portfolio overview">
-        <div class="metric"><div class="metric-label">PORTFOLIO VALUE<span>↗</span></div><div class="metric-value" id="equity">$108,562.00</div><div class="metric-bottom"><span class="gain" id="equity-change">+$8,562.00 (8.56%)</span><span>since inception</span></div><svg class="mini-chart" viewBox="0 0 140 45" aria-hidden="true"><path d="M0 42 L9 36 L17 38 L29 27 L37 29 L45 23 L53 26 L64 21 L74 22 L83 13 L95 15 L105 8 L115 12 L126 3 L140 1" /></svg></div>
-        <div class="metric"><div class="metric-label">NET PROFIT / LOSS<span>◷</span></div><div class="metric-value positive" id="net-profit">+$8,562.00</div><div class="metric-bottom"><span id="realized">$6,752 realized</span><span id="unrealized">$1,810 open</span></div><div class="metric-note">Trading fees included · before operating costs</div></div>
-        <div class="metric"><div class="metric-label">CAPITAL AT WORK<span>◎</span></div><div class="metric-value" id="deployed">$36,562.00</div><div class="capital-track"><span id="capital-bar"></span></div><div class="metric-bottom"><span id="cash">$72,000 available</span><span id="exposure">33.7% exposure</span></div></div>
-        <button class="metric health-metric" id="health-card"><div class="metric-label">SYSTEM HEARTBEAT<span class="live-dot"></span></div><div class="metric-value">6 <span class="metric-dim">/ 6 online</span></div><div class="heartbeat-line"><svg viewBox="0 0 250 30" aria-hidden="true"><path d="M0 16 L70 16 L78 12 L83 22 L90 3 L97 27 L103 13 L110 16 L250 16" /></svg><span></span></div><div class="metric-bottom"><span class="gain" id="health-label">All systems nominal</span><span>Demo telemetry ↗</span></div></button>
+        <div class="metric"><div class="metric-label">PORTFOLIO VALUE<span>↗</span></div><div class="metric-value" id="equity">—</div><div class="metric-bottom"><span class="gain" id="equity-change">No account readback</span><span>since inception</span></div><svg class="mini-chart" viewBox="0 0 140 45" aria-hidden="true"><path d="M0 42 L9 36 L17 38 L29 27 L37 29 L45 23 L53 26 L64 21 L74 22 L83 13 L95 15 L105 8 L115 12 L126 3 L140 1" /></svg></div>
+        <div class="metric"><div class="metric-label">NET PROFIT / LOSS<span>◷</span></div><div class="metric-value positive" id="net-profit">—</div><div class="metric-bottom"><span id="realized">Unavailable</span><span id="unrealized"></span></div><div class="metric-note">Trading fees included · before operating costs</div></div>
+        <div class="metric"><div class="metric-label">CAPITAL AT WORK<span>◎</span></div><div class="metric-value" id="deployed">—</div><div class="capital-track"><span id="capital-bar"></span></div><div class="metric-bottom"><span id="cash">No account readback</span><span id="exposure">Exposure unknown</span></div></div>
+        <button class="metric health-metric" id="health-card"><div class="metric-label">SYSTEM HEARTBEAT<span class="live-dot"></span></div><div class="metric-value">6 <span class="metric-dim">/ 6 online</span></div><div class="heartbeat-line"><svg viewBox="0 0 250 30" aria-hidden="true"><path d="M0 16 L70 16 L78 12 L83 22 L90 3 L97 27 L103 13 L110 16 L250 16" /></svg><span></span></div><div class="metric-bottom"><span class="gain" id="health-label">Checking service…</span><span>Connection details ↗</span></div></button>
       </section>
 
       <div class="primary-grid">
@@ -84,7 +85,7 @@
         </section>
 
         <section class="panel news-panel" aria-labelledby="news-title">
-          <div class="panel-heading"><div><h2 id="news-title">Intelligence feed</h2></div><button class="text-button" data-view="intelligence">Sources ↗</button></div>
+          <div class="panel-heading"><div><h2 id="news-title">Intelligence feed</h2><span class="panel-subtitle" id="intelligence-status">Checking news connection…</span></div><button class="text-button" data-view="intelligence">Sources ↗</button></div>
           <div class="news-filters" aria-label="News category"><button class="selected" data-news="all">All signals</button><button data-news="markets">Markets</button><button data-news="crypto">Crypto</button></div>
           <div id="news"></div>
         </section>
@@ -103,6 +104,6 @@
 
   <dialog id="detail-dialog"><div class="dialog-top"><div><div class="eyebrow" id="dialog-eyebrow">MISSION CONTROL</div><h2 id="dialog-title">System telemetry</h2></div><button class="icon-button" id="close-dialog" aria-label="Close dialog">✕</button></div><div id="dialog-content"></div></dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="./app.js"></script>
+  <script type="module" src="./app.js?v=feed-status-v4"></script>
 </body>
 </html>

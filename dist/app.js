@@ -7,6 +7,8 @@ const signed=(v,d=2)=>(v>=0?'+':'−')+money(Math.abs(v),d);
 const quantity=v=>new Intl.NumberFormat('en-US',{maximumFractionDigits:6}).format(v);
 const book=createPortfolio();let selected='BTC',paused=false,events=0,newsFilter='all',period='1D';
 let backendState=null,backendConnecting=true,backendAvailable=false,backend=null;
+const explicitDemo=new URLSearchParams(location.search).get('demo')==='1';
+const localView=['127.0.0.1','localhost','[::1]'].includes(location.hostname);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const systemReduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let motion=localStorage.getItem('astral-motion')||(systemReduced?'reduced':'cinematic');document.body.dataset.motion=motion;
@@ -20,7 +22,35 @@ const newsItems=[
 ];
 
 function notify(text){$('#toast').textContent=text;$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),3500);}
+function renderUnavailable(){
+  if(explicitDemo)return;
+  $('#connection-notice').hidden=backendConnecting;
+  $('#connection-notice-title').textContent=localView?'Local service unavailable':'Live dashboard runs on this Mac';
+  $('#connection-notice-copy').textContent=localView?'The local service has not returned a valid dashboard state. No account values or headlines are assumed.':'This hosted design preview is not connected to the local account, prices or news feed.';
+  document.body.dataset.connection='stale';$('#health-card').dataset.status='stale';
+  for(const id of ['equity','net-profit','deployed','selected-price'])$('#'+id).textContent='—';
+  $('#equity-change').textContent=backendConnecting?'Checking account connection…':'No connected account';
+  $('.metric:first-child .metric-bottom>span:last-child').textContent='';
+  $('#realized').textContent='Unavailable';$('#unrealized').textContent='';$('.metric-note').textContent='No account performance shown';
+  $('#cash').textContent='No account readback';$('#exposure').textContent='Exposure unknown';$('#capital-bar').style.width='0';$('.mini-chart').style.display='none';
+  $('#positions-count').textContent='—';$('#positions').innerHTML='<p class="empty-state">No connected account in this view.</p>';
+  const current=book.assets.find(a=>a.symbol===selected);$('#selected-name').textContent=current.name;$('#selected-ticker').textContent=current.type==='crypto'?`${current.symbol} / USD`:`${current.symbol} / ETF`;$('#selected-icon').textContent=current.icon;
+  $('#selected-change').textContent='No connected quote';$('#demo-buy').disabled=true;$('#demo-sell').disabled=true;$('#halt-button').disabled=true;
+  $('#risk-state').textContent='NO BACKEND';$('.positions-footer .footnote').textContent='Open the live local dashboard';
+  $('#health-card .metric-value').innerHTML='— <span class="metric-dim">no backend</span>';
+  $('#health-label').textContent=backendConnecting?'Checking service…':'Live service not connected to this page';
+  $('#health-card .metric-bottom>span:last-child').textContent='Connection details ↗';
+  $('#stream-status').textContent=backendConnecting?'CHECKING CONNECTION':localView?'LOCAL SERVICE UNAVAILABLE':'HOSTED PREVIEW / NO BACKEND';
+  $('.mode-badge>div').innerHTML='BACKEND REQUIRED<span>Open the live local dashboard</span>';
+  $('.activity-panel .tiny-live').textContent='NO CONNECTED LEDGER';$('.positions-panel .tiny-live').textContent='NO ACCOUNT';
+  $('.scene-corner.top-right').innerHTML='<i></i> VISUAL PREVIEW';
+  $('.bottom-bar>span:last-child').textContent=localView?'LOCAL SERVICE UNAVAILABLE · NO ACCOUNT VALUES ASSUMED':'HOSTED DESIGN PREVIEW · NO LIVE ACCOUNT, NEWS OR EXECUTION';
+  $$('.strategy-pills button').forEach((b,i)=>b.innerHTML=`<i></i> ${i?'Intraday':'Swing'} <span>not connected</span>`);
+  $('#performance-title').textContent='Account equity';$('.chart-summary>span').textContent='NO RECORDED ACCOUNT DATA';$('#equity-chart').setAttribute('aria-label','No connected account equity data');$('#chart-start').textContent='';$('#chart-middle').textContent='';
+  drawChart();
+}
 function renderPortfolio(){
+  if(!backendState&&!explicitDemo){renderUnavailable();return;}
   const focusedAsset=document.activeElement?.classList.contains('position-row')?document.activeElement.dataset.asset:null;
   const t=totals(book);$('#equity').textContent=money(t.equity);$('#equity-change').textContent=`${signed(t.net)} (${(t.net/book.openingEquity*100).toFixed(2)}%)`;
   $('#net-profit').textContent=signed(t.net);$('#net-profit').classList.toggle('negative',t.net<0);$('#realized').textContent=`${money(book.realized,0)} realized`;$('#unrealized').textContent=`${money(t.unrealized,0)} open`;
@@ -40,6 +70,7 @@ function renderPortfolio(){
 function selectAsset(symbol){selected=symbol;renderPortfolio();}
 function trade(side,automatic=false){
   if(backendState){if(!automatic)openOrderForm(side);return;}
+  if(!explicitDemo){notify('Open the live local dashboard to use paper-account controls.');return;}
   const result=fill(book,selected,side,selected==='BTC'?650:500);
   if(!result.ok){if(!automatic)notify(result.reason);return;}
   lastTrade=Date.now();events++;activity.unshift(result);activity.splice(12);renderActivity();renderPortfolio();
@@ -50,17 +81,20 @@ function trade(side,automatic=false){
 }
 function renderActivity(){
   if(backendState){renderBackendActivity();return;}
+  if(!explicitDemo){$('#activity').innerHTML='<p class="empty-state">No connected paper ledger in this view.<br>Open the live local dashboard for confirmed fills.</p>';return;}
   $('#activity').innerHTML=activity.slice(0,5).map(a=>`<div class="activity-row ${a.side}"><span class="trade-indicator">${a.side==='buy'?'↗':'↙'}</span><div class="activity-copy"><strong>${a.side==='buy'?'Bought':'Sold'} ${quantity(a.quantity)} ${a.symbol} <span>@ ${money(a.price)}</span></strong><small>${a.id} · SIMULATED FILL · fee ${money(a.fee)}</small></div><span class="activity-time">${new Date(a.time).toISOString().slice(11,19)}</span></div>`).join('');
   if(!activity.length)$('#activity').innerHTML='<div class="activity-row"><span class="trade-indicator">◎</span><div class="activity-copy"><strong>Paper lab initialized</strong><small>DEMO SNAPSHOT · NO BROKER CONNECTED</small></div></div>';
 }
 function renderNews(){
   if(backendState){renderBackendNews();return;}
+  if(!explicitDemo){$('#intelligence-status').textContent=backendConnecting?'Checking news connection…':'Live news requires the local dashboard';$('#news').innerHTML='<p class="empty-state">${localView?'The local news service is unavailable in this view.':'This hosted preview does not receive live news.'}<br><a href="http://127.0.0.1:8766/" target="_blank" rel="noopener">Open the live local dashboard ↗</a></p>';return;}
   const items=newsItems.map((n,i)=>({...n,index:i})).filter(n=>newsFilter==='all'||n.category===newsFilter);
   $('#news').innerHTML=items.slice(0,3).map(n=>`<button class="news-row" data-story="${n.index}"><span class="news-meta"><i class="${n.category==='crypto'?'crypto-source':''}"></i>${n.label}<span>· EXAMPLE</span></span><div class="news-title">${n.title}</div><span class="news-tag">${n.tag}</span></button>`).join('');
   $$('[data-story]').forEach(el=>el.onclick=()=>{const n=newsItems[Number(el.dataset.story)];openDialog('Illustrative intelligence','EXAMPLE / NOT CURRENT NEWS',`<span class="article-label">SIMULATED CONTENT</span><h3>${n.title}</h3><p class="article-body">${n.body}</p><div class="dialog-note">Source connection: none. The production design retains source URL, publication time, first-seen time, revisions, and feature versions for every item.</div>`);});
 }
 function drawChart(){
   if(backendState){drawRecordedChart();return;}
+  if(!explicitDemo){$('#chart-line').setAttribute('d','');$('#chart-area').setAttribute('d','');$('#chart-point').setAttribute('r','0');$('#trajectory-value').textContent='—';return;}
   const t=totals(book);const range=period==='1H'?.013:period==='1D'?.048:.085;const base=t.equity/(1+range);
   const values=Array.from({length:65},(_,i)=>{const x=i/64;const noise=(Math.sin(i*1.71)*.7+Math.sin(i*.57)*1.4)*Math.sin(Math.PI*x);return base+(t.equity-base)*(x+noise*.038);});
   const min=Math.min(...values)-(t.equity-base)*.12,max=Math.max(...values)+(t.equity-base)*.15;
@@ -71,6 +105,7 @@ function openDialog(title,eyebrow,content){$('#dialog-title').textContent=title;
 function openView(view){
   if(view==='overview'){$('#detail-dialog').close();window.scrollTo({top:0,behavior:motion==='reduced'?'instant':'smooth'});return;}
   if(backendState){openBackendView(view);return;}
+  if(!explicitDemo){openDialog('Live sources run in the local dashboard.','HOSTED PREVIEW / NO BACKEND',`<p class="dialog-copy">This page has no connection to your local paper account or news feed. Use the dashboard served by the running service on this Mac.</p><a href="http://127.0.0.1:8766/" target="_blank" rel="noopener">Open live local dashboard ↗</a><div class="dialog-note">The local service connects Alpaca paper readback and optional Alpaca/Benzinga news. SEC filings, issuer holdings, crypto project sources and event calendars still need adapters. This preview cannot report their live status.</div>`);return;}
   if(view==='strategies')openDialog('Two horizons. One portfolio.','STRATEGY ALLOCATIONS / DEMO',`<p class="dialog-copy">A steady core and an opportunistic sleeve share one portfolio risk controller. These illustrative budgets are not active trading strategies.</p><div class="telemetry-row"><div>Core / swing<small>Daily signals · multi-day holding period</small></div><span>70% of strategy capital</span></div><div class="allocation-track"><span></span></div><div class="telemetry-row"><div>Opportunity / intraday<small>Five-minute signals · bounded risk</small></div><span>30% of strategy capital</span></div><div class="telemetry-row"><div>Learning / challenger<small>Record → replay → shadow → review</small></div><span>No candidate deployed</span></div><div class="dialog-note">Prototype guardrails: no leverage; 50% maximum total exposure; 20% maximum per asset; available cash required; halt blocks buys and permits sells. Complete production risk, session, stale-data and reconciliation controls remain to be built. No backtest or profitability evidence exists yet.</div>`);
   if(view==='intelligence')openDialog('An evidence-aware universe.','INTELLIGENCE SOURCES',`<p class="dialog-copy">Live source adapters will feed a timestamped, deduplicated evidence store. Every headline currently shown is a sample, not current news.</p>${[['Broker quotes & orders','Alpaca paper adapter'],['Market & symbol news','Alpaca / Benzinga entitlement to verify'],['Financial statements','SEC filings & Company Facts'],['ETF exposure','Official issuer holdings'],['Crypto context','CoinGecko + official project notices'],['Macro calendar','Federal Reserve / BLS / Treasury']].map(([a,b])=>`<div class="telemetry-row"><div>${a}<small>${b}</small></div><span class="source-state">Not connected</span></div>`).join('')}<div class="dialog-note">First-seen time is distinct from publication time. Stale inputs get visible warnings. Licensed content, coverage and account quotas must be verified before connection.</div>`);
   if(view==='system'){
@@ -85,7 +120,7 @@ function openSettings(){
 $('#close-dialog').onclick=()=>$('#detail-dialog').close();$('#detail-dialog').addEventListener('click',e=>{if(e.target===$('#detail-dialog')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
 $$('[data-view]').forEach(el=>el.onclick=()=>openView(el.dataset.view));$('#health-card').onclick=()=>openView('system');$('#settings-button').onclick=openSettings;
 $('#demo-buy').onclick=()=>trade('buy');$('#demo-sell').onclick=()=>trade('sell');
-$('#pause-button').onclick=()=>{paused=!paused;$('#pause-button').textContent=paused?'▷':'Ⅱ';$('#pause-button').setAttribute('aria-label',paused?'Resume simulation':'Pause simulation');$('#pause-button').title=paused?'Resume motion':'Pause motion';if(backendState){notify(paused?'Universe motion paused. The backend continues recording and managing orders.':'Universe motion resumed.');return;}$('#stream-status').textContent=paused?'SIMULATION PAUSED':'SIMULATION STREAM';$('#health-label').textContent=paused?'Simulation paused':'All systems nominal';if(!paused){lastTrade=Date.now();lastNews=Date.now();}notify(paused?'Synthetic stream paused. Demo fill controls remain available.':'Simulation resumed. No external feeds connected.');};
+$('#pause-button').onclick=()=>{paused=!paused;$('#pause-button').textContent=paused?'▷':'Ⅱ';$('#pause-button').setAttribute('aria-label',paused?'Resume simulation':'Pause simulation');$('#pause-button').title=paused?'Resume motion':'Pause motion';if(backendState){notify(paused?'Universe motion paused. The backend continues recording and managing orders.':'Universe motion resumed.');return;}if(!explicitDemo){notify(paused?'Visual motion paused.':'Visual motion resumed.');return;}$('#stream-status').textContent=paused?'SIMULATION PAUSED':'SIMULATION STREAM';$('#health-label').textContent=paused?'Simulation paused':'All systems nominal';if(!paused){lastTrade=Date.now();lastNews=Date.now();}notify(paused?'Synthetic stream paused. Demo fill controls remain available.':'Simulation resumed. No external feeds connected.');};
 $('#halt-button').onclick=async()=>{if(backendState){try{await backend.halt(!book.halted);notify(book.halted?'Entry halt saved to the server.':'Entries resumed within server risk controls.');}catch(e){notify(e.message);}return;}book.halted=!book.halted;$('#halt-button').classList.toggle('halted',book.halted);$('#halt-button').innerHTML=book.halted?'<span>◇</span> Resume entries':'<span>◈</span> Halt entries';renderPortfolio();notify(book.halted?'Demo entries halted. Position updates and demo sells remain available.':'Demo entries resumed within the simulated exposure limits.');};
 $$('[data-period]').forEach(el=>el.onclick=()=>{period=el.dataset.period;$$('[data-period]').forEach(b=>b.classList.toggle('selected',b===el));drawChart();});
 $$('[data-news]').forEach(el=>el.onclick=()=>{newsFilter=el.dataset.news;$$('[data-news]').forEach(b=>b.classList.toggle('selected',b===el));renderNews();});
@@ -141,13 +176,14 @@ canvas.addEventListener('wheel',e=>{if(e.ctrlKey||e.metaKey)return;e.preventDefa
 renderPortfolio();renderActivity();renderNews();requestAnimationFrame(renderScene);
 setInterval(()=>{$('#clock').textContent=new Date().toISOString().slice(11,19)+' UTC';$('#event-count').textContent=events.toLocaleString();},1000);
 setInterval(()=>{
-  if(backendState||backendConnecting||paused||document.hidden)return;book.assets.forEach(a=>{const move=(Math.random()-.497)*.0007;a.price*=1+move;a.change+=move*100;});events+=book.assets.length;lastTick=Date.now();renderPortfolio();
+  if(!explicitDemo||backendState||backendConnecting||paused||document.hidden)return;book.assets.forEach(a=>{const move=(Math.random()-.497)*.0007;a.price*=1+move;a.change+=move*100;});events+=book.assets.length;lastTick=Date.now();renderPortfolio();
 },1500);
-setInterval(()=>{if(backendState||backendConnecting||paused||document.hidden)return;if(Date.now()-lastTrade>23000){const previous=selected;const tradable=book.assets.filter(a=>a.quantity>0);selected=tradable[Math.floor(Math.random()*tradable.length)].symbol;trade(book.halted?'sell':Math.random()>.45?'buy':'sell',true);selected=previous;renderPortfolio();}if(Date.now()-lastNews>30000){newsItems.push(newsItems.shift());renderNews();lastNews=Date.now();events++;}},1000);
+setInterval(()=>{if(!explicitDemo||backendState||backendConnecting||paused||document.hidden)return;if(Date.now()-lastTrade>23000){const previous=selected;const tradable=book.assets.filter(a=>a.quantity>0);selected=tradable[Math.floor(Math.random()*tradable.length)].symbol;trade(book.halted?'sell':Math.random()>.45?'buy':'sell',true);selected=previous;renderPortfolio();}if(Date.now()-lastNews>30000){newsItems.push(newsItems.shift());renderNews();lastNews=Date.now();events++;}},1000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){lastTrade=Date.now();lastNews=Date.now();lastFrame=performance.now();}});
 
 function applyBackendState(state){
   backendState=state;backendConnecting=false;backendAvailable=true;
+  $('#connection-notice').hidden=true;
   book.cash=state.account.cash??0;book.openingEquity=Number(state.account.opening_equity??0);book.halted=state.halted;book.realized=state.account.realized??0;
   for(const a of book.assets){const current=state.assets.find(x=>x.symbol===a.symbol);if(current)Object.assign(a,{price:current.price??0,quantity:current.quantity,basis:current.basis,marketValue:current.market_value,unrealized:current.unrealized,quote:current.quote,quoteFresh:current.quote_fresh});}
   events=state.sequence;renderPortfolio();renderActivity();renderNews();renderLab();
@@ -204,6 +240,8 @@ function renderBackendActivity(){
   $$('[data-cancel]').forEach(el=>el.onclick=async()=>{el.disabled=true;try{const result=await backend.cancel(el.dataset.cancel);notify(`Order readback: ${result.status}`);}catch(e){notify(e.message);}finally{el.disabled=false;}});
 }
 function renderBackendNews(){
+  const worker=backendState.workers.find(w=>w.name==='news');
+  $('#intelligence-status').textContent=!backendAvailable?'Service disconnected · cached headlines':worker?.status==='healthy'?`Alpaca / Benzinga · ${backendState.news.length} headlines · fetched ${new Date(worker.at).toISOString().slice(11,19)} UTC`:`News ${worker?.status||'unavailable'} · cached headlines`;
   const items=backendState.news.filter(n=>newsFilter==='all'||(n.symbols||[]).some(s=>['BTC','ETH','SOL','BTCUSD','ETHUSD','SOLUSD'].includes(s))===(newsFilter==='crypto'));
   $('#news').innerHTML=items.slice(0,10).map(n=>`<button class="news-row" data-server-story="${esc(n.id)}"><span class="news-meta">${esc(n.source)} · ${esc(n.created_at)}</span><div class="news-title">${esc(n.headline)}</div><span class="news-tag">${esc((n.symbols||[]).join(' · '))}</span></button>`).join('')||'<div class="empty-state">No connected news items.<br>Enable the source after verifying entitlement.</div>';
   $$('[data-server-story]').forEach(el=>el.onclick=()=>{const n=backendState.news.find(n=>String(n.id)===el.dataset.serverStory);const link=/^https:\/\//.test(n.url||'')?`<a href="${esc(n.url)}" target="_blank" rel="noopener noreferrer">Read the source ↗</a>`:'';openDialog('Source evidence','INGESTED NEWS METADATA',`<h3>${esc(n.headline)}</h3><p class="article-body">Source: ${esc(n.source)}<br>Published: ${esc(n.created_at)}<br>Updated: ${esc(n.updated_at)}<br>First seen: ${esc(n.first_seen_at)}</p>${link}<div class="dialog-note">Source content is evidence, never an instruction to trade. No full article or AI summary is fabricated.</div>`);});
@@ -256,8 +294,12 @@ function openResearchPacket(symbol){
 $('#research-run').onclick=async()=>{const b=$('#research-run');b.disabled=true;try{const result=await backend.research();notify(`Research ${result.status}. Results arrive through the server stream.`);}catch(e){notify(e.message);}finally{if(backendState)renderLab();}};
 function openBackendView(view){
   if(view==='strategies'){openDialog('Deterministic rules. Measured risk.','RESEARCH ALGORITHMS / EXECUTION DISABLED',`<p class="dialog-copy">A reproducible research planner now calculates ATR14 volatility, trend and prior-20-bar breakout candidates. It uses closed historical bars with source and known-at timestamps. Daily history and optional news ingestion are connected. Intraday history and verified event calendars still need adapters; automatic entries remain disabled.</p><div class="telemetry-row"><div>Swing planner<small>SMA20 / SMA50 · 2 × ATR stop reference</small></div><span>0.25% planned-loss budget</span></div><div class="telemetry-row"><div>Intraday planner<small>SMA10 / SMA30 · 1.5 × ATR stop reference</small></div><span>0.10% planned-loss budget</span></div><div class="telemetry-row"><div>Decision evidence<small>Inputs, policy version, hash and risk vetoes</small></div><span>${backendState.learning.observations} observations</span></div><div class="telemetry-row"><div>Loss circuit<small>1% UTC-day equity decline / 5% high-water drawdown</small></div><span>${backendState.risk_policy?.latched?'LATCHED / REVIEW REQUIRED':'Monitored'}</span></div><div class="dialog-note">Sizing includes fees, slippage and gap stress assumptions, then floors quantity to venue increments. Stop and target levels are planning references; no protective order is placed. The shared unprotected full-value budget is 0.5% of equity; swing is limited to 0.25%, intraday to 0.10%. Server limits also include $1,000 planned order, $100 market order; 50% gross; 10% ETF / 5% crypto; 25% economic group. These are paper-test policy choices. Predictive accuracy and profitability remain unvalidated; learning promotion is disabled.</div>`);return;}
-  if(view==='intelligence'){openDialog('Sources remain explicit.','BACKEND EVIDENCE',`<p class="dialog-copy">Price source and age are attached to every quote. The backend does not display fictional news when it is connected.</p><div class="telemetry-row"><div>Execution venue</div><span>${backendState.mode==='simulator'?'Synthetic simulator':'Alpaca paper only'}</span></div><div class="telemetry-row"><div>News adapter</div><span>${esc(backendState.workers.find(w=>w.name==='news')?.status||'disabled')}</span></div><div class="telemetry-row"><div>Filings, issuer holdings, macro</div><span class="source-state">Not connected yet</span></div><div class="dialog-note">Alpaca news is optional and entitlement-dependent. Stored article metadata includes revisions and first-seen timestamps; no full-text license is assumed.</div>`);return;}
+  if(view==='intelligence'){
+    const newsWorker=backendState.workers.find(w=>w.name==='news');
+    const newsHealthy=backendAvailable&&newsWorker?.status==='healthy';
+    openDialog('Connected news. Explicit coverage.','LIVE SOURCE STATUS',`<p class="dialog-copy">This dashboard reads the local service. News ingestion and research reasoning are separate workers.</p><div class="telemetry-row"><div>Alpaca paper readback<small>Account, prices, positions and orders</small></div><span>${backendAvailable&&backendState.connected?'Connected':'Readback unavailable'}</span></div><div class="telemetry-row"><div>Alpaca / Benzinga news<small>${backendState.news.length} retained headline records · ${esc(newsWorker?.at||'No fetch recorded')}</small></div><span>${newsHealthy?'Connected':esc(newsWorker?.status||'Unavailable')}</span></div><div class="telemetry-row"><div>Research reasoning worker<small>Recorded review is separate from current ingestion</small></div><span>${backendState.research?.model_enabled?'Enabled':'Paused for shadow run'}</span></div>${['SEC filings and financial statements','Official ETF issuer holdings','Crypto project and on-chain sources','Upcoming protocol, supply and macro calendars'].map(name=>`<div class="telemetry-row"><div>${name}</div><span class="source-state">Adapter not connected</span></div>`).join('')}<div class="dialog-note">The feed contains source headline metadata, links and publication/arrival times. It is a bounded news sample, not exhaustive coverage. No full article or model summary is fabricated. Missing event coverage continues to veto research picks.</div>`);return;
+  }
   openDialog('Persistent service telemetry.','BACKEND / PAPER ONLY',`<p class="dialog-copy">${backendState.mode==='simulator'?'The server simulator is synthetic and keeps its book in SQLite.':'Alpaca mode never falls back to the simulator.'} The service continues when this browser is closed.</p>${backendState.workers.map(w=>`<div class="telemetry-row"><div>${esc(w.name)}<small>${esc(w.detail)} · ${esc(w.at)}</small></div><span>${esc(w.status)}</span></div>`).join('')}<div class="dialog-note">Uptime ${backendState.uptime_seconds}s · Direct model API spend $0 · Signed-in Codex CLI usage has unknown USD cost · Hosting/data charges unknown · ${backendState.sequence} durable events. Broker readiness and process liveness are separate.</div><button class="submit-order" id="reconcile-now">Reconcile account and orders</button>`);
   $('#reconcile-now').onclick=async()=>{const b=$('#reconcile-now');b.disabled=true;try{await backend.reconcile();notify('Account and order readback completed.');$('#detail-dialog').close();}catch(e){notify(e.message);}finally{b.disabled=false;}};
 }
-backend=connectBackend({onState:applyBackendState,onFill:backendFill,onDisconnect:()=>{backendAvailable=false;if(backendState){renderBackendLabels();renderLab();}},onPreview:()=>{backendConnecting=false;$('.mode-badge>div').innerHTML='UI PREVIEW<span>Browser simulation · no backend</span>';}});
+backend=connectBackend({onState:applyBackendState,onFill:backendFill,onDisconnect:()=>{backendAvailable=false;if(backendState){renderBackendLabels();renderLab();renderBackendNews();}},onPreview:()=>{backendConnecting=false;if(explicitDemo){$('.mode-badge>div').innerHTML='EXPLICIT DEMO<span>Synthetic prices, news and fills</span>';$('#intelligence-status').textContent='Example headlines · no live feed';}else{renderUnavailable();renderActivity();renderNews();}}});
