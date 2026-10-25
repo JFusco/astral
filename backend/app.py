@@ -14,7 +14,9 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from .config import ROOT, Settings
 from .engine import Engine, RuleViolation
 from .broker import BrokerFailure
-from .store import Store, dumps
+from .store import Store, dumps, utcnow
+from .accounting_view import latest_report
+from .learning_view import latest_report as latest_learning_report
 
 
 class Intent(BaseModel):
@@ -128,6 +130,34 @@ def create_app(settings=None, broker_factory=None, background=True):
     @app.get("/api/state")
     async def state(request: Request):
         return request.app.state.engine.state()
+
+    @app.get("/api/health-inputs")
+    async def health_inputs(request: Request):
+        # Small read-only observations for the independent health engine. No
+        # full replay/state scan, account values, prompts, credentials or writes.
+        e = request.app.state.engine
+        snap = e.store.get('account_snapshot', {})
+        model = e.store.get('codex_review', {})
+        quotes = e.store.get('quotes', {})
+        last_event = e.store.rows('SELECT at FROM events ORDER BY seq DESC LIMIT 1')
+        return JSONResponse({'as_of':utcnow(), 'mode':e.settings.mode, 'configured':e.settings.configured,
+                             'connected':e.connected, 'snapshot_at':snap.get('at'),
+                             'session_open':snap.get('clock',{}).get('is_open'),
+                             'orders_enabled':e.settings.enable_orders,
+                             'model_enabled':e.settings.enable_codex_research,
+                             'ledger_at':last_event[0]['at'] if last_event else None,
+                             'model':{k:model.get(k) for k in ('model','at','status')},
+                             'workers':[{k:w.get(k) for k in ('name','status','at')} for w in e.workers.values()],
+                             'quotes':{s:{k:q.get(k) for k in ('at','received_at','source')} for s,q in quotes.items()}},
+                            headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'})
+
+    @app.get('/api/accounting/report')
+    async def accounting_report():
+        return await asyncio.to_thread(latest_report, ROOT/'runtime/accounting-evaluation', cfg.db_path, cfg.mode)
+
+    @app.get('/api/learning/report')
+    async def learning_report():
+        return await asyncio.to_thread(latest_learning_report, ROOT/'runtime/learning-evaluation', cfg.db_path, cfg.mode)
 
     @app.post("/api/orders", status_code=202)
     async def submit(body: Intent, request: Request):

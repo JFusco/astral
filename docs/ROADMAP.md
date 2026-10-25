@@ -14,9 +14,9 @@ successful execution experiment is not strategy or profitability validation.
 | 6 | First research-driven PAPER trade | Explicit user objective after execution proof; not enabled | Fresh qualified evidence and sizing explanation, all risk gates, bounded single-position pilot and confirmed exits |
 | 7 | Compare decision and execution quality | Comparison contract below; no causal/profitability claim yet | Equal-risk no-model baseline and model-assisted arm; same evidence timestamps and costs; pre-registered analysis |
 | 8 | Add the second horizon | Swing and intraday calculators exist separately; connected intraday collection and validation are incomplete | Independent strategy budget, synchronized portfolio accounting, no cross-sleeve liquidation or double spending |
-| 9 | Learning layer | Dataset recording only | Resolved-outcome labels, point-in-time cutoff, purged/embargoed splits, offline challenger evaluation, drift checks and reviewed promotion/rollback |
+| 9 | Learning layer | On-demand offline outcome-readiness and model-contract audit implemented and independently reviewed; no training, reconciled labels or promotion | Resolved-outcome labels, point-in-time cutoff, purged/embargoed splits, offline challenger evaluation, drift checks and reviewed promotion/rollback |
 | 10 | Reliable local unattended operation | Live dashboard/feeds work while Mac is awake; durable order state exists | Login/startup service, bounded process recovery, external missed-heartbeat alert, tested disconnect/reboot recovery, backups and restore drill |
-| 11 | Tax and cost accounting | Source-linked research and partial telemetry exist | Tax-lot and fee adapters, cash-flow-adjusted P&L, explicit hypothetical tax assumptions, worker token/time/cost budgets and unavailable-cost labels |
+| 11 | Tax and cost accounting | On-demand read-only accounting proof: gross book-level FIFO diagnostics, custody/fee issues, private cost budgets and source CSVs; net P&L remains unknown | Tax-lot and fee adapters, cash-flow-adjusted P&L, explicit hypothetical tax assumptions, worker token/time/cost budgets and unavailable-cost labels |
 | 12 | Broader assets/venues and real money | Discovery catalog exists; no new automatic authorization | Verified token/contract identity, unlock/security and on-chain data, exit feasibility, venue-specific adapters, Georgia/account eligibility and separately authorized capital deployment |
 
 ## First frozen strategy
@@ -236,3 +236,99 @@ Acceptance requirements:
 
 Define and verify monitoring/notification cadence as part of implementation.
 No background monitoring or external notifications were enabled by this note.
+
+Implementation follow-up: [HEALTH-ENGINE.md](HEALTH-ENGINE.md) describes the
+independent health process/ledger, bounded read-only checks and live 3D health
+universe. It separates provider reports from local connectivity and model state.
+Release/deprecation surveillance and external notifications remain follow-ups;
+this health engine grants no execution or promotion authority.
+
+## Offline learning and accounting proofs
+
+The user approved the boundaries in [ENGINE-BOUNDARIES.md](ENGINE-BOUNDARIES.md).
+The [learning audit](LEARNING-ENGINE.md) is implemented and its scoped independent
+review completed after two accepted counting fixes and independent recheck.
+The reviewed target passed 16 focused and 321 full-suite tests. The private review
+handoff is `runtime/learning-review-20261025/run/handoff.md`. It evaluates existing
+research contracts and outcome readiness; it does not train, call models or
+consume either reserved forward window's outcomes. No reconciled net labels or
+matched model/baseline outcome pairs are currently available.
+
+The subsequent [accounting proof](ACCOUNTING-ENGINE.md) now provides separate
+read-only custody/fee diagnostics, gross FIFO matches by book, source CSVs and
+explicit operating-cost inputs. This supersedes the accounting implementation
+status recorded when the boundary document was approved. The combined current
+suite passes 355 tests, including 30 accounting/report-view cases and four learning-page summary cases. Accounting has local test
+verification; it was not included in the earlier independent learning review.
+
+The actual local reports preserve four fills, no fee activity rows and the
+unresolved 0.000001555 BTC residual. Net P&L and tax-ready basis remain unknown.
+Private subscription inputs support employer coverage and personal allocation;
+no invoice or reimbursement transaction is inferred from a budget.
+Health, Accounting and Learning are child pages in the application with shared
+branding, main navigation, local fonts and Tailwind 4.3.3 token-based utilities. Accounting displays a verified saved report rather than
+running an evaluation from the browser. QuantConnect remains unverified pending
+support. These proofs clear no trading
+gate, release no protected data and enable no background learning or accounting
+worker. Complete fee/cash-flow/basis adapters and a separately validated learning
+outcome contract remain follow-ups.
+
+## Deferred until the current proofs are useful
+
+User direction, October 25, 2026: this phase is for proving the behavior and
+platform choices. Do not start the following work now:
+
+- Clean up and harden the code for production readiness after the proof scope
+  and retained evidence establish what should ship.
+- Measure and improve agent and platform performance, including latency,
+  resource usage, throughput and model/runtime cost. Keep measurements tied to
+  actual workflows; avoid speculative optimization or architecture changes.
+- Set up a project wiki once the implementation and operating contracts settle.
+
+These are retained follow-ups, not production-readiness claims, approval to
+deploy, or a request to begin a new review/refactoring/wiki cycle.
+
+## Telemetry follow-up: operating costs, P&L and tax records
+
+User requirement, October 25, 2026: the telemetry engine must account for what
+the platform costs to run, alongside trading results and records needed for tax
+preparation. Keep financial telemetry separate from the health engine. This is
+recorded scope for a subsequent proof, not a completed accounting system.
+
+- Track recurring subscriptions by provider, plan, billing period/currency,
+  renewal date and confirmed invoice/payment; include QuantConnect, OpenAI and
+  other actual platform dependencies. Separate subscription costs, metered model
+  usage, market data/downloads, hosting and other operating charges. Distinguish
+  budgeted/estimated amounts from confirmed charges; unknown cost is not zero.
+- Separate cash-flow-adjusted trading P&L, realized/unrealized results, trading
+  fees and platform operating costs. Show gross results and net economics without
+  double counting bundled usage or treating deposits/withdrawals as profit.
+  Paper/hypothetical figures remain separate from real-money/taxable activity.
+- Retain transaction IDs, UTC timestamps, instrument/venue identity, quantities,
+  USD values and valuation sources, actual fee currencies, acquisition/disposal
+  links, cost-basis/lot records and transfers. Preserve unresolved custody/fee
+  differences; never manufacture an adjustment to complete a tax export.
+- Support reconciliable exports and invoice/receipt references for federal and
+  Georgia tax preparation. Tax treatment, allowable expenses, lot-method rules
+  and final filings require current authoritative guidance and professional
+  review; collecting a platform cost does not establish its deductibility.
+
+No subscription access, paid provider call, tax calculation, financial record
+mutation, accounting repair or report delivery is authorized by this note alone.
+
+## October 25 engine responsibilities — pending agreement
+
+The requested non-LEAN next proof combines offline data/outcome evaluation and
+model-research quality evaluation. The user also requested agreement on the
+boundaries before learning implementation. See [ENGINE-BOUNDARIES.md](ENGINE-BOUNDARIES.md)
+for the draft responsibilities, authority limits and acceptance check.
+
+Accounting is now a distinct requested responsibility: telemetry records raw
+operational usage and receipts; accounting owns reconciled trading P&L, cash
+flows, subscriptions/platform costs and tax-preparation records. This refines
+the earlier telemetry financial follow-up without claiming a completed engine.
+
+The offline evaluation foundation can be prepared independently of LEAN and
+strategy profitability. Training/tuning, frozen-holdout reuse, automatic strategy
+changes and promotion remain outside this first proof. No evaluator has been
+enabled by this draft; settle the boundaries before implementing it.

@@ -1,0 +1,27 @@
+/* One semantic palette for every page, status label and dependency topic. */
+@theme static {
+  --color-app: #070b11;
+  --color-surface: #0c141f;
+  --color-surface-raised: #12212e;
+  --color-line: #233442;
+  --color-ink: #e8eff3;
+  --color-muted: #91a3b3;
+  --color-faint: #657b8d;
+  --color-accent: #bdf48b;
+  --color-cyan: #63e0dc;
+  --color-violet: #ab91f1;
+  --color-status-healthy: #9fe6ad;
+  --color-status-degraded: #f0968d;
+  --color-status-down: #fa8294;
+  --color-status-unknown: #b4a1e0;
+  --color-status-inactive: #8b99ad;
+  --color-status-checking: #63e0dc;
+  --color-topic-core: #88d8ff;
+  --color-topic-execution: #ffc88a;
+  --color-topic-market: #b5a2ff;
+  --color-topic-workers: #ff9cba;
+  --color-topic-sources: #9de4ba;
+  --color-topic-providers: #80e2dd;
+  --color-topic-models: #d5a7ff;
+  --color-topic-local: #e4d7a0;
+}

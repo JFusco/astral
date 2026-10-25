@@ -1,5 +1,18 @@
 # ASTRAL trading command
 
+The independent [health engine and live 3D health universe](docs/HEALTH-ENGINE.md)
+assess application services, workers, market feeds, provider reports and model
+state separately from telemetry and trading. Open the **System Heartbeat** card
+in the local dashboard to inspect it. Unknown/disabled capabilities stay explicit.
+**App health**, **Accounting** and **Learning** are child pages in the same ASTRAL application,
+with shared branding, sidebar and main navigation. The [Tailwind 4 UI foundation](frontend/README.md) owns shared tokens, local fonts and utility recipes.
+
+The [offline learning proof](docs/LEARNING-ENGINE.md) audits outcome readiness
+and retained model research, with no training or promotion. Its scoped independent
+implementation review is complete. The separate [accounting proof](docs/ACCOUNTING-ENGINE.md)
+reports retained gross lot matches, unresolved custody/fee evidence and private
+operating-cost records. Net P&L and tax-ready results remain unavailable.
+
 ASTRAL now includes a Python service, durable SQLite records, a paper-only Alpaca adapter, a separate persistent simulator, and a dashboard connected through server-sent events.
 
 **Current milestone:** the capped $25 BTC execution round trip is complete; a frozen BTC daily strategy now records read-only research evidence every 15 minutes. An isolated portfolio replay now exercises 16 synthetic execution scenarios and a fixed future evaluation window. The first research-driven trade remains blocked. See [the current experiment](docs/FROZEN-STRATEGY.md) and [roadmap](docs/ROADMAP.md). Authenticated Alpaca paper readback and a small BTC buy/exit were verified on October 24, 2026 EDT (October 25 UTC); both orders filled and the final account had no positions or working orders. Automated swing/intraday execution and trained learning remain disabled. Public news/filing metadata and scoped FOMC dates are connected; extracted financials, issuer holdings, complete event coverage and a cloud backend remain outstanding. The hosted Sites URL remains a labelled browser preview; its static hosting does not run this Python service.
@@ -79,7 +92,7 @@ The ledger retains quotes/source/arrival times, equity snapshots, intents, risk 
 
 News is off by default. After entitlement verification, `ASTRAL_ENABLE_NEWS=true` enables Alpaca metadata ingestion with IDs, source URLs, symbols, publication/update/first-seen times and revision history. Full-text rights are not assumed. Connected backend mode shows no fictional articles. SEC/issuer/macro/project adapters remain planned.
 
-Learning currently records a decision dataset. No labels, trained policy, autonomous strategy changes or promotions are claimed. An opt-in evidence-only worker uses the signed-in local Codex CLI, `gpt-6.1-sol` with high effort, at most four attempts per UTC day per database and six-hour reuse only for identical evidence. It receives a minimal environment with no broker keys, tools disabled, a structured schema, timeout and output budgets. Source text cannot change execution authority. The actual connected abstention used 23,192 input / 406 output tokens; subscription USD attribution is unknown. Direct model API calls remain $0; CLI usage is not asserted to be free or unlimited. Hosting/data charges remain unknown. See `reports/Paper trading bot architecture.md` for the broader design and conditional budget.
+Learning records a decision dataset and provides an on-demand offline readiness/model-contract audit. No reconciled financial labels, trained policy, autonomous strategy changes or promotions are claimed. An opt-in evidence-only worker uses the signed-in local Codex CLI, `gpt-6.1-sol` with high effort, at most four attempts per UTC day per database and six-hour reuse only for identical evidence. It receives a minimal environment with no broker keys, tools disabled, a structured schema, timeout and output budgets. Source text cannot change execution authority. The actual connected abstention used 23,192 input / 406 output tokens; per-run subscription USD attribution is unknown. Private accounting inputs keep subscription budgets, employer funding and actual billing transactions separate. Direct model API calls remain $0; CLI usage is not asserted to be free or unlimited. Hosting/data charges remain unknown. See `reports/Paper trading bot architecture.md` for the broader design and conditional budget.
 
 ## Local API and deployment
 

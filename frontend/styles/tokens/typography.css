@@ -1,0 +1,16 @@
+@theme static {
+  --font-sans: 'DM Sans Variable', system-ui, sans-serif;
+  --font-display: 'Space Grotesk Variable', system-ui, sans-serif;
+  --text-xxs: 0.625rem;
+  --text-xxs--line-height: 1.5;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.5;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.6;
+  --text-section: 1rem;
+  --text-section--line-height: 1.5;
+  --text-title: 2rem;
+  --text-title--line-height: 1.2;
+  --text-metric: 2rem;
+  --text-metric--line-height: 1.25;
+}

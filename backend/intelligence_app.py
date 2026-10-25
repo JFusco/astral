@@ -11,6 +11,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from .config import ROOT
 from .intelligence import Collector
 from .store import Store
+from .service_health import HealthMonitor
 
 
 async def collect(collector):
@@ -56,3 +57,14 @@ app.add_middleware(CORSMiddleware, allow_origins=["http://127.0.0.1:8766", "http
 async def intelligence():
     from fastapi.responses import JSONResponse
     return JSONResponse(app.state.collector.state(), headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
+
+
+@app.get("/api/health-inputs")
+async def health_inputs():
+    from fastapi.responses import JSONResponse
+    state = app.state.collector.state()
+    sources = [{k:s.get(k) for k in ('id','name','url','category','status','fresh','interval_seconds','last_success_at','last_attempt_at','http_status')}
+               for s in state['sources']]
+    return JSONResponse({'as_of':state['as_of'], 'sources':sources,
+                         'alpaca':HealthMonitor.alpaca_state(app.state.collector.store)},
+                        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
