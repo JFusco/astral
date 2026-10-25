@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#070c13" />
   <meta name="description" content="ASTRAL trading command. A private, simulated prototype of a continuously observed portfolio and living market universe." />
   <title>ASTRAL / Trading command</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./styles.css?v=risk-lab-v3" />
 </head>
 <body>
   <div class="ambient" aria-hidden="true"></div>
@@ -94,7 +94,7 @@
         <div class="panel-heading"><div><span class="label-dot"></span><h2 id="risk-lab-title">Research & risk lab</h2><span class="panel-subtitle">Evidence before execution</span></div><button class="text-button" id="research-run" disabled>Run research review ↗</button></div>
         <div class="lab-summary" id="lab-summary"><span>Connect the local backend to view recorded decisions.</span></div>
         <p class="lab-review" id="universe-summary">Crypto discovery awaits a connected venue.</p>
-        <div class="lab-grid"><div><h3>Why this ticker, now?</h3><div id="research-candidates" class="lab-list"><p class="empty-state">No research proposals in the UI preview. Connected research keeps its source evidence and vetoes.</p></div></div><div><h3>Shadow decisions <small>NO ORDERS</small></h3><div id="shadow-decisions" class="lab-list"><p class="empty-state">Waiting for a connected shadow session.</p></div><h3>Buy / sell timing <small>NO ORDERS</small></h3><div id="timing-decisions" class="lab-list"><p class="empty-state">Waiting for recorded timing decisions.</p></div></div></div>
+        <div class="lab-grid"><div><h3>Why this ticker, now?</h3><div id="research-candidates" class="lab-list"><p class="empty-state">No research proposals in the UI preview. Connected research keeps its source evidence and vetoes.</p></div></div><div><h3>Shadow decisions <small>NO ORDERS</small></h3><div id="shadow-decisions" class="lab-list" tabindex="0" role="region" aria-label="Recorded shadow decisions"><p class="empty-state">Waiting for a connected shadow session.</p></div><h3>Buy / sell timing <small>NO ORDERS</small></h3><div id="timing-decisions" class="lab-list" tabindex="0" role="region" aria-label="Recorded buy and sell timing"><p class="empty-state">Waiting for recorded timing decisions.</p></div></div></div>
         <div class="lab-review" id="lab-review">The researcher proposes. The risk engine decides. Unknown sources can veto a candidate.</div>
       </section>
       <footer class="bottom-bar"><span><span class="label-dot"></span> ASTRAL IS OBSERVING <span class="muted">/</span> <span id="event-count">0</span> events processed</span><span>NO BROKER CONNECTED <span class="muted">·</span> ALL FIGURES ARE SIMULATED <span class="version">v0.1 / PAPER LAB</span></span></footer>
