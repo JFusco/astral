@@ -5,7 +5,6 @@ import fcntl
 import json
 
 from fastapi import FastAPI
-from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .config import ROOT
@@ -49,8 +48,7 @@ async def lifespan(app):
 
 
 app = FastAPI(title="ASTRAL public intelligence", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost"])
-app.add_middleware(CORSMiddleware, allow_origins=["http://127.0.0.1:8766", "http://localhost:8766", "http://127.0.0.1:8765", "http://localhost:8765"], allow_methods=["GET"])
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "intelligence"])
 
 
 @app.get("/api/intelligence")

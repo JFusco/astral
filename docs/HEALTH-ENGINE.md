@@ -9,7 +9,7 @@ Health is a child page in ASTRAL, using the same logo, sidebar, header and main
 navigation as Overview and Accounting. Only the assessment engine/process is
 independent; the health UI is not a separate application or brand.
 Open **App health** in the main navigation or the **System Heartbeat** card, or visit
-`http://127.0.0.1:8766/health.html`. The health universe shows every discovered
+`http://127.0.0.1:3000/health`. The health universe shows every discovered
 dependency as a node. Click a node or its keyboard-accessible dependency button
 to inspect its state, scope and observation time. Drag/zoom the map; filter to
 dependencies needing attention. The central pulse and heartbeat trace follow
@@ -17,7 +17,7 @@ completed assessments. Eight types share one three-dimensional star field. Topic
 identify types; small status lights and outlines retain the same health colors.
 Connected Systems uses expandable sections by type, retaining expansion state
 across health refreshes. The dependency inspector organizes the inventory by type; there are no
-separate top-level topic filters. Shooting stars, breathing glows and neuron trails circling the shared disk
+separate application-level topic pages. The type selector filters the map and inspector together. Shooting stars, breathing glows and neuron trails circling the shared disk
 are labeled ambient motion. The heartbeat trace and expanding wave reflect real
 assessments. Reduced-motion preferences stop ambient animation.
 Status text in Systems by type uses green for healthy, lavender for unknown,
@@ -32,8 +32,9 @@ with depth-dependent brightness and perspective size. Each neuron has a smooth,
 textured ribbon that follows its recent 3D path and fades toward the tail, using
 the same light-trail texture as shooting stars. Stars have deterministic varied
 sizes, gentle independent drift and asynchronous decorative pulses. The complete field rotates continuously at a slow rate;
-reduced-motion preferences keep it still. Three.js and its MIT license are retained locally under
-`dist/vendor/three/`; no CDN, Brain data or Brain service is connected. The
+reduced-motion preferences keep it still. Three.js is pinned to 0.186.1 in the npm workspace and bundled locally with its
+MIT license. `frontend/graphics/health-galaxy.js` owns the renderer; no CDN, Brain
+data or Brain service is connected. The
 force-layout wrapper from Brain is unnecessary for these fixed health nodes.
 If WebGL is unavailable, the categorized health inspector remains usable.
 
@@ -43,7 +44,7 @@ If WebGL is unavailable, the categorized health inspector remains usable.
 | --- | --- | --- |
 | Existing application/collector telemetry | Worker observations, source fetches, quote/account timestamps, model execution receipts | Existing trading and intelligence ledgers |
 | `backend/health_engine.py` | Assess observations, freshness, local failures and recovery | Separate `runtime/astral-health.sqlite` |
-| `backend/health_app.py` and `dist/health.*` | Read-only cached API and live 3D health universe | No browser trading state or credentials |
+| `backend/health_app.py` and `frontend/components/health.tsx` | Read-only cached API and live 3D health universe | No browser trading state or credentials |
 
 Run one independent health process from the project root:
 
@@ -53,7 +54,7 @@ Run one independent health process from the project root:
 
 It owns `runtime/health.lock`. It does not load `.env`, open either existing
 ledger, import the broker/strategy engines, or use account/model credentials.
-All three services must run on this Mac. No login daemon, external alert delivery
+For local development, all three Python services and the Next.js frontend run on this Mac. No login daemon, external alert delivery
 or cloud deployment is installed. A sleeping/offline Mac creates a visible gap.
 
 ## What is checked

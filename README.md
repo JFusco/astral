@@ -15,7 +15,46 @@ operating-cost records. Net P&L and tax-ready results remain unavailable.
 
 ASTRAL now includes a Python service, durable SQLite records, a paper-only Alpaca adapter, a separate persistent simulator, and a dashboard connected through server-sent events.
 
-**Current milestone:** the capped $25 BTC execution round trip is complete; a frozen BTC daily strategy now records read-only research evidence every 15 minutes. An isolated portfolio replay now exercises 16 synthetic execution scenarios and a fixed future evaluation window. The first research-driven trade remains blocked. See [the current experiment](docs/FROZEN-STRATEGY.md) and [roadmap](docs/ROADMAP.md). Authenticated Alpaca paper readback and a small BTC buy/exit were verified on October 24, 2026 EDT (October 25 UTC); both orders filled and the final account had no positions or working orders. Automated swing/intraday execution and trained learning remain disabled. Public news/filing metadata and scoped FOMC dates are connected; extracted financials, issuer holdings, complete event coverage and a cloud backend remain outstanding. The hosted Sites URL remains a labelled browser preview; its static hosting does not run this Python service.
+**Current milestone:** the capped $25 BTC execution round trip is complete; a frozen BTC daily strategy now records read-only research evidence every 15 minutes. An isolated portfolio replay now exercises 16 synthetic execution scenarios and a fixed future evaluation window. The first research-driven trade remains blocked. See [the current experiment](docs/FROZEN-STRATEGY.md) and [roadmap](docs/ROADMAP.md). Authenticated Alpaca paper readback and a small BTC buy/exit were verified on October 24, 2026 EDT (October 25 UTC); both orders filled and the final account had no positions or working orders. Automated swing/intraday execution and trained learning remain disabled. Public news/filing metadata and scoped FOMC dates are connected; extracted financials, issuer holdings, complete event coverage and a cloud backend remain outstanding.
+
+## Next.js frontend
+
+The sole frontend is the Next.js App Router application in `frontend/`, with
+Overview, App health, Accounting and Learning at `/`, `/health`, `/accounting`
+and `/learning`. Python serves APIs only. The legacy static frontend, browser
+simulation and preview build have been removed.
+
+Use Node.js 22 or later (Node 24 was verified), then run from this directory:
+
+```sh
+npm ci --ignore-scripts
+npm run dev
+```
+
+Open **http://127.0.0.1:3000**. Start the Python service on port 8766 using one of
+the mode-specific commands below. Start the [intelligence collector](docs/INTELLIGENCE.md)
+on 8768 and [health engine](docs/HEALTH-ENGINE.md) on 8769 in separate terminals.
+Do not start duplicate executors for an existing ledger. Missing services are
+shown as unavailable; the frontend never substitutes sample account data.
+
+For a production frontend:
+
+```sh
+npm run build
+npm start
+```
+
+The build prepares Next.js standalone output with local fonts and public assets.
+Webpack is selected explicitly because Turbopack's CSS worker could not bind its
+local port in the verification environment. No private API is called at build time.
+Browser requests use one origin; server-only upstream addresses may be configured
+as shown in `frontend/.env.example`. Broker keys remain in the root ignored `.env`,
+never in the frontend workspace or `NEXT_PUBLIC_*` variables.
+
+Motion 14.6.0 is the standard UI animation library. Route and data loading states,
+dialog transitions and connection notices respect system reduced-motion preferences
+and the browser display setting. Canvas/Three.js scenes keep their existing drawing
+algorithms and release resources on navigation. See [frontend ownership and verification](frontend/README.md).
 
 ## Persistent simulator
 
@@ -24,10 +63,10 @@ From this directory:
 ```sh
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
-ASTRAL_MODE=simulator ASTRAL_ENABLE_PAPER_ORDERS=true .venv/bin/uvicorn backend.app:app --host 127.0.0.1 --port 8765 --workers 1 --timeout-graceful-shutdown 5
+ASTRAL_MODE=simulator ASTRAL_ENABLE_PAPER_ORDERS=true .venv/bin/uvicorn backend.app:app --host 127.0.0.1 --port 8766 --workers 1 --timeout-graceful-shutdown 5
 ```
 
-Open **http://127.0.0.1:8765**. This mode never contacts Alpaca. It begins with $100,000 synthetic cash and zero positions. Quotes are synthetic; fills use a simple bid/ask model and a simulated 25-bps cash fee for crypto. It does not model real liquidity, partial-fill probability, queue priority or exchange calendars. Use Local buy/sell for controlled tests; there are no automatic random backend trades.
+Open **http://127.0.0.1:3000** after starting the Next.js frontend below. This mode never contacts Alpaca. It begins with $100,000 synthetic cash and zero positions. Quotes are synthetic; fills use a simple bid/ask model and a simulated 25-bps cash fee for crypto. It does not model real liquidity, partial-fill probability, queue priority or exchange calendars. Use Local buy/sell for controlled tests; there are no automatic random backend trades.
 
 The book survives browser reloads and process restarts. Recording continues without an open browser. Use one process: a database lock prevents two executors sharing a book. Separate databases are enforced for Alpaca and simulator modes.
 
@@ -42,7 +81,7 @@ test -e .env || install -m 600 .env.example .env
 Edit `.env` locally: set `ALPACA_PAPER_API_KEY` and `ALPACA_PAPER_SECRET_KEY`; leave `ASTRAL_MODE=alpaca` and `ASTRAL_ENABLE_PAPER_ORDERS=false`. Run:
 
 ```sh
-.venv/bin/uvicorn backend.app:app --host 127.0.0.1 --port 8765 --workers 1 --timeout-graceful-shutdown 5
+.venv/bin/uvicorn backend.app:app --host 127.0.0.1 --port 8766 --workers 1 --timeout-graceful-shutdown 5
 ```
 
 Confirm account equity/cash, positions, session, assets, quote freshness and reconciled orders before restarting with `ASTRAL_ENABLE_PAPER_ORDERS=true` for a controlled paper lifecycle. There is no live mode, arbitrary execution URL or funds-transfer route. Execution is fixed at `https://paper-api.alpaca.markets`; generic legacy keys are not silently reused.
@@ -98,9 +137,9 @@ Learning records a decision dataset and provides an on-demand offline readiness/
 
 `GET /api/health` distinguishes process liveness from broker readiness. `GET /api/state` supplies the dashboard; `/api/events` streams ledger IDs/state with `Last-Event-ID` recovery. POST controls: `/api/orders`, `/api/orders/{client_id}/cancel`, `/api/halt`, `/api/reconcile`, `/api/risk/shadow`, `/api/research/run` and `/api/exits`. Shadow mode forces broker writes off; an API field cannot override that setting. They require the same origin and `X-Astral-Intent: paper-only`.
 
-Bind to loopback. Host/origin checks and no wildcard CORS are not multi-user authentication. Do not expose the API directly to the internet. The private Sites preview is not an authentication proxy for localhost. A remote deployment needs authenticated ingress, secrets, backups and external monitoring. Supabase is unnecessary for this single-process milestone; managed Postgres can be considered when deployment/concurrency requires it.
+Bind to loopback. Host/origin checks and no wildcard CORS are not multi-user authentication. Do not expose the API directly to the internet. A remote deployment needs authenticated ingress, secrets, backups and external monitoring. Supabase is unnecessary for this single-process milestone; managed Postgres can be considered when deployment/concurrency requires it.
 
-`Dockerfile` and `compose.yaml` provide a single service, persistent volume, loopback-only published port, restart policy and process health check:
+`Dockerfile`, `frontend/Dockerfile` and `compose.yaml` provide separate Python application, intelligence, health and Next.js services. Only the frontend publishes a loopback port (3000); the Python services share the retained private runtime volume. Credentials go only to the application service:
 
 ```sh
 docker compose up --build -d
@@ -113,8 +152,11 @@ The Compose environment comes from ignored `.env`. Docker deployment was not exe
 ```sh
 .venv/bin/python -m pip install -r requirements-dev.txt
 .venv/bin/python -m pytest -q
-node --check dist/app.js
-node --check dist/backend.js
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npm run test:e2e
 ```
 
 This machine's macOS Python 3.13 readline extension crashes pytest before collection. The verified process-local workaround changes neither the application nor machine configuration:
@@ -140,7 +182,7 @@ See [the dogfood procedure and failure matrix](docs/DOGFOOD.md) for the bounded 
 
 An eight-hour live-data shadow observation can be run against the existing local lab with `scripts/overnight_watch.py --hours 8 --interval 60`. It checks read-only permissions each minute, audits broker request outcomes and new local intents, records quote health, vetoes and timing decisions, and writes private hash-linked checkpoints plus `runtime/overnight-latest.json`. On macOS, a bounded `caffeinate -i -t 28800` wrapper prevents idle sleep. This does not survive a closed lid, power loss or network outage; the receipt exposes gaps and does not claim fills or profit.
 
-The published static Site is a design preview, not a remote connection to the local Python service. Its default disconnected state hides account figures and sample headlines, disables browser demo trades, and links to `http://127.0.0.1:8766/`. Synthetic demo behavior requires explicit `?demo=1`. The local dashboard merges Alpaca/Benzinga news with an independent public intelligence collector on port 8768. Sources shows HTTP status, freshness and poll intervals for 21 public feeds. Filing metadata and official project announcements are connected; extracted financials, issuer holdings, on-chain data and complete calendars remain unconnected. See [local intelligence setup and boundaries](docs/INTELLIGENCE.md). The existing overnight pilot is not restarted or given new decision inputs by this change.
+The Next.js dashboard merges Alpaca/Benzinga news with the independent public intelligence collector on port 8768 through same-origin Route Handlers. Sources shows HTTP status, freshness and poll intervals for 21 public feeds. Filing metadata and official project announcements are connected; extracted financials, issuer holdings, on-chain data and complete calendars remain unconnected. See [local intelligence setup and boundaries](docs/INTELLIGENCE.md).
 
 The first overnight baseline was ended early at the user's request, with 335 verified hash-linked checkpoints and no observed gaps or broker writes. Its database is frozen privately. A separate one-minute connected shadow run recorded 71 broker GETs and no writes; diagnostic timing now retains the pre-inventory-gate decision while keeping the final veto. See [stage 2 results and pilot readiness](docs/STAGE2-READINESS.md).
 

@@ -7,7 +7,6 @@ from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -95,7 +94,7 @@ def create_app(settings=None, broker_factory=None, background=True):
             lock_file.close()
 
     app = FastAPI(title="ASTRAL paper service", version="0.2", lifespan=lifespan)
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "[::1]"])
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "[::1]", "application"])
 
     @app.middleware("http")
     async def local_boundary(request: Request, call_next):
@@ -225,8 +224,6 @@ def create_app(settings=None, broker_factory=None, background=True):
 
         return StreamingResponse(events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
-    # Same origin as API; credentials never enter browser code. No CORS wildcard.
-    app.mount("/", StaticFiles(directory=ROOT / "dist", html=True), name="dashboard")
     return app
 
 

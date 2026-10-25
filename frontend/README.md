@@ -1,82 +1,89 @@
-# ASTRAL UI foundation
+# ASTRAL Next.js frontend
 
-Overview, App health, Accounting and Learning are pages in one local application.
-They share the navigation and logo in `dist/app-shell.js`. Accounting and Learning
-share the report layout, heading, summary cards and panels in `dist/ui.js`.
-App health uses those same spacing and typography recipes alongside its map.
+The sole UI is a Next.js 16.4.3 App Router application with React 19.3.1,
+strict TypeScript, Tailwind 4.3.3 and Motion 14.6.0. Python owns every engine,
+ledger, risk decision, provider connection and order submission. Effect is deferred.
 
-## Build
+## Run
+
+From the repository root, use Node 22+ (verified with Node 24):
 
 ```sh
 npm ci --ignore-scripts
-npm run build
+npm run dev
 ```
 
-Tailwind CSS and its CLI are pinned to **4.3.3**. `npm run dev:css` watches UI
-changes. The Python service serves the committed `dist/app.css`; it does not
-compile CSS or contact a CDN at runtime. Fontsource packages supply locally
-copied DM Sans Variable and Space Grotesk Variable fonts, including their licenses.
+Open http://127.0.0.1:3000. The backend API stays on 8766, intelligence on 8768,
+and health on 8769. Start those processes separately using the root README.
+The frontend does not restart workers or change broker flags. For production,
+run `npm run build` then `npm start`; the build prepares standalone assets.
+Webpack is explicit because Turbopack worker-port binding failed in this environment.
+
+Server-only upstream configuration is documented in `.env.example`. Do not copy
+broker credentials here. The root Python `.env` is independent of this workspace.
 
 ## Ownership
 
-| Source | Owns |
-| --- | --- |
-| `styles/app.css` | Single Tailwind entry, explicit HTML/JS scan paths, font-face setup |
-| `styles/tokens/colors.css` | Semantic surfaces/text, status and topic colors |
-| `styles/tokens/typography.css` | Font families and text sizes/line heights |
-| `styles/tokens/layout.css` | Four-pixel spacing scale, shared frame dimensions and panel radius |
-| `../dist/ui.js` | Complete utility-class recipes and reusable report rendering helpers |
-| `../dist/app-shell.js` | Shared navigation, frame and active-page state |
-| `../dist/report-pages.js` | Shared, data-free Learning/Accounting page definitions |
-| `../scripts/render-ui-shell.mjs` | Initial HTML frame and report placeholders, using the same pure helpers as the browser |
-| `../dist/*.html`, `../dist/*.js` | Component presentation through Tailwind utilities |
+- `app/`: shared server-rendered frame, routes, loading/error states and API handlers.
+- `components/`: React shell, controls, reports, research evidence and graphics wrappers.
+- `lib/connection.ts`: one persistent SSE/polling owner, replay cursor and fill deduplication.
+- `lib/contracts.ts`: runtime validation and inferred TypeScript contracts.
+- `lib/relay.ts` and `lib/upstream.ts`: exact API allowlist, local host/origin checks,
+  uncached forwarding and streaming cancellation. Native Node HTTP preserves the
+  validated browser Host and Origin; Node Fetch replaces Host with the upstream host.
+- `graphics/`: retained Canvas and Three.js drawing algorithms. These imperative
+  JavaScript modules have cleanup ownership; strict TypeScript owns the React/API layer.
+- `styles/app.css`: the only CSS entry, local Fontsource assets and explicit source scans.
+- `styles/tokens/`: existing semantic colors, typography and four-pixel layout scale.
 
-## Navigation and first paint
+Preserve complete Tailwind class names and shared utility recipes. Avoid alternate
+spacing/font scales, page stylesheets and component CSS wrappers. Runtime geometry
+stays in the renderer. Three.js remains pinned to 0.186.1, with its package MIT license;
+fonts retain their package licenses. There are no runtime CDN requests.
 
-The build pre-renders the shared shell on every page and the report layout on
-Learning/Accounting. Edit report definitions/helpers rather than the generated
-report sections in HTML. The renderer is idempotent. Font and module preload
-hints are emitted in each page's head; the fonts are local assets.
+Motion is the standard UI animation library. `LazyMotion`/`m`, `MotionConfig` and
+`useReducedMotion` power loading feedback, connection notices and dialogs. System
+reduced motion takes precedence over the browser's cinematic/calm setting; reduced
+mode also stops infinite opacity pulses. No loading indicator claims that missing
+account data is zero or that a saved report is live. The shell remains visible.
 
-`dist/boot.js` starts before body parsing. A Tailwind attribute variant briefly
-cloaks the frame until page initialization and font readiness settle. A delayed
-loading message avoids flashing a spinner for fast navigation. A three-second
-fallback keeps navigation usable and hides uninitialized main content if startup
-fails; a later successful initialization can recover. With JavaScript disabled,
-the cloak is never activated and the styled static frame remains visible.
+All browser API calls share the frontend origin. API paths/methods are explicit;
+requests cannot choose upstream URLs. State and report responses use no-store.
+Mutation requests are never automatically retried. An uncertain order retains its
+intent and blocks new submission across navigation until explicit reconciliation
+finds a definite saved order state. Python independently enforces every risk guard.
 
-Same-origin navigation documents are prefetched during idle time unless Save-Data
-is enabled. Hover, keyboard focus and touch warm the destination's page module.
-These are browser hints, not a guarantee of zero network latency. Prefetching
-does not read reports, run evaluations, contact providers or enable workers.
-No Next.js migration is included; the pure shell/report rendering keeps that a
-separate future framework choice.
+## Verify
 
-Author utility classes in markup or shared rendering helpers. Keep complete class
-names in source so Tailwind can detect them; use explicit maps for status/topic
-variants. Do not add page-specific stylesheets, component CSS selectors, `@apply`
-wrappers or alternate font/spacing scales. Keep shared containers at `max-w-page`,
-`px-4 md:px-8`, `py-6 md:py-8`; headings use `text-title`, panel headings
-`text-section`, body copy `text-body`, labels `text-xxs`, supporting copy
-`text-caption`, cards `p-5`, and section gaps `gap-6`/`mb-6`.
+```sh
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npm run test:e2e
+```
 
-Runtime geometry is distinct from static presentation: canvas/WebGL drawing,
-projected orbit label coordinates and measured portfolio exposure widths still
-come from data. The health renderer reads its palette from the theme variables;
-its HTML status labels use utility maps. Financial records and engine authority
-must not be embedded in generated CSS or static previews.
+Browser tests require installed Chrome (Playwright's `chrome` channel) and the root
+Python `.venv` with development dependencies. They own ports 18730/18766 and a
+fresh temporary simulator ledger, with orders enabled only in that simulator.
+They do not connect to the operator's paper service, health providers or collector.
+Health/report fixtures used by browser tests are explicitly test data. Test reports,
+traces and screenshots stay ignored under `frontend/test-results/`.
 
-Learning's `GET /api/learning/report` and Accounting's
-`GET /api/accounting/report` serve verified saved snapshots for the current
-application ledger and mode. Refresh reads cached files only. Learning exposes
-counts, limitations and protected-window metadata, without protected outcome
-bodies, receipt bodies, raw model prompts, new training, model calls or promotion.
+Docker builds the standalone frontend separately and publishes only loopback port
+3000. Python services keep independent process lifecycles and a persistent private
+volume. No legacy HTML routes, static export, hosted preview or browser-only demo
+are maintained. Existing external preview retirement is outside this local checkout.
 
-## References used
+## References
 
-Applied Brain's [responsibility-based token guidance](https://github.com/JFusco/brain/blob/eaa45472a1bb493bdcbd07657f123e5d957dcfab/knowledge/tailwind/responsibility-based-tokens.md)
-from snapshot `eaa45472a1bb493bdcbd07657f123e5d957dcfab`, plus Tailwind's official
-[theme](https://tailwindcss.com/docs/theme),
-[customization](https://tailwindcss.com/docs/adding-custom-styles) and
-[CLI](https://tailwindcss.com/docs/installation/tailwind-cli) documentation.
-No conflict with ASTRAL's paper-only or frozen-experiment boundaries was found.
+Brain snapshot `eaa45472a1bb493bdcbd07657f123e5d957dcfab`: release-matched docs and
+async route parameters. Next.js APIs were checked in installed `next/dist/docs/`.
+Brain retrieval worked; its local activity recording was unavailable.
+
+- [Motion installation and App Router](https://motion.dev/docs/react-installation)
+- [Motion accessibility](https://motion.dev/docs/react-accessibility)
+- [Motion AnimatePresence](https://motion.dev/docs/react-animate-presence)
+- [Motion bundle size](https://motion.dev/docs/react-reduce-bundle-size)
+- [Next.js Server and Client Components](https://nextjs.org/docs/app/getting-started/server-and-client-components)
+- [Next.js backend forwarding](https://nextjs.org/docs/app/guides/backend-for-frontend#proxying-to-a-backend)

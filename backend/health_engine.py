@@ -2,6 +2,7 @@
 import asyncio
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 import shutil
 import time
@@ -11,8 +12,8 @@ import httpx
 from .service_health import HealthMonitor, moment
 from .store import utcnow
 
-LOCAL = {'application':'http://127.0.0.1:8766/api/health-inputs',
-         'collector':'http://127.0.0.1:8768/api/health-inputs'}
+LOCAL = {'application':os.getenv('ASTRAL_HEALTH_APPLICATION_ORIGIN', 'http://127.0.0.1:8766').rstrip('/')+'/api/health-inputs',
+         'collector':os.getenv('ASTRAL_HEALTH_COLLECTOR_ORIGIN', 'http://127.0.0.1:8768').rstrip('/')+'/api/health-inputs'}
 WORKER_TTL = {'quotes':30, 'reconciliation':45, 'fees':300, 'news':600,
               'research':1800, 'portfolio_replay':1800, 'event_context':180,
               'liquidity_experiment':90, 'exit_monitor':30, 'shadow':180}

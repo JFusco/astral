@@ -5,7 +5,7 @@ on-demand audit of retained paper/simulator records and explicit cost inputs.
 It does not need LEAN or a QuantConnect subscription. It runs separately from
 the health engine, operational telemetry and offline learning audit.
 
-Open **Accounting** in ASTRAL's main navigation (`/accounting.html`). It is a
+Open **Accounting** in ASTRAL's main navigation (`/accounting`). It is a
 child page with the same shared logo, sidebar and header as Overview and App
 health. `GET /api/accounting/report` reads the latest verified saved report for
 the running application's ledger and mode; it never starts an evaluation or

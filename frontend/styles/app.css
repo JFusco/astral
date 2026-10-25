@@ -1,22 +1,24 @@
 /* The only stylesheet entry. Layout and components use utilities in markup. */
-@import 'tailwindcss';
-@import './tokens/colors.css';
-@import './tokens/typography.css';
-@import './tokens/layout.css';
-@source '../../dist/*.html';
-@source '../../dist/*.js';
-
+@import "tailwindcss";
+@import "./tokens/colors.css";
+@import "./tokens/typography.css";
+@import "./tokens/layout.css";
+@source '../app/**/*.{ts,tsx}';
+@source '../components/**/*.{ts,tsx}';
+@source '../lib/**/*.ts';
 @font-face {
-  font-family: 'DM Sans Variable';
+  font-family: "DM Sans Variable";
   font-style: normal;
   font-weight: 100 1000;
   font-display: swap;
-  src: url('/fonts/dm-sans-latin-variable.woff2') format('woff2');
+  src: url("../../node_modules/@fontsource-variable/dm-sans/files/dm-sans-latin-wght-normal.woff2")
+    format("woff2");
 }
 @font-face {
-  font-family: 'Space Grotesk Variable';
+  font-family: "Space Grotesk Variable";
   font-style: normal;
   font-weight: 300 700;
   font-display: swap;
-  src: url('/fonts/space-grotesk-latin-variable.woff2') format('woff2');
+  src: url("../../node_modules/@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2")
+    format("woff2");
 }

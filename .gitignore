@@ -16,3 +16,8 @@ screenshots/
 archives/
 .DS_Store
 node_modules/
+.next/
+*.tsbuildinfo
+test-results/
+playwright-report/
+!frontend/.env.example

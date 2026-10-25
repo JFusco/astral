@@ -1,11 +1,73 @@
 services:
-  astral:
+  application:
     build: .
     restart: unless-stopped
     env_file: .env
-    ports:
-      - "127.0.0.1:8765:8765"
     volumes:
       - astral-data:/app/runtime
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8766/api/health',timeout=3)",
+        ]
+      interval: 30s
+      timeout: 5s
+  intelligence:
+    build: .
+    restart: unless-stopped
+    command:
+      [
+        "uvicorn",
+        "backend.intelligence_app:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8768",
+        "--workers",
+        "1",
+        "--timeout-graceful-shutdown",
+        "5",
+      ]
+    volumes:
+      - astral-data:/app/runtime
+  health:
+    build: .
+    restart: unless-stopped
+    command:
+      [
+        "uvicorn",
+        "backend.health_app:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8769",
+        "--workers",
+        "1",
+        "--timeout-graceful-shutdown",
+        "5",
+      ]
+    environment:
+      ASTRAL_HEALTH_APPLICATION_ORIGIN: http://application:8766
+      ASTRAL_HEALTH_COLLECTOR_ORIGIN: http://intelligence:8768
+    volumes:
+      - astral-data:/app/runtime
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    environment:
+      ASTRAL_API_ORIGIN: http://application:8766
+      ASTRAL_INTELLIGENCE_ORIGIN: http://intelligence:8768
+      ASTRAL_HEALTH_ORIGIN: http://health:8769
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - application
+      - intelligence
+      - health
 volumes:
   astral-data:

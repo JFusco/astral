@@ -1,7 +1,8 @@
 # Local intelligence collector
 
 The public collector runs independently on `127.0.0.1:8768`. The trading service
-stays on `127.0.0.1:8766`, and the dashboard merges both GET responses. The original
+stays on `127.0.0.1:8766`, and the Next.js dashboard at `http://127.0.0.1:3000` merges both GET responses
+through same-origin Route Handlers. The original
 overnight baseline is frozen. Current research packets receive bounded scoped
 context from this collector without broker credentials or execution authority.
 
@@ -49,7 +50,7 @@ Entity declarations are rejected before XML parsing. Requests do not follow
 article links. HTTP access failures stay failures; no bypass or alternative
 identity is attempted. Responses and request counts are retained locally in
 `runtime/astral-intelligence.sqlite`. The API is GET-only, bound to loopback with
-explicit local dashboard origins. The collector owns only its own database lock.
+exact trusted local/service hosts; browser access goes through the Next.js relay. The collector owns only its own database lock.
 
 ## What this enables, and what remains
 
