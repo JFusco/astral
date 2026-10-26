@@ -5,7 +5,10 @@ import { api, errorMessage } from "@/lib/api";
 import { object, records } from "@/lib/data";
 import { ui } from "@/lib/ui";
 import { useDashboard } from "./provider";
-import { Panel, Evidence, SourceLink, display, money } from "./primitives";
+import { Panel } from "./ui/panel";
+import { Evidence } from "./ui/evidence";
+import { SourceLink } from "./ui/source-link";
+import { display, money } from "@/lib/format";
 import { Dialog } from "./dialog";
 type Detail = { title: string; eyebrow: string; value: unknown };
 export function ResearchLab() {

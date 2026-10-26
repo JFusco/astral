@@ -4,7 +4,7 @@ import { assets } from "@/lib/assets";
 import type { createMarketUniverse } from "@/graphics/market-universe";
 import { useDashboard } from "./provider";
 import { useMotionSettings } from "./motion";
-import { Panel } from "./primitives";
+import { Panel } from "./ui/panel";
 export function MarketUniverse({
   selected,
   onSelect,

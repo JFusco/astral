@@ -1,6 +1,6 @@
 import type { Learning } from "@/lib/contracts";
 import { ui } from "@/lib/ui";
-import { Panel } from "../primitives";
+import { Panel } from "../ui/panel";
 export function LearningProtected({ r }: { r: Learning }) {
   return (
     <Panel title="Protected evidence" subtitle="Reserved forward windows">

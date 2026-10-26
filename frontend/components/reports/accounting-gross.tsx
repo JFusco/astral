@@ -1,6 +1,7 @@
 import type { Accounting } from "@/lib/contracts";
 import { ui } from "@/lib/ui";
-import { Panel, label } from "../primitives";
+import { Panel } from "../ui/panel";
+import { label } from "@/lib/format";
 export function AccountingGross({ r }: { r: Accounting }) {
   return (
     <Panel

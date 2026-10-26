@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { Connection, quoteIsFresh, healthIsLive } from "../lib/connection";
-import { dashboard } from "./fixtures";
+import {
+  Connection,
+  quoteIsFresh,
+  healthIsLive,
+  type Seed,
+} from "../lib/connection";
+import { dashboard, health } from "./fixtures";
 class Source extends EventTarget {
   static instances: Source[] = [];
   closed = false;
@@ -168,4 +173,141 @@ it("requires fresh quotes and a current independent health check", () => {
   expect(quoteIsFresh(state, "BTC", true, Date.now() + 16000)).toBe(false);
   const connection = new Connection();
   expect(healthIsLive(connection.getSnapshot())).toBe(false);
+});
+const seed = (patch: Partial<Seed> = {}): Seed => ({
+  now: Date.now(),
+  state: dashboard(),
+  health: null,
+  intelligence: null,
+  ...patch,
+});
+const pending = () => new Promise<Response>(() => {});
+it("starts from a display-only seed and keeps a stable initial snapshot", async () => {
+  const initial = seed({ intelligence: { sources: [], items: [] } });
+  const connection = new Connection(initial);
+  const first = connection.getSnapshot();
+  expect(first).toMatchObject({
+    state: initial.state,
+    connected: false,
+    seeded: true,
+    healthConnected: false,
+    healthLoading: true,
+    intelligenceConnected: true,
+    now: initial.now,
+  });
+  expect(connection.getInitialSnapshot()).toBe(first);
+  stop = connection.start();
+  await vi.advanceTimersByTimeAsync(1);
+  expect(connection.getSnapshot()).toMatchObject({
+    connected: true,
+    seeded: false,
+  });
+  expect(connection.getInitialSnapshot()).toBe(first);
+});
+it("clears the seed when the browser's state read fails", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn<typeof fetch>(async () =>
+      Response.json({ detail: "off" }, { status: 503 }),
+    ),
+  );
+  const connection = new Connection(seed());
+  stop = connection.start();
+  await vi.advanceTimersByTimeAsync(1);
+  expect(connection.getSnapshot()).toMatchObject({
+    connected: false,
+    seeded: false,
+    error: "off",
+  });
+});
+it("keeps the seed while only health and intelligence polls fail", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn<typeof fetch>((path) =>
+      String(path) === "/api/state"
+        ? pending()
+        : Promise.resolve(Response.json({ detail: "off" }, { status: 503 })),
+    ),
+  );
+  const connection = new Connection(seed());
+  stop = connection.start();
+  await vi.advanceTimersByTimeAsync(100);
+  expect(connection.getSnapshot()).toMatchObject({
+    seeded: true,
+    connected: false,
+    healthLoading: false,
+    intelligenceConnected: false,
+  });
+});
+it("keeps a newer seed disconnected without a stream until a browser read is accepted", async () => {
+  const newer = {
+    ...dashboard(),
+    sequence: 12,
+    server_time: new Date(Date.now() + 2000).toISOString(),
+  };
+  const connection = new Connection(seed({ state: newer }));
+  stop = connection.start();
+  await vi.advanceTimersByTimeAsync(1);
+  expect(connection.getSnapshot().state).toBe(newer);
+  expect(connection.getSnapshot()).toMatchObject({
+    connected: false,
+    seeded: true,
+  });
+  expect(Source.instances).toHaveLength(0);
+  const accepted = {
+    ...newer,
+    sequence: 13,
+    server_time: new Date(Date.parse(newer.server_time) + 1000).toISOString(),
+  };
+  vi.mocked(fetch).mockResolvedValueOnce(Response.json(accepted));
+  await connection.refresh();
+  expect(connection.getSnapshot()).toMatchObject({
+    state: accepted,
+    connected: true,
+    seeded: false,
+  });
+  expect(Source.instances).toHaveLength(1);
+  expect(Source.instances[0].url).toBe("/api/events?after=10");
+});
+it("runs the stream watchdog from the seed time", async () => {
+  vi.stubGlobal("fetch", vi.fn<typeof fetch>(pending));
+  const fresh = new Connection(seed());
+  stop = fresh.start();
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(fresh.getSnapshot().seeded).toBe(true);
+  stop();
+  const old = new Connection(seed({ now: Date.now() - 7500 }));
+  stop = old.start();
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(old.getSnapshot()).toMatchObject({ seeded: false, connected: false });
+});
+it("expires a seeded health check at the first watchdog tick after 15 s", async () => {
+  vi.stubGlobal("fetch", vi.fn<typeof fetch>(pending));
+  const now = Date.now();
+  const connection = new Connection(
+    seed({ now, health: health(new Date(now).toISOString()) }),
+  );
+  expect(connection.getSnapshot()).toMatchObject({
+    healthConnected: true,
+    healthLoading: false,
+  });
+  expect(healthIsLive(connection.getSnapshot())).toBe(true);
+  stop = connection.start();
+  await vi.advanceTimersByTimeAsync(15001);
+  expect(connection.getSnapshot().healthConnected).toBe(true);
+  expect(healthIsLive(connection.getSnapshot())).toBe(true);
+  await vi.advanceTimersByTimeAsync(999);
+  expect(connection.getSnapshot().healthConnected).toBe(false);
+  expect(healthIsLive(connection.getSnapshot())).toBe(false);
+});
+it("keeps today's unseeded behavior without a seed", () => {
+  const connection = new Connection();
+  expect(connection.getSnapshot()).toMatchObject({
+    state: null,
+    connected: false,
+    seeded: false,
+    healthLoading: true,
+    now: 0,
+  });
+  expect(connection.getInitialSnapshot()).toBe(connection.getSnapshot());
 });

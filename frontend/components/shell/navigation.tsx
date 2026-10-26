@@ -1,11 +1,5 @@
-"use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { z } from "zod";
-import { useDashboard } from "./provider";
-import { api, errorMessage } from "@/lib/api";
-import { ui } from "@/lib/ui";
+import { NavLink } from "./nav-link";
 const pages = [
   ["/", "Overview", "⌂"],
   ["/health", "App health", "♡"],
@@ -23,21 +17,13 @@ function RailLink({
   title: string;
   icon: string;
 }) {
-  const path = usePathname();
   return (
-    <Link
-      href={href}
-      className={rail}
-      aria-label={title}
-      title={title}
-      aria-current={path === href ? "page" : undefined}
-    >
+    <NavLink href={href} className={rail} title={title}>
       {icon}
-    </Link>
+    </NavLink>
   );
 }
 export function Navigation() {
-  const path = usePathname();
   return (
     <>
       <a
@@ -89,80 +75,15 @@ export function Navigation() {
         aria-label="Main navigation"
       >
         {pages.map(([href, title]) => (
-          <Link
+          <NavLink
             key={href}
             href={href}
-            aria-current={path === href ? "page" : undefined}
             className="rounded-lg border border-transparent px-1 py-2 text-caption font-medium text-muted hover:bg-surface-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-cyan aria-[current=page]:border-accent/20 aria-[current=page]:bg-accent/5 aria-[current=page]:text-accent sm:px-2 lg:px-3"
           >
             {title}
-          </Link>
+          </NavLink>
         ))}
       </nav>
     </>
-  );
-}
-export function ConnectionControls() {
-  const { snapshot, connection } = useDashboard();
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState("");
-  const state = snapshot.state;
-  async function halt() {
-    if (pending || !state || !snapshot.connected) return;
-    setPending(true);
-    setError("");
-    try {
-      await api("/api/halt", z.object({ halted: z.boolean() }), {
-        body: { halted: !state.halted },
-      });
-      await connection.refresh();
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setPending(false);
-    }
-  }
-  return (
-    <div className="ml-auto flex flex-wrap items-center gap-3 text-caption text-muted">
-      <span
-        role="status"
-        className={
-          snapshot.connected ? "text-status-healthy" : "text-status-unknown"
-        }
-      >
-        {snapshot.connected
-          ? state?.mode === "simulator"
-            ? "SIMULATOR / SERVER STREAM"
-            : state?.connected
-              ? "ALPACA / PAPER STREAM"
-              : "ALPACA / NOT CONNECTED"
-          : state
-            ? "BACKEND DISCONNECTED"
-            : snapshot.error
-              ? "SERVICE UNAVAILABLE"
-              : "CONNECTING TO SERVICE"}
-      </span>
-      <span className="hidden font-display xl:block">
-        {snapshot.now
-          ? new Date(snapshot.now).toISOString().slice(11, 19) + " UTC"
-          : "— UTC"}
-      </span>
-      <button
-        onClick={halt}
-        disabled={!snapshot.connected || pending}
-        className={`${ui.button} text-status-degraded`}
-      >
-        {pending
-          ? "Saving…"
-          : state?.halted
-            ? "◇ Resume entries"
-            : "◈ Halt entries"}
-      </button>
-      {error ? (
-        <span role="alert" className="w-full max-w-lg text-status-down">
-          {error}
-        </span>
-      ) : null}
-    </div>
   );
 }

@@ -18,7 +18,8 @@ from fastapi.responses import JSONResponse
 import uvicorn
 
 # Server-side reads bypass Playwright's page.route, so tests steer these paths here instead.
-REPORT_MODES = {'accounting': {'passthrough', 'fixture', 'unavailable'}, 'learning': {'passthrough', 'fixture'}}
+REPORT_MODES = {'accounting': {'passthrough', 'fixture', 'unavailable'}, 'learning': {'passthrough', 'fixture'}, 'state': {'passthrough', 'malformed'}}
+MALFORMED_STATE = {'service_version': '0.2', 'account': {'equity': 999999}}
 
 if __name__ == '__main__':
     with tempfile.TemporaryDirectory(prefix='astral-next-simulator-') as directory:
@@ -41,12 +42,14 @@ if __name__ == '__main__':
         def saved_learning():
             return learning_report(learning_dir, source, 'simulator')
 
-        control = {'accounting': 'passthrough', 'learning': 'passthrough'}
+        control = {'accounting': 'passthrough', 'learning': 'passthrough', 'state': 'passthrough'}
         fixtures = {'accounting': saved_accounting, 'learning': saved_learning}
 
         def valid(name, mode):
             if name == 'accounting' and mode.startswith('delay:'):
                 return mode[6:].isdigit()
+            if name == 'state' and mode.startswith('delay-once:'):
+                return mode[11:].isdigit()
             return mode in REPORT_MODES.get(name, ())
 
         @app.post('/__test/control')
@@ -57,9 +60,15 @@ if __name__ == '__main__':
             return control
 
         @app.middleware('http')
-        async def controlled_reports(request: Request, call_next):
-            name = {'/api/accounting/report': 'accounting', '/api/learning/report': 'learning'}.get(request.url.path)
+        async def controlled_reads(request: Request, call_next):
+            name = {'/api/accounting/report': 'accounting', '/api/learning/report': 'learning', '/api/state': 'state'}.get(request.url.path)
             mode = control.get(name, 'passthrough')
+            if name == 'state' and mode.startswith('delay-once:'):
+                control['state'] = 'passthrough'  # Reset before awaiting: exactly one request is delayed.
+                await asyncio.sleep(int(mode[11:]) / 1000)
+                return await call_next(request)
+            if mode == 'malformed':
+                return JSONResponse(MALFORMED_STATE)
             if mode == 'passthrough':
                 return await call_next(request)
             if mode == 'unavailable':

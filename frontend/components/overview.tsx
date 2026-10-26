@@ -11,17 +11,13 @@ import { healthIsLive, quoteIsFresh } from "@/lib/connection";
 import { assets } from "@/lib/assets";
 import { ui } from "@/lib/ui";
 import { useDashboard } from "./provider";
-import {
-  Card,
-  Heading,
-  Panel,
-  Empty,
-  Counts,
-  money,
-  quantity,
-  SourceLink,
-  utc,
-} from "./primitives";
+import { Card } from "./ui/card";
+import { Heading } from "./ui/heading";
+import { Panel } from "./ui/panel";
+import { Empty } from "./ui/empty";
+import { Counts } from "./ui/counts";
+import { SourceLink } from "./ui/source-link";
+import { money, quantity, utc } from "@/lib/format";
 import { Dialog } from "./dialog";
 import { OrderDialog } from "./order";
 import { MarketUniverse } from "./market-universe";
@@ -601,15 +597,19 @@ export function Overview({ view }: { view: string | null }) {
             className={`${ui.notice} border-status-degraded/30`}
           >
             <strong>
-              {state
-                ? "Service connection lost · retained observation only"
-                : snapshot.error
-                  ? "Local service unavailable"
-                  : "Connecting to local service"}
+              {state && snapshot.seeded
+                ? "Server snapshot · connecting live stream"
+                : state
+                  ? "Service connection lost · retained observation only"
+                  : snapshot.error
+                    ? "Local service unavailable"
+                    : "Connecting to local service"}
             </strong>
             <p>
-              {snapshot.error ??
-                "Reading account and ledger state. No balances or prices are assumed."}
+              {state && snapshot.seeded
+                ? `Showing server readback from ${utc(state.server_time)}. Actions unlock after the live connection confirms.`
+                : (snapshot.error ??
+                  "Reading account and ledger state. No balances or prices are assumed.")}
             </p>
           </m.div>
         ) : null}

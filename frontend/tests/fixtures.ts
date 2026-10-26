@@ -1,4 +1,4 @@
-import type { Dashboard } from "../lib/contracts";
+import type { Dashboard, Health } from "../lib/contracts";
 export function dashboard(): Dashboard {
   return {
     service_version: "0.2",
@@ -61,5 +61,25 @@ export function dashboard(): Dashboard {
     execution_pilot: null,
     readiness: null,
     crypto_universe: null,
+  };
+}
+export function health(at: string): Health {
+  return {
+    as_of: at,
+    checked_at: at,
+    heartbeat_live: true,
+    sequence: 1,
+    duration_ms: 2,
+    nodes: [
+      {
+        id: "application",
+        name: "Application API",
+        group: "core",
+        status: "healthy",
+        detail: "Isolated test service",
+        checked_at: at,
+      },
+    ],
+    changes: [],
   };
 }

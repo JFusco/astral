@@ -16,6 +16,8 @@ export type Snapshot = {
   health: Health | null;
   intelligence: Intelligence | null;
   connected: boolean;
+  /** Server-rendered dashboard state not yet confirmed by the browser's own read. */
+  seeded: boolean;
   healthConnected: boolean;
   healthLoading: boolean;
   intelligenceConnected: boolean;
@@ -25,11 +27,19 @@ export type Snapshot = {
   fillAt: number;
   uncertainIntent: OrderIntent | null;
 };
+/** Server reads captured for the first render; `now` is the server clock shared by both renders. */
+export type Seed = {
+  now: number;
+  state: Dashboard | null;
+  health: Health | null;
+  intelligence: Intelligence | null;
+};
 const empty: Snapshot = {
   state: null,
   health: null,
   intelligence: null,
   connected: false,
+  seeded: false,
   healthConnected: false,
   healthLoading: true,
   intelligenceConnected: false,
@@ -39,11 +49,11 @@ const empty: Snapshot = {
   fillAt: 0,
   uncertainIntent: null,
 };
-export const serverSnapshot = () => empty;
 
 /** One owner per mounted application. All subscriptions, timers and requests stop together. */
 export class Connection {
-  private snapshot: Snapshot = empty;
+  private snapshot: Snapshot;
+  private readonly initial: Snapshot;
   private listeners = new Set<() => void>();
   private source: EventSource | null = null;
   private controller: AbortController | null = null;
@@ -54,11 +64,31 @@ export class Connection {
   private healthReceived = 0;
   private pendingState = false;
   private generation = 0;
+  constructor(seed: Seed | null = null) {
+    // A seed is display-only: `connected` stays false until the browser's own read is accepted.
+    this.snapshot = this.initial = seed
+      ? {
+          ...empty,
+          state: seed.state,
+          seeded: !!seed.state,
+          health: seed.health,
+          healthConnected: !!seed.health,
+          healthLoading: !seed.health,
+          intelligence: seed.intelligence,
+          intelligenceConnected: !!seed.intelligence,
+          now: seed.now,
+        }
+      : empty;
+    if (seed?.state) this.lastMessage = seed.now;
+    if (seed?.health) this.healthReceived = seed.now;
+  }
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   };
   getSnapshot = () => this.snapshot;
+  /** Stable server/hydration snapshot; never tracks live updates. */
+  getInitialSnapshot = () => this.initial;
   setUncertainIntent = (uncertainIntent: OrderIntent | null) =>
     this.update({ uncertainIntent });
   private update(patch: Partial<Snapshot>) {
@@ -81,10 +111,14 @@ export class Connection {
         this.bootstrapped = true;
       }
       this.accept(state);
-      if (!this.source) this.openStream();
+      if (this.snapshot.connected && !this.source) this.openStream();
     } catch (error) {
       if (generation === this.generation && !this.controller?.signal.aborted)
-        this.update({ connected: false, error: errorMessage(error) });
+        this.update({
+          connected: false,
+          seeded: false,
+          error: errorMessage(error),
+        });
     } finally {
       if (generation === this.generation) this.pendingState = false;
     }
@@ -101,7 +135,7 @@ export class Connection {
         return;
     }
     this.lastMessage = Date.now();
-    this.update({ state, connected: true, error: null });
+    this.update({ state, connected: true, seeded: false, error: null });
   }
   private openStream() {
     const source = new EventSource(`/api/events?after=${this.cursor}`);
@@ -114,6 +148,7 @@ export class Connection {
       } catch {
         this.update({
           connected: false,
+          seeded: false,
           error: "Invalid dashboard event received",
         });
       }
@@ -144,6 +179,7 @@ export class Connection {
       } catch {
         this.update({
           connected: false,
+          seeded: false,
           error: "Invalid ledger event received",
         });
       }
@@ -151,6 +187,7 @@ export class Connection {
     source.onerror = () =>
       this.update({
         connected: false,
+        seeded: false,
         error: "Stream disconnected; reconnecting",
       });
   }
@@ -223,6 +260,7 @@ export class Connection {
         const patch: Partial<Snapshot> = { now };
         if (now - this.lastMessage > 8000) {
           patch.connected = false;
+          patch.seeded = false;
           if (this.source) {
             this.source.close();
             this.source = null;
