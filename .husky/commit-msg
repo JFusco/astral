@@ -1,0 +1,2 @@
+#!/usr/bin/env sh
+npm run --silent lint:commit -- --edit "$1"
