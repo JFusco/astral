@@ -1,6 +1,6 @@
 """Compare both implementations in cloud memory; export aggregate diagnostics only."""
 from AlgorithmImports import QCAlgorithm, Resolution, Market, TimeZones
-from datetime import timedelta
+from datetime import timedelta, timezone
 from decimal import Decimal
 from scripts.quantconnect.model import (
     CONTRACT, START, END, FROZEN_MANIFEST, FIELDS, validate_bar, evaluate,
@@ -10,6 +10,12 @@ import json
 
 BUNDLE_ID = "unprepared"
 TOLERANCE = Decimal("1e-20")
+
+
+def as_utc(value):
+    # Coinbase bar times and the algorithm timezone are UTC. LEAN may expose
+    # those bar times without tzinfo while its algorithm clock is aware.
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
 
 
 class AstralBtcSignalParity(QCAlgorithm):
@@ -38,12 +44,12 @@ class AstralBtcSignalParity(QCAlgorithm):
         if self._symbol not in data.bars:
             return
         bar = data.bars[self._symbol]
-        day = bar.time.date()
-        if day >= END:
+        start, end, now = as_utc(bar.time), as_utc(bar.end_time), as_utc(self.utc_time)
+        day = start.date()
+        if day < START or day >= END:
             return
-        if (bar.is_fill_forward or bar.time.hour or bar.time.minute or bar.time.second
-                or bar.end_time != bar.time + timedelta(days=1)
-                or self.utc_time < bar.end_time):
+        if (bar.is_fill_forward or start.hour or start.minute or start.second or start.microsecond
+                or end != start + timedelta(days=1) or now < end):
             raise ValueError("Expected completed, non-filled daily UTC trade bars")
         if self._previous is None and day != START:
             raise ValueError("Missing first historical day")

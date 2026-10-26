@@ -1,5 +1,5 @@
 """Protect in-cloud parity, aggregate-only diagnostics and the zero-order boundary."""
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 from decimal import Decimal, localcontext
 import json
 from pathlib import Path
@@ -84,12 +84,17 @@ def cloud_algorithm(monkeypatch, *, live=False, orders=None):
     return namespace["AstralBtcSignalParity"]()
 
 
-def run_bars(algorithm, rows=None, *, fill_forward=False, unfinished=False):
+def run_bars(algorithm, rows=None, *, fill_forward=False, unfinished=False, bar_zone=None, clock_zone=None):
     for day, values in rows or daily_bars():
         opening, high, low, close, volume = values
         start = datetime.combine(day, time())
         end = start + timedelta(days=1)
         algorithm.utc_time = start if unfinished else end
+        if clock_zone:
+            algorithm.utc_time = algorithm.utc_time.replace(tzinfo=timezone.utc).astimezone(clock_zone)
+        if bar_zone:
+            start = start.replace(tzinfo=timezone.utc).astimezone(bar_zone)
+            end = end.replace(tzinfo=timezone.utc).astimezone(bar_zone)
         bar = SimpleNamespace(time=start, end_time=end, open=opening, high=high, low=low,
                               close=close, volume=volume, is_fill_forward=fill_forward)
         algorithm.on_data(SimpleNamespace(bars={"BTCUSD": bar}))
@@ -130,6 +135,48 @@ def test_packaged_comparison_agrees_on_all_states_without_exporting_market_data(
     summary = json.loads(text.split("|R|", 1)[1])
     assert set(summary) == {"bars", "signals", "orders", "mismatched_signals", "signal_counts", "max_absolute_errors"}
     assert not any("ASTRAL_QC|" + tag + "|" in text for tag in ("B", "S", "E"))
+
+
+@pytest.mark.parametrize('bar_zone,clock_zone', [
+    pytest.param(None, timezone.utc, id='lean-naive-bars-aware-clock'),
+    pytest.param(timezone.utc, None, id='aware-bars-naive-clock'),
+    pytest.param(timezone(timedelta(hours=2)), timezone.utc, id='equivalent-offset-bars'),
+])
+def test_cloud_timestamp_representations_preserve_completed_utc_coverage(monkeypatch, bar_zone, clock_zone):
+    algorithm = cloud_algorithm(monkeypatch)
+    algorithm.initialize()
+    run_bars(algorithm, bar_zone=bar_zone, clock_zone=clock_zone)
+    algorithm.on_end_of_algorithm()
+    result = comparison.compare('\n'.join(algorithm.logs), origin='local-fixture')
+    assert result['status'] == 'pass' and result['bars'] == 181 and result['signals'] == 131
+    assert result['orders'] == 0
+
+
+def test_timezone_normalization_cannot_admit_non_midnight_utc_bars(monkeypatch):
+    algorithm = cloud_algorithm(monkeypatch)
+    algorithm.initialize()
+    start = datetime.combine(START, time(), tzinfo=timezone(timedelta(hours=-4)))
+    end = start + timedelta(days=1)
+    algorithm.utc_time = end.astimezone(timezone.utc)
+    bar = SimpleNamespace(time=start, end_time=end, open=1, high=2, low=1, close=2,
+                          volume=100, is_fill_forward=False)
+    with pytest.raises(ValueError, match='daily UTC'):
+        algorithm.on_data(SimpleNamespace(bars={'BTCUSD':bar}))
+
+
+def test_delivery_boundary_bars_are_excluded_without_replacing_missing_coverage(monkeypatch):
+    algorithm = cloud_algorithm(monkeypatch)
+    algorithm.initialize()
+    rows = daily_bars()
+    run_bars(algorithm, [(START - timedelta(days=1), rows[0][1]), *rows, (END, rows[-1][1])],
+             clock_zone=timezone.utc)
+    algorithm.on_end_of_algorithm()
+    result = comparison.compare('\n'.join(algorithm.logs), origin='local-fixture')
+    assert result['status'] == 'pass' and result['bars'] == 181 and result['signals'] == 131
+    missing = cloud_algorithm(monkeypatch)
+    missing.initialize()
+    with pytest.raises(ValueError, match='Missing first historical day'):
+        run_bars(missing, rows[1:], clock_zone=timezone.utc)
 
 
 def test_rolling_window_matches_frozen_oracle_and_future_data_cannot_change_prior_signals():
@@ -193,7 +240,7 @@ def test_live_mode_is_refused_before_any_data_subscription(monkeypatch):
     assert algorithm.subscriptions == [] and algorithm.logs == []
 
 
-@pytest.mark.parametrize("failure", ["filled", "unfinished", "gap", "orders", "nan", "duplicate", "range", "out-of-period"])
+@pytest.mark.parametrize("failure", ["filled", "unfinished", "unfinished-aware-clock", "gap", "orders", "nan", "duplicate", "range", "out-of-period"])
 def test_cloud_host_cannot_complete_invalid_coverage_or_nonzero_orders(monkeypatch, failure):
     algorithm = cloud_algorithm(monkeypatch, orders=[object()] if failure == "orders" else [])
     algorithm.initialize()
@@ -204,6 +251,7 @@ def test_cloud_host_cannot_complete_invalid_coverage_or_nonzero_orders(monkeypat
     elif failure == "range": rows[0][1][0] = Decimal(1)
     elif failure == "out-of-period": rows[0] = (START - timedelta(days=1), rows[0][1])
     with pytest.raises((ValueError, RuntimeError)):
-        run_bars(algorithm, rows, fill_forward=failure == "filled", unfinished=failure == "unfinished")
+        run_bars(algorithm, rows, fill_forward=failure == "filled", unfinished=failure.startswith("unfinished"),
+                 clock_zone=timezone.utc if failure == "unfinished-aware-clock" else None)
         algorithm.on_end_of_algorithm()
     assert not any(line.startswith("ASTRAL_QC|R|") for line in algorithm.logs)

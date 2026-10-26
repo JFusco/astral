@@ -87,12 +87,41 @@ The compiler then rejected v1's raw OHLCV log export and reported an account
 suspension until `2026-10-26 20:33:39` (provider timestamp). That rejection is retained
 as a failure; it is not a compilation or historical validation pass.
 
-No further cloud submissions were attempted after that guard. The local v2
+No further cloud submissions occurred until after that timestamp. The v2
 correction keeps comparison in cloud memory and exports aggregate diagnostics.
-It has not yet been uploaded, compiled or accepted by QuantConnect. The existing
-cloud project still has the rejected v1 source; do not rerun it. Resume only with
-the corrected bundle after the provider restriction has cleared, and retain any
-new rejection without changing identity or trying another export channel.
+Its first accepted cloud runs exposed mixed naive/aware LEAN timestamps and an
+out-of-window delivery at the start boundary. Both failed runs were retained.
+The adapter now normalizes configured Coinbase/algorithm UTC times, excludes
+delivery bars outside the fixed period, and still refuses unfinished bars,
+non-midnight UTC bars and any missing in-period day. Frozen rules did not change.
+
+After exact source upload/readback, compilation succeeded on LEAN
+`2.5.0.0.18207`. Backtest `5dd5d25f58e1723aa2a2e1dfe34f63a9` completed successfully
+in the existing project on October 26. Its aggregate result passed local contract
+validation:
+
+| Diagnostic | Cloud result |
+| --- | --- |
+| Completed daily bars | 181 |
+| Evaluated signals | 131 |
+| Signal mismatches | 0 |
+| Maximum ATR/SMA20/SMA50/breakout differences | 0 for every field |
+| Signal states | 7 entry candidates; 57 exit reviews; 67 holds |
+| Orders | 0 |
+
+The saved source SHA-256 is
+`c1a5c8bd7ea74c6c645d98736f3aff1a3ed5d04477fa461a922264bbd3f41ff6`;
+its emitted bundle identity is
+`2fb878539701f57b6a943c217aa2cd54e340120115b5bc98a40c7cf6e63a5a9a`.
+The authenticated API result, compile request and completion log are retained
+privately outside Git. No raw market data, indicator series or input-data hashes
+were exported. The existing cloud project now contains the corrected source.
+
+LEAN emitted its default benchmark timezone warning. No benchmark, return or
+profitability statistic is used by this signal-only comparison. Zero orders
+and matching price signals do not validate Alpaca execution, costs, calendars,
+liquidity, custody, sizing or exits. Existing experiments and holdouts remain
+untouched; this is historical development evidence only.
 
 Local controlled-dependency tests exercise the packaged algorithm, all signal
 states, threshold equality, capped-window behavior, drift, invalid/missing bars,
