@@ -22,6 +22,14 @@ export const quantity = (value: unknown) =>
     : new Intl.NumberFormat("en-US", { maximumFractionDigits: 9 }).format(
         Number(value),
       );
+export const basisPoints = (value: unknown): string =>
+  (typeof value !== "number" && typeof value !== "string") ||
+  (typeof value === "string" && value.trim() === "") ||
+  !Number.isFinite(Number(value))
+    ? "Unknown"
+    : new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(
+        Number(value),
+      );
 export const utc = (value: unknown) =>
   typeof value === "string" && Number.isFinite(Date.parse(value))
     ? new Date(value).toISOString().slice(11, 19) + " UTC"
