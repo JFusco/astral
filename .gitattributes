@@ -1,0 +1,4 @@
+graphify-out/graph.json merge=graphify
+
+# Keep upstream Markdown line breaks in the CLI-managed React skill.
+.agents/skills/vercel-react-best-practices/** whitespace=-blank-at-eol
