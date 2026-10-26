@@ -1,5 +1,5 @@
 "use client";
-import { display, money } from "@/lib/format";
+import { basisPoints, display, money } from "@/lib/format";
 import { useDashboard } from "../provider";
 export function ResearchPackets({
   onSelect: setPacket,
@@ -27,7 +27,7 @@ export function ResearchPackets({
                 </small>
               </strong>
               <span>
-                {display(p.facts.spread_bps)} bps
+                {basisPoints(p.facts.spread_bps)} bps
                 <small className="block text-xxs">spread</small>
               </span>
               <span>
