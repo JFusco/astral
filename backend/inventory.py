@@ -4,6 +4,7 @@ import json
 
 from .broker import D
 from .config import SYMBOLS
+from .custody import analyze, retained
 
 BOOKS = ("manual", "swing", "intraday", "external")
 
@@ -39,6 +40,7 @@ def attribute(store, snapshot):
             if buckets[book] <= 0: times[book] = None
             if buckets[book] < 0:
                 errors.append({"symbol": symbol, "book": book, "reason": "Sell exceeds attributed inventory"})
+    gross_books = {s: {b: str(q) for b,q in buckets.items()} for s,buckets in balances.items()}
     # CFEE is a signed asset debit. A late fee without an order ID cannot be
     # assigned across multiple strategy owners. Keep that ambiguity visible.
     for row in store.rows("SELECT payload FROM activities WHERE type='CFEE'"):
@@ -51,6 +53,13 @@ def attribute(store, snapshot):
             balances[symbol][owner] += D(fee["qty"])
         else:
             errors.append({"symbol": symbol, "reason": "Fee cannot be assigned to a unique strategy"})
+    paper = store.get('mode') == 'alpaca'
+    custody = analyze(**retained(store), snapshot=snapshot, account_id=store.get('account_binding'), mode='alpaca') if paper else {'issues': [], 'additional_debits': {}}
+    errors.extend(custody['issues'])
+    for symbol, books in custody['additional_debits'].items():
+        for book, qty in books.items():
+            balances[symbol][book] -= D(qty)
+            if balances[symbol][book] <= 0:entries[symbol][book] = None
     actual = {canonical_symbol(p["symbol"]) or p["symbol"]: D(p["qty"]) for p in snapshot.get("positions", [])}
     differences = []
     assets = store.get("assets", {})
@@ -63,6 +72,7 @@ def attribute(store, snapshot):
                                 "ledger_qty": str(expected), "difference": str(delta),
                                 "reason": "Unreconciled inventory; fees, external activity or missing history"})
     return {"books": {s: {b: str(q) for b, q in v.items()} for s, v in balances.items()},
+            **({"gross_books": gross_books, "custody_reconciliation": custody} if paper else {}),
             "entry_times": entries,
             "differences": differences, "errors": errors,
             "status": "needs-review" if differences or errors else "matched",

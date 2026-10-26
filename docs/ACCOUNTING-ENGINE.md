@@ -46,13 +46,18 @@ evaluation, JSON/Markdown reports and source CSV exports. Existing runs remain.
 - Gross lot matches use retained fill values before fees. Alpaca cumulative
   order deltas are identified as order-readback evidence, not individual venue
   execution IDs, certified tax lots or independently reconciled cost basis.
-- Custody compares retained signed fills and confirmed provider asset-fee debits
-  against the current broker snapshot. The snapshot must be USD, at/before the
-  cutoff and at most 60 seconds old. Historical state is overwritten in the
-  source ledger: the engine cannot reconstruct an earlier custody snapshot.
+- Custody compares gross fills, confirmed asset fees and measured gross-to-net
+  reductions against the current broker snapshot. The snapshot must be USD,
+  at/before the cutoff and at most 60 seconds old. Saved order-decision contexts
+  and new custody checkpoints retain historical quantity evidence. They do not
+  establish complete account history. See [gross-to-net reconciliation](GROSS-TO-NET.md).
 - Pending/invalid fees and disputed fee revisions remain issues. Asset debits
   affect quantities only; cash fees are separate. No fee is guessed from a
   residual or deducted twice. Exact unexplained quantities remain in the report.
+  Measured reductions retain an unclassified status until linked provider fees
+  explain them. The report can show matching net quantities while still requiring
+  review. Previously saved version-one reports remain untouched; version two
+  requires a fresh read-only report before the application accepts that result.
 - Equity change is an observed balance difference. Realized net P&L, unrealized
   P&L and cash-flow-adjusted profit remain unknown in this proof, including when
   quantities match. There is no completeness contract for historical fees,

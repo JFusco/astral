@@ -19,9 +19,10 @@ import uuid
 
 from .fee_evidence import validate_activity
 from .accounting_receipts import receipt_url
+from .custody import analyze as analyze_custody
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = 'accounting-proof-v1'
+VERSION = 'accounting-proof-v2'
 USD_SYMBOLS = {'BTC', 'ETH', 'SOL', 'SPY', 'QQQ', 'GLD', 'TLT', 'IWM'}
 
 
@@ -81,7 +82,7 @@ def source_snapshot(path, cutoff):
     with readonly(path) as db:
         tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         specs = {'fills': ('at', 'id,client_id,at,payload'), 'activities': ('at', 'id,type,at,payload'),
-                 'orders': ('created_at', 'client_id,request,external,created_at'), 'equity': ('at', 'id,at,value')}
+                 'orders': ('created_at', 'client_id,request,raw,status,external,created_at'), 'equity': ('at', 'id,at,value')}
         for table, (clock, columns) in specs.items():
             selected[table] = []
             if table not in tables:
@@ -93,9 +94,13 @@ def source_snapshot(path, cutoff):
                     selected[table].append(dict(row))
                 except (ValueError, TypeError, AttributeError):
                     issues['invalid_timestamp_'+table] += 1
+        selected['observations'] = [dict(r) for r in db.execute("SELECT id,at,outcome,context FROM observations WHERE outcome='approved'")
+                                    if at(r['at']) <= cutoff] if 'observations' in tables else []
+        selected['checkpoints'] = [dict(r) for r in db.execute("SELECT seq AS id,at,payload FROM events WHERE type='custody_snapshot'")
+                                   if at(r['at']) <= cutoff] if 'events' in tables else []
         selected['state'] = {}
         if 'state' in tables:
-            for key in ('mode', 'account_snapshot', 'fee_reconciliation_required'):
+            for key in ('mode', 'account_snapshot', 'account_binding', 'fee_reconciliation_required'):
                 row = db.execute('SELECT value FROM state WHERE key=?', (key,)).fetchone()
                 if row:
                     try:selected['state'][key] = json.loads(row[0])
@@ -248,6 +253,7 @@ def evaluate(source, costs, cutoff):
         if current:
             for p in snapshot['positions']:actual[symbol(p['symbol'])] += number(p['qty'])
     except (ValueError, KeyError, TypeError, ArithmeticError, AttributeError):current = False;issues.append('invalid_custody_snapshot')
+    gross_balances = dict(balances)
     for row in source['activities']:
         try:
             p = json.loads(row['payload'])
@@ -270,7 +276,13 @@ def evaluate(source, costs, cutoff):
                 cash_fees[currency] += -number(p['net_amount'])
         except (ValueError, KeyError, TypeError, ArithmeticError, AttributeError):issues.append('invalid_fee_record')
     if source['state'].get('fee_reconciliation_required'):issues.append('disputed_fee_revision')
+    custody = analyze_custody(orders=source['orders'], fills=source['fills'], activities=source['activities'],
+        observations=source.get('observations', []), checkpoints=source.get('checkpoints', []), snapshot=snapshot,
+        account_id=source['state'].get('account_binding'), mode=source['state'].get('mode'), as_of=cutoff.isoformat())
+    if custody['issues']:issues.append('custody_debit_requires_review')
+    for s, books in custody['additional_debits'].items():balances[s] -= sum((number(q) for q in books.values()), Decimal(0))
     differences = [{'symbol': s, 'recorded_net_quantity': str(balances[s]), 'broker_quantity': str(actual[s]),
+                    'gross_quantity': str(gross_balances.get(s, 0)),
                     'unexplained_quantity': str(actual[s]-balances[s])} for s in sorted(set(actual)|set(balances))] if current else []
     if not current:issues.append('custody_snapshot_missing_stale_or_after_cutoff')
     if any(number(d['unexplained_quantity']) != 0 for d in differences):issues.append('unreconciled_custody')
@@ -281,7 +293,8 @@ def evaluate(source, costs, cutoff):
     return {'version': VERSION, 'as_of': cutoff.isoformat(), 'source_mode': source['state'].get('mode', 'unknown'),
             'scope': 'Retained paper/simulator records only; no assertion of complete account history',
             'fill_rows': len(fills), 'fill_sources': dict(Counter(f['source'] for f in fills)),
-            'custody': {'status': 'needs_review' if issues else 'matched_quantities_only', 'snapshot_current': current, 'differences': differences},
+            'custody': {'status': 'needs_review' if issues else 'matched_quantities_only', 'snapshot_current': current,
+                        'differences': differences, 'gross_to_net': custody},
             'gross_fifo_diagnostics': {'by_book': [{'symbol': s, 'book': b, 'gross_realized_usd': str(v)} for (s,b),v in sorted(gross_realized.items())],
                                       'status': 'incomplete' if any(i in issues for i in ('invalid_fill_record', 'unknown_fill_owner', 'unverified_fill_source', 'sell_exceeds_same_book_lots', 'invalid_order_metadata', 'missing_fills', 'missing_orders', 'invalid_timestamp_fills', 'invalid_timestamp_orders')) else 'retained_gross_records_only',
                                       'matches': matched, 'basis': 'Unadjusted retained fill values; cumulative order deltas are not individual execution activities or certified tax lots'},
@@ -308,7 +321,7 @@ def run(source, as_of, output, costs_file=None):
         (folder/name).chmod(0o600)
     contract = {'version': VERSION, 'source_ledger': str(Path(source).resolve()), 'as_of': cutoff.isoformat(),
                 'input_sha256': digest(data), 'cost_inputs_sha256': digest(costs),
-                'source_sha256': {name: hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ('backend/accounting_engine.py', 'backend/accounting_receipts.py', 'backend/fee_evidence.py', 'backend/risk.py')},
+                'source_sha256': {name: hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ('backend/accounting_engine.py', 'backend/accounting_receipts.py', 'backend/fee_evidence.py', 'backend/custody.py', 'backend/risk.py')},
                 'assumptions': 'Gross FIFO diagnostic per book, USD instruments only; no net P&L, synthetic adjustments or filing claims'}
     save('contract.json', json.dumps(contract, indent=2)+'\n')
     report = evaluate(data, costs, cutoff)
