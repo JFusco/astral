@@ -1,6 +1,7 @@
 import type { Learning } from "@/lib/contracts";
 import { ui } from "@/lib/ui";
-import { Panel, Counts } from "../primitives";
+import { Panel } from "../ui/panel";
+import { Counts } from "../ui/counts";
 export function LearningOutcomes({ r }: { r: Learning }) {
   const data = r.data_and_outcomes;
   return (

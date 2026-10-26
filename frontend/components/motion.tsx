@@ -1,19 +1,9 @@
 "use client";
-import {
-  createContext,
-  useContext,
-  useSyncExternalStore,
-  type ReactNode,
-} from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 import { LazyMotion, MotionConfig, domAnimation } from "motion/react";
 import * as m from "motion/react-m";
 import { ui } from "@/lib/ui";
 type Mode = "cinematic" | "calm" | "reduced";
-const MotionContext = createContext<{
-  mode: Mode;
-  reduced: boolean;
-  setMode: (mode: Mode) => void;
-}>({ mode: "cinematic", reduced: false, setMode: () => {} });
 let browserFallback: Mode = "cinematic";
 function readMode(): Mode {
   try {
@@ -43,35 +33,40 @@ function subscribeSystem(listener: () => void) {
 }
 const readSystem = () => window.matchMedia(reducedQuery).matches;
 const initialSystem = () => false;
-export function AnimationProvider({ children }: { children: ReactNode }) {
+function setMode(value: Mode) {
+  browserFallback = value;
+  try {
+    localStorage.setItem("astral-motion", value);
+  } catch {}
+  window.dispatchEvent(new Event("astral-motion-change"));
+}
+/**
+ * Read per consumer, not through context: each component hydrates with the
+ * server snapshot even when its Suspense boundary streams in after the
+ * browser preference has been applied above it.
+ */
+export function useMotionSettings() {
   const mode = useSyncExternalStore(subscribeMode, readMode, initialMode);
   const systemReduced = useSyncExternalStore(
     subscribeSystem,
     readSystem,
     initialSystem,
   );
-  const reduced = systemReduced || mode === "reduced";
-  const change = (value: Mode) => {
-    browserFallback = value;
-    try {
-      localStorage.setItem("astral-motion", value);
-    } catch {}
-    window.dispatchEvent(new Event("astral-motion-change"));
-  };
+  return { mode, reduced: systemReduced || mode === "reduced", setMode };
+}
+export function AnimationProvider({ children }: { children: ReactNode }) {
+  const { reduced } = useMotionSettings();
   return (
-    <MotionContext.Provider value={{ mode, reduced, setMode: change }}>
-      <MotionConfig
-        reducedMotion={reduced ? "always" : "user"}
-        transition={{ duration: reduced ? 0 : 0.18 }}
-      >
-        <LazyMotion features={domAnimation} strict>
-          {children}
-        </LazyMotion>
-      </MotionConfig>
-    </MotionContext.Provider>
+    <MotionConfig
+      reducedMotion={reduced ? "always" : "user"}
+      transition={{ duration: reduced ? 0 : 0.18 }}
+    >
+      <LazyMotion features={domAnimation} strict>
+        {children}
+      </LazyMotion>
+    </MotionConfig>
   );
 }
-export const useMotionSettings = () => useContext(MotionContext);
 export function Reveal({ children }: { children: ReactNode }) {
   const { reduced } = useMotionSettings();
   return (

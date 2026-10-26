@@ -1,6 +1,7 @@
 import type { Learning } from "@/lib/contracts";
 import { ui } from "@/lib/ui";
-import { Panel, label } from "../primitives";
+import { Panel } from "../ui/panel";
+import { label } from "@/lib/format";
 export function LearningInventory({ r }: { r: Learning }) {
   return (
     <Panel title="Evidence inventory" subtitle="Counts at the saved cutoff">

@@ -55,6 +55,7 @@ test.afterEach(async ({ request }) => {
   await control(request, {
     accounting: "passthrough",
     learning: "passthrough",
+    state: "passthrough",
   });
   expect(diagnostics).toEqual([]);
 });
@@ -251,7 +252,10 @@ test("Health keeps its WebGL canvas while ambient motion stops and resumes", asy
 });
 test("loading feedback honors reduced motion and narrow screens remain usable", async ({
   page,
+  request,
 }) => {
+  // Outlasts the 1.5 s seed timeout once, so the server renders the unseeded frame.
+  await control(request, { state: "delay-once:2500" });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 390, height: 844 });
   let release!: () => void;
@@ -659,7 +663,10 @@ test("an unavailable saved report never claims retained figures", async ({
 });
 test("a failed state contract stays unavailable and recovers without synthetic balances", async ({
   page,
+  request,
 }) => {
+  // The server seed drops the malformed state; the browser read gets it too.
+  await control(request, { state: "malformed" });
   let malformed = true;
   await page.route("**/api/state", async (route) => {
     if (malformed)
@@ -679,6 +686,7 @@ test("a failed state contract stays unavailable and recovers without synthetic b
   await expect(
     page.getByRole("status", { name: "Reading account and ledger state" }),
   ).toHaveCount(0);
+  await control(request, { state: "passthrough" });
   malformed = false;
   await expect(
     page.getByText("SIMULATOR / SERVER STREAM", { exact: true }),
@@ -686,6 +694,80 @@ test("a failed state contract stays unavailable and recovers without synthetic b
   await expect(
     page.getByRole("button", { name: "＋ Local buy" }),
   ).toBeEnabled();
+});
+test("SSR renders seeded data without enabling actions", async ({
+  page,
+  request,
+}) => {
+  const portfolio = await rendered(
+    page,
+    request,
+    "/",
+    'section[aria-label="Portfolio overview"]',
+  );
+  expect(portfolio).toHaveLength(1);
+  expect(portfolio[0]).toMatch(/PORTFOLIO VALUE\s*\$[\d,]+\.\d{2}/);
+  // Page content streams as a fragment outside <main>, so query the document body.
+  const body = (await rendered(page, request, "/", "body")).join(" ");
+  expect(body).toContain("PERSISTENT SIMULATOR");
+  expect(body).not.toContain("BACKEND REQUIRED");
+  expect(await rendered(page, request, "/", '[role="status"]')).toEqual(
+    expect.arrayContaining([
+      "SERVER SNAPSHOT / CONNECTING",
+      expect.stringMatching(/^Server snapshot · connecting live stream/),
+    ]),
+  );
+  expect(
+    await rendered(
+      page,
+      request,
+      "/health",
+      '[role="status"][aria-label="Connecting to health engine"]',
+    ),
+  ).toHaveLength(1);
+  expect(
+    await rendered(
+      page,
+      request,
+      "/health",
+      'section[aria-label="Health summary"]',
+    ),
+  ).toHaveLength(0);
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/state", async (route) => {
+    await gate;
+    await route.continue();
+  });
+  await page.goto("/");
+  // Before the browser read's 3 s timeout: seeded figures show, every action stays locked.
+  const quick = { timeout: 2000 };
+  await expect(
+    page
+      .getByRole("region", { name: "Portfolio overview" })
+      .getByText(/^\$[\d,]+\.\d{2}$/)
+      .first(),
+  ).toBeVisible(quick);
+  await expect(
+    page.getByText("SERVER SNAPSHOT / CONNECTING", { exact: true }),
+  ).toBeVisible(quick);
+  const buy = page.getByRole("button", { name: "＋ Local buy", exact: true });
+  const halt = page.getByRole("button", { name: "◈ Halt entries" });
+  await expect(buy).toBeDisabled(quick);
+  await expect(halt).toBeDisabled(quick);
+  await expect(
+    page.getByRole("button", { name: "Run research review ↗" }),
+  ).toBeDisabled(quick);
+  release();
+  // Up to the 8 s watchdog refresh if the held read already timed out.
+  const recovery = { timeout: 12000 };
+  await expect(
+    page.getByText("SIMULATOR / SERVER STREAM", { exact: true }),
+  ).toBeVisible(recovery);
+  await expect(buy).toBeEnabled(recovery);
+  await expect(halt).toBeEnabled(recovery);
 });
 // Development React reports attribute and style mismatches that production builds stay silent on.
 test.describe("development hydration smoke @dev", () => {

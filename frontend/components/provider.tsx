@@ -1,23 +1,32 @@
 "use client";
 import {
   createContext,
+  use,
   useContext,
   useEffect,
   useState,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { Connection, serverSnapshot, type Snapshot } from "@/lib/connection";
+import { Connection, type Seed, type Snapshot } from "@/lib/connection";
 const Context = createContext<{
   connection: Connection;
   snapshot: Snapshot;
 } | null>(null);
-export function Provider({ children }: { children: ReactNode }) {
-  const [connection] = useState(() => new Connection());
+export function Provider({
+  seed,
+  children,
+}: {
+  seed: Promise<Seed>;
+  children: ReactNode;
+}) {
+  const initial = use(seed);
+  // Created once; seeds from later layout renders (router.refresh) are ignored.
+  const [connection] = useState(() => new Connection(initial));
   const snapshot = useSyncExternalStore(
     connection.subscribe,
     connection.getSnapshot,
-    serverSnapshot,
+    connection.getInitialSnapshot,
   );
   useEffect(() => connection.start(), [connection]);
   return (

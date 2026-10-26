@@ -1,6 +1,7 @@
 import type { Learning } from "@/lib/contracts";
 import { ui } from "@/lib/ui";
-import { Card, label } from "../primitives";
+import { Card } from "../ui/card";
+import { label } from "@/lib/format";
 export function LearningSummary({ r }: { r: Learning }) {
   const data = r.data_and_outcomes,
     model = r.model_research;

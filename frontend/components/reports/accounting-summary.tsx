@@ -1,6 +1,6 @@
 import type { Accounting } from "@/lib/contracts";
 import { ui } from "@/lib/ui";
-import { Card } from "../primitives";
+import { Card } from "../ui/card";
 import { amounts } from "./amounts";
 export function AccountingSummary({ r }: { r: Accounting }) {
   const c = r.operating_costs;

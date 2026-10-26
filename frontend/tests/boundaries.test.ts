@@ -5,9 +5,7 @@ const root = join(import.meta.dirname, "..");
 // Over-limit client files awaiting their milestone split. This list may only shrink.
 const allowlist = new Set([
   "components/overview.tsx",
-  "components/health.tsx",
   "components/research.tsx",
-  "components/shell.tsx",
 ]);
 const sources = (dir: string): string[] =>
   readdirSync(join(root, dir), { withFileTypes: true }).flatMap((entry) =>

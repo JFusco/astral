@@ -1,6 +1,6 @@
 import type { Learning } from "@/lib/contracts";
 import { ui } from "@/lib/ui";
-import { Counts } from "../primitives";
+import { Counts } from "../ui/counts";
 export function LearningBoundaries({ r }: { r: Learning }) {
   return (
     <div className="mt-6 space-y-4 border-t border-line py-6 text-body text-muted">

@@ -2,7 +2,7 @@
 import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ui } from "@/lib/ui";
-import { Heading } from "../primitives";
+import { Heading } from "../ui/heading";
 import { LoadingPanel } from "../motion";
 
 type Shown = { children: ReactNode; asOf: string; mode?: string };
