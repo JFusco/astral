@@ -61,7 +61,6 @@ class HealthEngine:
         start = time.monotonic()
         previous = self.store.get('health-snapshot', {})
         nodes = []
-        now = datetime.now(timezone.utc)
 
         def add(id, name, group, status, detail, checked_at=None, required=True):
             nodes.append({'id':id, 'name':name, 'group':group, 'status':status,
@@ -70,6 +69,7 @@ class HealthEngine:
         # Local observations are assessed without importing their engines or DBs.
         results = await asyncio.gather(*(self.read(url) for url in LOCAL.values()), return_exceptions=True)
         app, collector = [r if isinstance(r,dict) else None for r in results]
+        now = datetime.now(timezone.utc)
         add('application','Application API','core','healthy' if app else 'down',
             'Read-only health inputs received' if app else 'Application health inputs unavailable')
         add('collector','Intelligence collector','core','healthy' if collector else 'down',

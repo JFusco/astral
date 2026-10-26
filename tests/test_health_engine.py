@@ -82,6 +82,49 @@ class Providers:
     async def close(self):pass
 
 
+@pytest.mark.parametrize('worker_offset,expected', [
+    pytest.param(0, 'healthy', id='completed-during-fetch'),
+    pytest.param(1, 'degraded', id='future-after-receipt'),
+    pytest.param(-46, 'degraded', id='expired-at-receipt'),
+])
+def test_worker_freshness_uses_observation_receipt_time(tmp_path, monkeypatch, worker_offset, expected):
+    import backend.health_engine as health
+    began = datetime.now(timezone.utc)
+    received = began + timedelta(seconds=5)
+    clock = [began]
+    class Clock:
+        @staticmethod
+        def now(zone):
+            return clock[0].astimezone(zone)
+    monkeypatch.setattr(health, 'datetime', Clock)
+    stamp = received.isoformat()
+    worker_stamp = (received + timedelta(seconds=worker_offset)).isoformat()
+    app = {'as_of':stamp, 'connected':True, 'snapshot_at':stamp, 'session_open':False,
+           'workers':[{'name':name, 'status':'healthy', 'at':worker_stamp} for name in ('quotes','ledger')],
+           'ledger_at':worker_stamp,
+           'quotes':{symbol:{'at':stamp,'received_at':stamp} for symbol in ('BTC','ETH','SOL')}}
+    collector = {'as_of':stamp, 'sources':[{'id':'fixture','name':'Fixture','status':'connected',
+                   'fresh':True,'last_success_at':stamp,'interval_seconds':300}]}
+    def respond(request):
+        clock[0] = received
+        return httpx.Response(200, json=app if request.url.port == 8766 else collector)
+    async def exercise():
+        store = Store(tmp_path/'health.sqlite','health')
+        engine = health.HealthEngine(store, httpx.AsyncClient(transport=httpx.MockTransport(respond)), Providers())
+        try:
+            await engine.cycle()
+            state = engine.state()
+            nodes = {node['id']:node for node in state['nodes']}
+            assert state['heartbeat_live'] is True
+            assert state['execution_enabled'] is False
+            assert nodes['worker:quotes']['status'] == expected
+            assert nodes['worker:ledger']['status'] == expected
+        finally:
+            await engine.close()
+            store.close()
+    asyncio.run(exercise())
+
+
 def observations():
     now=utcnow()
     app={'as_of':now,'connected':True,'snapshot_at':now,'session_open':False,'model_enabled':False,'model':{},
