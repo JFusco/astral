@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   description:
     "Local paper trading, accounting, offline learning and service health.",
   robots: { index: false, follow: false },
+  icons: { icon: "/astral-mark.svg" },
 };
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
