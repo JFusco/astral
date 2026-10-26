@@ -377,7 +377,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_bea_calendar",
-      "community": 48,
+      "community": 53,
       "community_name": "Schedule",
       "norm_label": "bea_calendar.py"
     },
@@ -390,7 +390,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "backend_bea_calendar_schedule",
-      "community": 48,
+      "community": 53,
       "community_name": "Schedule",
       "norm_label": "schedule"
     },
@@ -401,7 +401,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "backend_bea_calendar_py_htmlparser",
-      "community": 48,
+      "community": 53,
       "community_name": "Schedule",
       "norm_label": "htmlparser"
     },
@@ -413,7 +413,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_bea_calendar_schedule_init",
-      "community": 48,
+      "community": 53,
       "community_name": "Schedule",
       "norm_label": ".__init__()"
     },
@@ -425,7 +425,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_bea_calendar_schedule_handle_starttag",
-      "community": 48,
+      "community": 53,
       "community_name": "Schedule",
       "norm_label": ".handle_starttag()"
     },
@@ -437,7 +437,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_bea_calendar_schedule_handle_data",
-      "community": 48,
+      "community": 53,
       "community_name": "Schedule",
       "norm_label": ".handle_data()"
     },
@@ -449,7 +449,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_bea_calendar_schedule_handle_endtag",
-      "community": 48,
+      "community": 53,
       "community_name": "Schedule",
       "norm_label": ".handle_endtag()"
     },
@@ -472,7 +472,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_bea_calendar_rationale_1",
-      "community": 48,
+      "community": 53,
       "community_name": "Schedule",
       "norm_label": "scoped bea schedule; a date is retained without inventing an unspecified..."
     },
@@ -2266,7 +2266,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_experiment_diagnose",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "diagnose()"
     },
@@ -2288,7 +2288,7 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "backend_experiment_rationale_87",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "retrospective price-only prefixes. never pretend these were known earlier."
     },
@@ -2299,7 +2299,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_fee_evidence",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "fee_evidence.py"
     },
@@ -2311,7 +2311,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_fee_evidence_validate_activity",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "validate_activity()"
     },
@@ -2334,7 +2334,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_fee_evidence_rationale_1",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "validate provider fee records without estimating missing fees or rewriting..."
     },
@@ -3066,7 +3066,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_liquidity_turnover",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "turnover()"
     },
@@ -3266,7 +3266,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_market_depth",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "market_depth.py"
     },
@@ -3290,7 +3290,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_market_depth_validate",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "_validate()"
     },
@@ -3301,7 +3301,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_market_depth_rationale_1",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "same-venue rest book/quote validation. visible depth never guarantees a fill."
     },
@@ -3443,7 +3443,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_portfolio_replay",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "backend/portfolio_replay.py"
     },
@@ -3624,7 +3624,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_portfolio_replay_rationale_1",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "isolated deterministic portfolio execution model. no broker or store imports...."
     },
@@ -3681,7 +3681,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_readiness",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "readiness.py"
     },
@@ -3716,7 +3716,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_readiness_rationale_1",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "evidence-by-evidence readiness. no threshold changes or execution capability."
     },
@@ -3913,7 +3913,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_research",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "research.py"
     },
@@ -3948,7 +3948,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_research_rationale_1",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "point-in-time evidence screening; language models cannot override vetoes."
     },
@@ -3959,7 +3959,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_risk",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "risk.py"
     },
@@ -3971,7 +3971,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_risk_number",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "number()"
     },
@@ -3983,7 +3983,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_risk_timestamp",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "timestamp()"
     },
@@ -3995,7 +3995,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_risk_floor_step",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "floor_step()"
     },
@@ -4030,7 +4030,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_risk_rationale_1",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "reproducible research proposals. no network, randomness, or order side effects."
     },
@@ -4458,7 +4458,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_timing",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "timing.py"
     },
@@ -4493,7 +4493,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_timing_rationale_1",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "deterministic timing hypotheses. produces candidates, never orders or fills."
     },
@@ -4549,7 +4549,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_universe",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "universe.py"
     },
@@ -4561,7 +4561,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_universe_discover_crypto",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "discover_crypto()"
     },
@@ -4572,7 +4572,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_universe_rationale_1",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "read-only venue discovery. a listing is never execution authorization."
     },
@@ -7517,7 +7517,7 @@
       "source_location": "L161",
       "_origin": "ast",
       "id": "frontend_lib_contracts_healthschema",
-      "community": 63,
+      "community": 48,
       "community_name": "seed.ts",
       "norm_label": "healthschema"
     },
@@ -7589,7 +7589,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "frontend_lib_contracts_health",
-      "community": 12,
+      "community": 35,
       "community_name": "connection.test.ts",
       "norm_label": "health"
     },
@@ -7996,7 +7996,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_lib_server_seed",
-      "community": 63,
+      "community": 48,
       "community_name": "seed.ts",
       "norm_label": "seed.ts"
     },
@@ -8008,7 +8008,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_lib_server_seed_seedscope",
-      "community": 63,
+      "community": 48,
       "community_name": "seed.ts",
       "norm_label": "seedscope()"
     },
@@ -8020,7 +8020,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_lib_server_seed_loadseed",
-      "community": 63,
+      "community": 48,
       "community_name": "seed.ts",
       "norm_label": "loadseed()"
     },
@@ -8123,7 +8123,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_lib_upstream",
-      "community": 63,
+      "community": 48,
       "community_name": "seed.ts",
       "norm_label": "upstream.ts"
     },
@@ -8135,7 +8135,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_lib_upstream_upstreamfetch",
-      "community": 63,
+      "community": 48,
       "community_name": "seed.ts",
       "norm_label": "upstreamfetch()"
     },
@@ -8961,7 +8961,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_tests_connection_test",
-      "community": 12,
+      "community": 35,
       "community_name": "connection.test.ts",
       "norm_label": "connection.test.ts"
     },
@@ -8974,7 +8974,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "frontend_tests_connection_test_source",
-      "community": 12,
+      "community": 35,
       "community_name": "connection.test.ts",
       "norm_label": "source"
     },
@@ -8986,7 +8986,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_tests_connection_test_source_constructor",
-      "community": 12,
+      "community": 35,
       "community_name": "connection.test.ts",
       "norm_label": ".constructor()"
     },
@@ -8998,7 +8998,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_tests_connection_test_source_close",
-      "community": 12,
+      "community": 35,
       "community_name": "connection.test.ts",
       "norm_label": ".close()"
     },
@@ -9010,7 +9010,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_tests_connection_test_source_send",
-      "community": 12,
+      "community": 35,
       "community_name": "connection.test.ts",
       "norm_label": ".send()"
     },
@@ -9022,7 +9022,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_tests_connection_test_seed",
-      "community": 12,
+      "community": 35,
       "community_name": "connection.test.ts",
       "norm_label": "seed()"
     },
@@ -9034,7 +9034,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_tests_connection_test_pending",
-      "community": 12,
+      "community": 35,
       "community_name": "connection.test.ts",
       "norm_label": "pending()"
     },
@@ -9045,7 +9045,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_tests_fixtures",
-      "community": 12,
+      "community": 35,
       "community_name": "connection.test.ts",
       "norm_label": "fixtures.ts"
     },
@@ -9057,7 +9057,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_tests_fixtures_dashboard",
-      "community": 12,
+      "community": 35,
       "community_name": "connection.test.ts",
       "norm_label": "dashboard()"
     },
@@ -9069,7 +9069,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_tests_fixtures_health",
-      "community": 12,
+      "community": 35,
       "community_name": "connection.test.ts",
       "norm_label": "health()"
     },
@@ -9161,7 +9161,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_tests_seed_test",
-      "community": 63,
+      "community": 48,
       "community_name": "seed.ts",
       "norm_label": "seed.test.ts"
     },
@@ -9172,7 +9172,7 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "frontend_tests_seed_test_now",
-      "community": 63,
+      "community": 48,
       "community_name": "seed.ts",
       "norm_label": "now"
     },
@@ -9184,7 +9184,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_tests_seed_test_at",
-      "community": 63,
+      "community": 48,
       "community_name": "seed.ts",
       "norm_label": "at()"
     },
@@ -9196,7 +9196,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_tests_seed_test_services",
-      "community": 12,
+      "community": 35,
       "community_name": "connection.test.ts",
       "norm_label": "services()"
     },
@@ -9208,7 +9208,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_tests_seed_test_fetched",
-      "community": 63,
+      "community": 48,
       "community_name": "seed.ts",
       "norm_label": "fetched()"
     },
@@ -15951,7 +15951,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_worker_universe_test_discovery_includes_meme_pairs_without_authorizing_trades",
-      "community": 35,
+      "community": 12,
       "community_name": "timestamp",
       "norm_label": "test_discovery_includes_meme_pairs_without_authorizing_trades()"
     },
@@ -64042,5 +64042,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "da56adeef1e3c403d7cc2e9ff8b6dcc31982701c"
+  "built_at_commit": "f33a5863502f52ba44fc4098e65183359c023bce"
 }

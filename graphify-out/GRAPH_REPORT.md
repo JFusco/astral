@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `da56adee`
+- Built from commit: `f33a5863`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -27,7 +27,7 @@
 - test_execution_pilot.py
 - scripts
 - useDashboard
-- connection.test.ts
+- timestamp
 - compilerOptions
 - contracts.ts
 - support.cjs
@@ -50,7 +50,7 @@
 - test_review_repairs.py
 - intelligence.py
 - decide
-- timestamp
+- connection.test.ts
 - read.ts
 - validate_pr_body.cjs
 - Settings
@@ -63,17 +63,17 @@
 - Connection
 - RuleViolation
 - boundaries.test.ts
-- Schedule
+- seed.ts
 - check-skills.cjs
 - HealthEngine
 - Meetings
 - commitlint.config.cjs
+- Schedule
 - proxy.ts
 - next.config.ts
 - StatusHeading
 - test_quantconnect_validation.py
 - prepare-standalone.mjs
-- seed.ts
 
 ## God Nodes (most connected - your core abstractions)
 1. `Store` - 94 edges
@@ -152,9 +152,9 @@ Nodes (37): @commitlint/cli, @commitlint/config-conventional, @commitlint/lint, 
 Cohesion: 0.19
 Nodes (19): HealthFooterStatus(), EquityChart(), OverviewFooter(), Context, useDashboard(), PacketDialog(), ResearchExperiments(), ResearchGates() (+11 more)
 
-### Community 12 - "connection.test.ts"
-Cohesion: 0.23
-Nodes (6): Health, seed(), Source, dashboard(), health(), services()
+### Community 12 - "timestamp"
+Cohesion: 0.14
+Nodes (18): diagnose(), Retrospective price-only prefixes. Never pretend these were known earlier., Validate provider fee records without estimating missing fees or rewriting…, validate_activity(), turnover(), Same-venue REST book/quote validation. Visible depth never guarantees a fill., _validate(), Isolated deterministic portfolio execution model. No broker or Store imports.… (+10 more)
 
 ### Community 13 - "compilerOptions"
 Cohesion: 0.07
@@ -247,9 +247,9 @@ Nodes (27): parse_bea(), ASTRAL paper-only service., collect(), health_inputs(),
 Cohesion: 0.38
 Nodes (11): decide(), One-unit synthetic quote replay, with fills strictly AFTER decisions. Quote-…, replay(), event(), parametrize, test_entry_cancels_if_research_expires_during_latency(), test_entry_timing_fail_closed(), test_exit_rules_work_without_entry_permission() (+3 more)
 
-### Community 35 - "timestamp"
-Cohesion: 0.14
-Nodes (18): diagnose(), Retrospective price-only prefixes. Never pretend these were known earlier., Validate provider fee records without estimating missing fees or rewriting…, validate_activity(), turnover(), Same-venue REST book/quote validation. Visible depth never guarantees a fill., _validate(), Isolated deterministic portfolio execution model. No broker or Store imports.… (+10 more)
+### Community 35 - "connection.test.ts"
+Cohesion: 0.23
+Nodes (6): Health, seed(), Source, dashboard(), health(), services()
 
 ### Community 36 - "read.ts"
 Cohesion: 0.12
@@ -295,9 +295,9 @@ Nodes (9): ExitPlan, Halt, Intent, ResearchBar, RiskCandidate, Exception, RuleVi
 Cohesion: 0.32
 Nodes (6): allowlist, files, isClient(), lines(), root, text()
 
-### Community 48 - "Schedule"
-Cohesion: 0.25
-Nodes (3): HTMLParser, Scoped BEA schedule; a date is retained without inventing an unspecified…, Schedule
+### Community 48 - "seed.ts"
+Cohesion: 0.29
+Nodes (5): healthSchema, loadSeed(), seedScope(), upstreamFetch(), now
 
 ### Community 49 - "check-skills.cjs"
 Cohesion: 0.33
@@ -311,13 +311,13 @@ Nodes (8): lifespan(), Standalone health service, separate process and ledger fr
 Cohesion: 0.83
 Nodes (3): bodyMaxLineLength(), footerMaxLineLength(), maxLineLength()
 
+### Community 53 - "Schedule"
+Cohesion: 0.25
+Nodes (3): HTMLParser, Scoped BEA schedule; a date is retained without inventing an unspecified…, Schedule
+
 ### Community 58 - "test_quantconnect_validation.py"
 Cohesion: 0.11
 Nodes (35): price_signal(), Pure OHLC hypothesis; caller validates provenance and time separately., QCAlgorithm, as_utc(), AstralBtcSignalParity, Compare both implementations in cloud memory; export aggregate diagnostics only., bundle(), compare() (+27 more)
-
-### Community 63 - "seed.ts"
-Cohesion: 0.29
-Nodes (5): healthSchema, loadSeed(), seedScope(), upstreamFetch(), now
 
 ## Knowledge Gaps
 - **154 isolated node(s):** `Source`, `metadata`, `dynamic`, `runtime`, `dynamic` (+149 more)
@@ -329,7 +329,7 @@ _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Store` connect `Store` to `test_event_sources.py`, `run`, `test_accounting_engine.py`, `D`, `test_learning_engine.py`, `test_state_contract.py`, `screen`, `test_readiness_gates.py`, `liquidity_runner.py`, `datetime`, `engine.py`, `Engine`, `test_review_repairs.py`, `intelligence.py`, `Settings`, `test_trade_history.py`, `test_executor_ownership.py`, `test_health_engine.py`, `test_liquidity_experiment.py`, `RuleViolation`, `HealthEngine`?**
   _High betweenness centrality (0.054) - this node is a cross-community bridge._
-- **Why does `utcnow()` connect `utcnow` to `test_event_sources.py`, `broker.py`, `intelligence.py`, `timestamp`, `run`, `test_review_repairs.py`, `Settings`, `test_execution_pilot.py`, `test_health_engine.py`, `RuleViolation`, `screen`, `test_readiness_gates.py`, `HealthEngine`, `BrokerFailure`, `engine.py`, `Engine`?**
+- **Why does `utcnow()` connect `utcnow` to `test_event_sources.py`, `broker.py`, `intelligence.py`, `run`, `test_review_repairs.py`, `Settings`, `test_execution_pilot.py`, `test_health_engine.py`, `timestamp`, `RuleViolation`, `screen`, `test_readiness_gates.py`, `HealthEngine`, `BrokerFailure`, `engine.py`, `Engine`?**
   _High betweenness centrality (0.030) - this node is a cross-community bridge._
 - **Why does `Engine` connect `Engine` to `test_review_repairs.py`, `run`, `test_accounting_engine.py`, `utcnow`, `D`, `Settings`, `test_state_contract.py`, `test_execution_pilot.py`, `test_stage2_validation.py`, `RuleViolation`, `screen`, `BrokerFailure`, `datetime`, `engine.py`, `Store`?**
   _High betweenness centrality (0.028) - this node is a cross-community bridge._
