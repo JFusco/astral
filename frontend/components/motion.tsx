@@ -5,12 +5,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import {
-  LazyMotion,
-  MotionConfig,
-  domAnimation,
-  useReducedMotion,
-} from "motion/react";
+import { LazyMotion, MotionConfig, domAnimation } from "motion/react";
 import * as m from "motion/react-m";
 import { ui } from "@/lib/ui";
 type Mode = "cinematic" | "calm" | "reduced";
@@ -39,10 +34,23 @@ function subscribeMode(listener: () => void) {
   };
 }
 const initialMode = (): Mode => "cinematic";
+// The OS preference is a browser read too: the server snapshot keeps hydration deterministic.
+const reducedQuery = "(prefers-reduced-motion: reduce)";
+function subscribeSystem(listener: () => void) {
+  const query = window.matchMedia(reducedQuery);
+  query.addEventListener("change", listener);
+  return () => query.removeEventListener("change", listener);
+}
+const readSystem = () => window.matchMedia(reducedQuery).matches;
+const initialSystem = () => false;
 export function AnimationProvider({ children }: { children: ReactNode }) {
   const mode = useSyncExternalStore(subscribeMode, readMode, initialMode);
-  const systemReduced = useReducedMotion();
-  const reduced = !!systemReduced || mode === "reduced";
+  const systemReduced = useSyncExternalStore(
+    subscribeSystem,
+    readSystem,
+    initialSystem,
+  );
+  const reduced = systemReduced || mode === "reduced";
   const change = (value: Mode) => {
     browserFallback = value;
     try {

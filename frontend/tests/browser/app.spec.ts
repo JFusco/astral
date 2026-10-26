@@ -1,5 +1,63 @@
-import { test, expect, type Page } from "@playwright/test";
+import {
+  test,
+  expect,
+  type APIRequestContext,
+  type Page,
+} from "@playwright/test";
 import type { Dashboard, OrderIntent } from "../../lib/contracts";
+
+const simulator = "http://127.0.0.1:18766";
+// Server-side reads bypass page.route; the disposable simulator is steered directly instead.
+async function control(
+  request: APIRequestContext,
+  modes: Record<string, string>,
+) {
+  const response = await request.post(`${simulator}/__test/control`, {
+    data: modes,
+  });
+  expect(response.ok()).toBe(true);
+}
+/** Elements in the complete server response, never script payloads (RSC data would match falsely). */
+async function rendered(
+  page: Page,
+  request: APIRequestContext,
+  path: string,
+  selector: string,
+) {
+  const response = await request.get(path);
+  expect(response.ok()).toBe(true);
+  const html = await response.text();
+  return page.evaluate(
+    ([html, selector]) => {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      doc.querySelectorAll("script, style").forEach((el) => el.remove());
+      return [...doc.querySelectorAll(selector)].map(
+        (el) => el.textContent ?? "",
+      );
+    },
+    [html, selector] as const,
+  );
+}
+const hydration = /hydrat|Minified React error #(418|423|425)\b/i;
+let diagnostics: string[] = [];
+test.beforeEach(({ page }) => {
+  diagnostics = [];
+  page.on("pageerror", (error) => {
+    if (hydration.test(error.message))
+      diagnostics.push(`pageerror: ${error.message}`);
+  });
+  page.on("console", (message) => {
+    if (message.type() === "error" && hydration.test(message.text()))
+      diagnostics.push(`console: ${message.text()}`);
+  });
+});
+test.afterEach(async ({ request }) => {
+  await control(request, {
+    accounting: "passthrough",
+    learning: "passthrough",
+  });
+  expect(diagnostics).toEqual([]);
+});
 
 async function health(page: Page) {
   await page.route("**/api/health/state", (route) =>
@@ -200,7 +258,9 @@ test("loading feedback honors reduced motion and narrow screens remain usable", 
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
+  let requested = false;
   await page.route("**/api/state", async (route) => {
+    requested = true;
     await gate;
     await route.continue();
   });
@@ -209,14 +269,20 @@ test("loading feedback honors reduced motion and narrow screens remain usable", 
     name: "Reading account and ledger state",
   });
   await expect(loading).toBeVisible();
-  expect(
-    await loading.evaluate(
-      (el) =>
-        el
-          .getAnimations({ subtree: true })
-          .filter((a) => a.effect?.getTiming().iterations === Infinity).length,
-    ),
-  ).toBe(0);
+  // Server markup is visible before hydration; the Provider effect's read proves hydration.
+  await expect.poll(() => requested).toBe(true);
+  await expect
+    .poll(() =>
+      loading.evaluate((el) =>
+        el.checkVisibility()
+          ? el
+              .getAnimations({ subtree: true })
+              .filter((a) => a.effect?.getTiming().iterations === Infinity)
+              .length
+          : -1,
+      ),
+    )
+    .toBe(0);
   await page.screenshot({
     path: "test-results/loading-mobile.png",
     fullPage: true,
@@ -461,74 +527,72 @@ test("SSE preserves Last-Event-ID replay and the cancellation route reaches the 
     (await cancel.json()).status,
   );
 });
-test("saved reports preserve unknown results and stale figures; refreshing never starts an evaluation", async ({
+test("saved reports render on the server, preserve unknown results and stale figures; refreshing never starts an evaluation", async ({
   page,
   request,
 }) => {
-  const accounting = await (
-    await request.get("http://127.0.0.1:18766/__test/accounting")
-  ).json();
-  const learning = await (
-    await request.get("http://127.0.0.1:18766/__test/learning")
-  ).json();
-  expect(accounting.status).toBe("saved_report");
-  expect(learning.status).toBe("saved_report");
-  await page.addInitScript(() => {
-    const signals: AbortSignal[] = [];
-    const fetcher = window.fetch.bind(window);
-    window.fetch = (input, options) => {
-      if (input === "/api/accounting/report" && options?.signal)
-        signals.push(options.signal);
-      return fetcher(input, options);
-    };
-    Object.defineProperty(window, "__reportAborts", {
-      get: () => signals.map((signal) => signal.aborted ? signal.reason?.name : null),
-    });
-  });
-  let release!: () => void;
-  const delayedRefresh = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  let reads = 0,
-    mutations = 0;
+  await control(request, { accounting: "fixture", learning: "fixture" });
+  let mutations = 0;
   page.on("request", (req) => {
     if (req.method() === "POST") mutations++;
   });
-  await page.route("**/api/accounting/report", async (route) => {
-    reads++;
-    if (reads === 3) await delayedRefresh;
-    await route.fulfill({
-      json:
-        reads === 2
-          ? { status: "unavailable", reason: "Fixture report unavailable" }
-          : accounting,
-    });
-  });
-  await page.route("**/api/learning/report", (route) =>
-    route.fulfill({ json: learning }),
+  const summary = await rendered(
+    page,
+    request,
+    "/accounting",
+    'section[aria-label="Accounting summary"]',
   );
+  expect(summary).toHaveLength(1);
+  expect(summary[0]).toMatch(/NET TRADING P&L\s*Unknown/);
+  expect(
+    await rendered(page, request, "/accounting", '[role="status"]'),
+  ).toEqual(
+    expect.arrayContaining([expect.stringMatching(/^Saved 2026-01-02/)]),
+  );
+  const learningSummary = await rendered(
+    page,
+    request,
+    "/learning",
+    'section[aria-label="Learning summary"]',
+  );
+  expect(learningSummary).toHaveLength(1);
+  expect(learningSummary[0]).toContain("OUTCOME READINESS");
   await page.goto("/accounting");
-  await expect(page.getByText(/Saved 2026-01-02/)).toBeVisible();
+  // Streaming briefly leaves a hidden copy of the report outside <main>.
+  const main = page.getByRole("main");
+  await expect(main.getByText(/Saved 2026-01-02/)).toBeVisible();
+  const netResult = main
+    .getByText("NET TRADING P&L", { exact: true })
+    .locator("..")
+    .getByText("Unknown", { exact: true });
+  await expect(netResult).toBeVisible();
+  const refresh = page.getByRole("button", { name: "Refresh report" });
+  await control(request, { accounting: "unavailable" });
+  await refresh.click();
   await expect(
-    page
-      .getByText("NET TRADING P&L", { exact: true })
-      .locator("..")
-      .getByText("Unknown", { exact: true }),
+    main.getByText(/Displayed figures are retained from the previous response/),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Refresh report" }).click();
+  await expect(netResult).toBeVisible();
+  await control(request, { accounting: "delay:3000" });
+  const settled = new Promise<void>((resolve) => {
+    const done = (req: {
+      url(): string;
+      headers(): Record<string, string>;
+    }) => {
+      if (
+        req.url().includes("/accounting") &&
+        req.headers()["rsc"] === "1" &&
+        !req.headers()["next-router-prefetch"]
+      )
+        resolve();
+    };
+    page.on("requestfinished", done);
+    page.on("requestfailed", done);
+  });
+  await refresh.click();
   await expect(
-    page.getByText(/Displayed figures are retained from the previous response/),
-  ).toBeVisible();
-  await expect(
-    page
-      .getByText("NET TRADING P&L", { exact: true })
-      .locator("..")
-      .getByText("Unknown", { exact: true }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Refresh report" }).click();
-  await expect
-    .poll(() => page.evaluate(() => Reflect.get(window, "__reportAborts").slice(2)))
-    .toEqual([null]);
+    page.getByRole("button", { name: "Reading report…" }),
+  ).toBeDisabled();
   await page
     .getByRole("navigation", { name: "Main navigation" })
     .getByRole("link", { name: "Learning", exact: true })
@@ -536,15 +600,19 @@ test("saved reports preserve unknown results and stale figures; refreshing never
   await expect(
     page.getByRole("heading", { name: "Protected evidence" }),
   ).toBeVisible();
-  await expect
-    .poll(() => page.evaluate(() => Reflect.get(window, "__reportAborts").slice(2)), {
-      timeout: 1000,
-    })
-    .toEqual(["AbortError"]);
-  release();
   await expect(
     page.getByText(/saved offline audit cannot train/),
   ).toBeVisible();
+  await settled;
+  // A late accounting refresh must never replace the page the user moved to.
+  await page.waitForTimeout(500);
+  await expect(
+    page.getByRole("heading", { name: "Learning", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Accounting summary" }),
+  ).toHaveCount(0);
+  await control(request, { accounting: "fixture" });
   await page
     .getByRole("navigation", { name: "Main navigation" })
     .getByRole("link", { name: "Accounting", exact: true })
@@ -557,14 +625,37 @@ test("saved reports preserve unknown results and stale figures; refreshing never
   await expect(
     page.getByRole("region", { name: "Accounting summary" }),
   ).toBeVisible();
-  await expect(page.getByText(/Saved 2026-01-02/)).toBeVisible();
-  await expect.poll(() => reads).toBe(4);
+  await expect(main.getByText(/Saved 2026-01-02/)).toBeVisible();
   await expect(
     accountingHeading
       .locator("../..")
       .getByRole("button", { name: "Refresh report" }),
   ).toBeEnabled();
   expect(mutations).toBe(0);
+});
+test("an unavailable saved report never claims retained figures", async ({
+  page,
+  request,
+}) => {
+  await control(request, { accounting: "unavailable" });
+  await page.goto("/accounting");
+  // Streaming briefly leaves a hidden copy of the report outside <main>.
+  const main = page.getByRole("main");
+  const notice = main.getByText(
+    "Fixture report unavailable. No saved figures are assumed.",
+  );
+  await expect(notice).toBeVisible();
+  await expect(
+    main.getByText("No verified accounting report is available.", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Refresh report" }).click();
+  await expect(
+    page.getByRole("button", { name: "Refresh report" }),
+  ).toBeEnabled();
+  await expect(notice).toBeVisible();
+  await expect(main.getByText(/Displayed figures are retained/)).toHaveCount(0);
 });
 test("a failed state contract stays unavailable and recovers without synthetic balances", async ({
   page,
@@ -595,4 +686,55 @@ test("a failed state contract stays unavailable and recovers without synthetic b
   await expect(
     page.getByRole("button", { name: "＋ Local buy" }),
   ).toBeEnabled();
+});
+// Development React reports attribute and style mismatches that production builds stay silent on.
+test.describe("development hydration smoke @dev", () => {
+  test.describe.configure({ timeout: 180000 });
+  const routes = [
+    "/",
+    "/health",
+    "/accounting",
+    "/learning",
+    "/?view=settings",
+    "/?view=strategies",
+  ];
+  for (const reducedMotion of ["no-preference", "reduce"] as const)
+    test(`direct loads hydrate cleanly with ${reducedMotion} motion`, async ({
+      page,
+      request,
+    }) => {
+      await health(page);
+      // Saved reports, so the server-rendered report content is hydrated too.
+      await control(request, { accounting: "fixture", learning: "fixture" });
+      await page.emulateMedia({ reducedMotion });
+      for (const path of routes) {
+        await page.goto(path);
+        // The Provider's first read runs in an effect, so the live status marks hydration.
+        await expect(
+          page.getByText("SIMULATOR / SERVER STREAM", { exact: true }),
+        ).toBeVisible({ timeout: 60000 });
+        const report = { "/accounting": "Accounting", "/learning": "Learning" }[
+          path
+        ];
+        if (report)
+          await expect(
+            page
+              .getByRole("main")
+              .getByRole("region", { name: `${report} summary` }),
+          ).toBeVisible();
+        if (path === "/?view=settings" && reducedMotion === "reduce")
+          await expect(
+            page.getByText("Reduced motion is active."),
+          ).toBeVisible();
+      }
+      if (reducedMotion === "reduce") {
+        await page.goto("/");
+        await expect(
+          page.getByText("SIMULATOR / SERVER STREAM", { exact: true }),
+        ).toBeVisible();
+        await page.getByRole("link", { name: "Display settings" }).click();
+        await expect(page.getByText("Reduced motion is active.")).toBeVisible();
+      }
+      expect(diagnostics).toEqual([]);
+    });
 });

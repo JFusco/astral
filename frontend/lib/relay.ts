@@ -1,5 +1,5 @@
 import { upstreamFetch } from "./upstream";
-type Service = "application" | "health" | "intelligence";
+import { allowedHost, serviceUrl, type Service } from "./server/services";
 const getPaths = new Map<string, Service>([
   ["state", "application"],
   ["health", "application"],
@@ -19,16 +19,6 @@ const postPaths = new Set([
   "exits",
   "research/run",
 ]);
-const originDefaults = {
-  application: "http://127.0.0.1:8766",
-  health: "http://127.0.0.1:8769",
-  intelligence: "http://127.0.0.1:8768",
-};
-const originVariables = {
-  application: "ASTRAL_API_ORIGIN",
-  health: "ASTRAL_HEALTH_ORIGIN",
-  intelligence: "ASTRAL_INTELLIGENCE_ORIGIN",
-};
 const responseHeaders = {
   "Cache-Control": "no-store",
   "X-Content-Type-Options": "nosniff",
@@ -42,17 +32,9 @@ export async function relay(
   segments: string[],
   fetcher: typeof fetch = upstreamFetch,
 ) {
-  // Forwarded headers are intentionally ignored. Only configured local browser origins are trusted.
   const host = request.headers.get("host");
-  const allowed = (
-    process.env.ASTRAL_UI_ORIGINS ??
-    "http://127.0.0.1:3000,http://localhost:3000"
-  )
-    .split(",")
-    .map((s) => s.trim());
+  if (!allowedHost(host)) return reject("Invalid dashboard host", 400);
   const expected = `http://${host}`;
-  if (!host || !allowed.includes(expected))
-    return reject("Invalid dashboard host", 400);
   if (segments.some((s) => !s || s === "." || s === ".." || /[\\/%?#]/.test(s)))
     return reject("Unknown API path", 404);
   const path = segments.join("/");
@@ -76,12 +58,8 @@ export async function relay(
     if (!request.headers.get("content-type")?.startsWith("application/json"))
       return reject("JSON required", 415);
   }
-  const upstream = new URL(
-    process.env[originVariables[service]] ?? originDefaults[service],
-  );
-  if (upstream.protocol !== "http:" || upstream.username || upstream.password)
-    return reject("Invalid service configuration", 503);
-  upstream.pathname = `/api/${path}`;
+  const upstream = serviceUrl(service, path);
+  if (!upstream) return reject("Invalid service configuration", 503);
   upstream.search = new URL(request.url).search;
   const headers = new Headers({ host: host });
   for (const key of [
