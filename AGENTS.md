@@ -146,5 +146,7 @@ and decisions come from `docs/`. Use Graphify 0.9.36; this corpus needs no SQL e
 After cloning, install dependencies and run `graphify hook install` for the
 native hooks and local merge driver. Refresh after pulls or merges with
 `PYTHONHASHSEED=0 graphify update .`. Keep `graphify-out/memory/` empty and
-review background graph changes before staging. No Graphify agent tool hooks
+review background graph changes before staging. Stage `graphify-out/` changes only
+from the primary checkout; community assignments depend on the checkout
+directory name. No Graphify agent tool hooks
 are installed.

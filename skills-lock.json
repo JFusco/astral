@@ -6,7 +6,7 @@
       "sourceType": "local",
       "skillPath": ".agents/skills/graphify/SKILL.md",
       "license": "UNLICENSED internal guidance",
-      "computedHash": "7155fca6f76f12d5b9a673c79f5892911a7f345bcefd535dc567ec1652b43083"
+      "computedHash": "54e8dbd5e95b8e9cedca53a3ad435ecfa9f9a6480063980c81d6128e00a39246"
     },
     "playwright-cli": {
       "source": "microsoft/playwright-cli",

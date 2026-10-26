@@ -18,6 +18,9 @@ is separate from the Markdown documentation in `docs/`.
 - After eligible code changes, pulls, or merges, run
   `PYTHONHASHSEED=0 graphify update .`. Native post-commit and post-checkout
   hooks refresh the graph in the background; review output before staging.
+  Stage `graphify-out/` changes only from the primary checkout: community
+  assignments depend on the checkout directory name, so a differently named
+  linked worktree produces churn, not code changes.
 - On a fresh clone, install dependencies and run `graphify hook install`.
   Verify with `graphify hook status`. Keep the existing code corpus and native
   Git hooks; no agent tool hooks are installed.
