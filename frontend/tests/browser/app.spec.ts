@@ -787,22 +787,24 @@ test("only the Overview document carries the dashboard seed", async ({
     expect(status.length, path).toBeGreaterThan(0);
     expect(new Set(status), path).toEqual(new Set(["CONNECTING TO SERVICE"]));
   }
-  const flight: Promise<string>[] = [];
-  page.on("response", (response) => {
-    const headers = response.request().headers();
-    if (headers["rsc"] === "1" && !headers["next-router-prefetch"])
-      flight.push(response.text());
+  // Capture flight bodies at the network layer: reading them lazily from response
+  // events fails once Next aborts or supersedes a streamed RSC fetch.
+  const flight: string[] = [];
+  await page.route(/[?&]_rsc=/, async (route) => {
+    const headers = route.request().headers();
+    if (headers["rsc"] !== "1" || headers["next-router-prefetch"])
+      return route.fallback();
+    const response = await route.fetch();
+    const body = await response.text();
+    flight.push(body);
+    await route.fulfill({ response, body });
   });
   await control(request, { accounting: "fixture" });
   await page.goto("/accounting");
-  const refreshed = page.waitForResponse(
-    (response) =>
-      response.url().includes("/accounting") &&
-      response.request().headers()["rsc"] === "1" &&
-      !response.request().headers()["next-router-prefetch"],
-  );
-  await page.getByRole("button", { name: "Refresh report" }).click();
-  expect(await (await refreshed).text()).not.toContain("equity_history");
+  const refresh = page.getByRole("button", { name: "Refresh report" });
+  await refresh.click();
+  await expect.poll(() => flight.length).toBeGreaterThan(0);
+  await expect(refresh).toBeEnabled();
   await page.goto("/?view=settings");
   await expect(
     page.getByRole("dialog", { name: "Display settings" }),
@@ -813,8 +815,7 @@ test("only the Overview document carries the dashboard seed", async ({
     page.getByRole("heading", { name: "Market overview" }),
   ).toBeVisible();
   // Client-cache navigations may issue no flight request; any that did must be seed-free.
-  for (const body of await Promise.all(flight))
-    expect(body).not.toContain("equity_history");
+  for (const body of flight) expect(body).not.toContain("equity_history");
 });
 test("the strategies view renders on the server inside its dialog", async ({
   page,
