@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { gunzipSync } from "node:zlib";
 import { relay } from "../lib/relay";
 const request = (
   path: string,
@@ -143,6 +144,78 @@ describe("local API boundary", () => {
     const options = (fetcher.mock.calls[0] as unknown as [URL, RequestInit])[1];
     expect(new Headers(options.headers).get("last-event-id")).toBe("41");
     expect(options.signal?.aborted).toBe(true);
+  });
+});
+describe("response compression", () => {
+  const large = {
+    rows: Array.from({ length: 200 }, (_, i) => ({
+      i,
+      at: "2026-10-26T00:00:00Z",
+    })),
+  };
+  const upstream = (body: unknown) =>
+    vi.fn<typeof fetch>(async () => Response.json(body));
+  it("gzips large GET reads the browser accepts and decodes to the same JSON", async () => {
+    const response = await relay(
+      request("state", "GET", { "accept-encoding": "gzip, deflate, br" }),
+      ["state"],
+      upstream(large),
+    );
+    expect(response.headers.get("content-encoding")).toBe("gzip");
+    expect(response.headers.get("vary")).toBe("Accept-Encoding");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    const body = gunzipSync(Buffer.from(await response.arrayBuffer()));
+    expect(JSON.parse(body.toString())).toEqual(large);
+  });
+  it("sends raw bytes when gzip is not accepted or the body is small", async () => {
+    for (const [encoding, body] of [
+      [undefined, large],
+      ["identity", large],
+      ["gzip;q=0, br", large],
+      ["gzip", { ok: true }],
+    ] as const) {
+      const response = await relay(
+        request(
+          "state",
+          "GET",
+          encoding ? { "accept-encoding": encoding } : {},
+        ),
+        ["state"],
+        upstream(body),
+      );
+      expect(response.headers.get("content-encoding"), encoding).toBeNull();
+      expect(await response.json(), encoding).toEqual(body);
+    }
+  });
+  it("never compresses the event stream", async () => {
+    const bytes = new TextEncoder().encode("x".repeat(4096));
+    const fetcher = vi.fn<typeof fetch>(
+      async () =>
+        new Response(bytes, {
+          headers: { "content-type": "text/event-stream" },
+        }),
+    );
+    const response = await relay(
+      request("events", "GET", { "accept-encoding": "gzip" }),
+      ["events"],
+      fetcher,
+    );
+    expect(response.headers.get("content-encoding")).toBeNull();
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes);
+  });
+  it("never compresses mutation responses", async () => {
+    const response = await relay(
+      request("orders", "POST", {
+        "x-astral-intent": "paper-only",
+        "content-type": "application/json",
+        "accept-encoding": "gzip",
+      }),
+      ["orders"],
+      upstream(large),
+    );
+    expect(response.headers.get("content-encoding")).toBeNull();
+    expect(response.headers.get("vary")).toBeNull();
+    expect(await response.json()).toEqual(large);
   });
 });
 describe("upstream transport", () => {
