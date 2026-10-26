@@ -141,6 +141,25 @@ def test_local_exit_survives_restart_and_unknown_response(engine):
     assert len(posts)==1 and not any(a['quantity'] for a in resumed.state()['assets'])
 
 
+def test_repeated_identical_exit_veto_is_journaled_once(engine):
+    e=engine;e.settings=replace(e.settings,enable_exit_monitor=True)
+    run(e.place(intent(notional=100)))
+    bid=D(e.store.get('quotes')['BTC']['bid'])
+    plan={'id':'stop-veto-0001','symbol':'BTC','strategy_id':'manual','stop_price':str(bid*D('.999')),'target_price':None}
+    run(e.arm_exit(plan))
+    # The operator closes the position by hand; the armed stop now has nothing to sell.
+    run(e.place(intent('astral-handsell1',side='sell',notional=1000)))
+    assert not any(a['quantity'] for a in e.state()['assets'])
+    observations=lambda:e.store.rows('SELECT COUNT(*) n FROM observations')[0]['n']
+    vetoes=lambda:e.store.rows("SELECT COUNT(*) n FROM events WHERE type='risk_veto'")[0]['n']
+    before=(observations(),vetoes())
+    quotes=e.store.get('quotes');quotes['BTC']['bid']=str(bid*D('.998'));quotes['BTC']['ask']=str(bid*D('.9981'));e.store.put('quotes',quotes)
+    for _ in range(5):run(e.exit_cycle())
+    assert (observations(),vetoes())==(before[0]+1,before[1]+1)
+    saved=e.store.get('exit_plans')[plan['id']]
+    assert saved['state']=='triggered' and 'No unreserved position' in saved['last_error']
+
+
 def test_stale_exit_quote_cannot_trigger_an_order(engine):
     e=engine;e.settings=replace(e.settings,enable_exit_monitor=True)
     run(e.place(intent(notional=100)));bid=D(e.store.get('quotes')['BTC']['bid'])

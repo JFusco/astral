@@ -12,8 +12,12 @@ model calls, orders, strategy promotion, subscriptions or tax filings.
 | Risk | Deterministic eligibility, sizing, exposure, loss limits and entry vetoes | Model judgment, automatic policy changes, a guarantee of fill/exit prices | Existing rules in `backend/risk.py`, with enforcement and broker guards in `backend/engine.py` |
 | Health | Assess availability, freshness, incidents and recovery from observations; maintain its own heartbeat | Performance/cost accounting, order authority, enabling workers after recovery | Separate `backend/health_engine.py` process and ledger |
 | Telemetry | Record operational measurements: worker activity, durations, attempts, tokens, usage, errors and data lineage | Decide profitability, infer invoices from token counts, change trading behavior | Existing events, worker observations and usage receipts; not yet a separate complete subsystem |
-| Accounting | Reconcile fills, fees, custody and cash flows; calculate realized/unrealized P&L and platform costs; retain lot, invoice and export records | Invent missing fees, declare expenses deductible, delay protective exits or alter risk rules | Existing ledger/reconciliation pieces; dedicated accounting engine remains planned |
+| Accounting | Reconcile fills, fees, custody and cash flows; calculate realized/unrealized P&L and platform costs; retain lot, invoice and export records | Invent missing fees, declare expenses deductible, delay protective exits or alter risk rules | On-demand gross/custody/fee proof in `backend/accounting_engine.py` (see ACCOUNTING-ENGINE.md); no complete net P&L, basis completeness or tax-ready export |
 | Learning | Offline outcome evaluation and model-research evaluation with explicit evidence limitations | Live strategy changes, risk overrides, automatic promotion, broker execution or unscheduled model calls | Decision/evidence recording plus the on-demand offline audit in `backend/learning_engine.py`; no training or promotion |
+
+The `experiments/gate-data-adapters-v1.json` and `-v2.json` manifests record
+adapter source hashes at registration only. No code enforces them, and they do
+not describe later versions of those files.
 
 These are responsibility boundaries, not a requirement to build five services.
 Keep each proof as small as it needs to be. Strategy, research and broker

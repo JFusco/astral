@@ -25,6 +25,9 @@ class RuleViolation(Exception):
     pass
 
 
+SKIPPED = object()
+
+
 def age(timestamp, now=None):
     try:
         moment = datetime.fromisoformat(now.replace("Z", "+00:00")) if now else datetime.now(timezone.utc)
@@ -104,7 +107,7 @@ class Engine:
             except ValueError:self.worker("event_context","error","Collector unavailable; dependent evidence blocked")
             self.tasks.append(asyncio.create_task(self.loop("event_context", self.refresh_event_context, 60)))
             self.tasks.append(asyncio.create_task(self.loop("liquidity_experiment", self.liquidity_cycle, 15)))
-            self.tasks.append(asyncio.create_task(self.loop("research", self.research_cycle, 900)))
+            self.tasks.append(asyncio.create_task(self.loop("research", self.research_tick, 900)))
             self.worker("portfolio_replay", "waiting", "Offline hypothetical model; no broker execution or learning promotion")
             try:
                 await self.replay_cycle()
@@ -158,7 +161,9 @@ class Engine:
             if not self.settings.configured: continue
             started = time.monotonic()
             try:
-                await action();failures = 0
+                # A skipped tick leaves the worker record and failure count untouched.
+                if await action() is SKIPPED: continue
+                failures = 0
                 self.worker(name, "healthy", "Latest cycle completed", started)
             except asyncio.CancelledError:
                 raise
@@ -425,7 +430,7 @@ class Engine:
         if payload["type"] == "limit": payload["limit_price"] = str(price)
         return payload
 
-    async def place(self, intent):
+    async def place(self, intent, *, previous_veto=None):
         async with self.lock:
             existing = self.store.order(intent["client_order_id"])
             if existing:
@@ -437,8 +442,10 @@ class Engine:
             try:
                 payload = self.risk_payload(intent, as_of=context["decision_at"])
             except RuleViolation as exc:
-                self.store.db.execute("INSERT INTO observations(at,request,outcome,context) VALUES(?,?,?,?)", (utcnow(), dumps(intent), "blocked: "+str(exc), dumps(context)))
-                self.store.event("risk_veto", {"client_id": intent["client_order_id"], "reason": str(exc)})
+                # A retry repeating the caller's last recorded veto is not a new decision.
+                if str(exc) != previous_veto:
+                    self.store.db.execute("INSERT INTO observations(at,request,outcome,context) VALUES(?,?,?,?)", (utcnow(), dumps(intent), "blocked: "+str(exc), dumps(context)))
+                    self.store.event("risk_veto", {"client_id": intent["client_order_id"], "reason": str(exc)})
                 raise
             with self.store.transaction():
                 self.store.db.execute("INSERT INTO orders VALUES(?,?,?,?,?,?,?,?)", (intent["client_order_id"], dumps({"intent": intent,"payload": payload}), dumps({}), "submitting", 0, time.time()+intent["ttl_seconds"], utcnow(), utcnow()))
@@ -455,7 +462,7 @@ class Engine:
             except Exception as exc:
                 # Retain any confirmed terminal state; unknown submission/reconciliation blocks new risk.
                 row = self.store.order(intent["client_order_id"])
-                definitive_rejection = not accepted and isinstance(exc, BrokerFailure) and exc.status in {400, 401, 403, 422}
+                definitive_rejection = not accepted and isinstance(exc, BrokerFailure) and (exc.status in {400, 401, 403, 422} or exc.sent is False)
                 if row["status"] not in TERMINAL:
                     status = "rejected" if definitive_rejection else "unknown"
                     self.store.db.execute("UPDATE orders SET status=? WHERE client_id=?", (status, intent["client_order_id"]))
@@ -654,6 +661,11 @@ class Engine:
             self.worker("research", "healthy", "Evidence screens recorded; agent cannot override vetoes")
             return {"packets": packets, "review": review}
 
+    async def research_tick(self):
+        # Scheduled ticks yield to a manual run instead of reporting it as a failure.
+        if self.research_lock.locked() or getattr(self, "research_pending", False): return SKIPPED
+        await self.research_cycle()
+
     def start_research(self):
         if not self.settings.enable_research: raise RuleViolation("Research is disabled by server configuration")
         if self.research_lock.locked() or getattr(self, "research_pending", False): return {"status": "already-running"}
@@ -707,8 +719,9 @@ class Engine:
                 with self.store.transaction():
                     plans = self.store.get("exit_plans");plans[key] = plan
                     self.store.put("exit_plans", plans);self.store.event("exit_triggered", plan)
+            before = dumps(plan)
             try:
-                result = await self.place(plan["intent"])
+                result = await self.place(plan["intent"], previous_veto=plan.get("last_error"))
             except RuleViolation as exc:
                 plan["last_error"] = str(exc)
             else:
@@ -721,7 +734,8 @@ class Engine:
                     plan["remaining_broker_qty"] = str(remaining)
                     own = D(self.inventory()["books"].get(plan["request"]["symbol"], {}).get(book_for(plan["request"]), "0"))
                     if own > D(self.store.get("assets")[plan["request"]["symbol"]]["increment"]): plan["state"] = "attention"
-            plans = self.store.get("exit_plans");plans[key] = plan;self.store.put("exit_plans", plans)
+            if dumps(plan) != before:
+                plans = self.store.get("exit_plans");plans[key] = plan;self.store.put("exit_plans", plans)
 
     @staticmethod
     def order_view(row):
@@ -827,6 +841,4 @@ class Engine:
                 "equity_history": self.store.rows("SELECT at,value FROM (SELECT * FROM equity ORDER BY id DESC LIMIT 5000) ORDER BY id"),
                 "news": [json.loads(r["payload"]) for r in latest_news], "last_api_call": self.store.get("last_api_call"),
                 "learning": {"status": "dataset-only", "observations": self.store.rows("SELECT COUNT(*) n FROM observations")[0]["n"], "promotions": 0},
-                "costs": {"actual_model_api_usd": 0, "model_workers_enabled": self.settings.enable_codex_research, "hosting_and_data_usd": None,
-                          "cli_usage": self.store.get("codex_review", {}).get("usage"), "cli_actual_usd": None},
                 "uptime_seconds": round(time.monotonic()-self.started)}
