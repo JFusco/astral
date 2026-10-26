@@ -1,0 +1,398 @@
+{
+ "account": {
+  "cash": 99900.5,
+  "deployed": 101.25,
+  "equity": 100001.25,
+  "equity_change": 1.25,
+  "net": 1.25,
+  "opening_equity": 100000,
+  "profit_scope": "simulated-net-trading-pnl",
+  "realized": -0.25,
+  "unrealized": 0.5
+ },
+ "as_of": "2026-10-25T11:59:52+00:00",
+ "assets": [
+  {
+   "basis": 100.75,
+   "market_value": 101.25,
+   "price": 67505.0,
+   "quantity": 0.0015,
+   "quote": {
+    "ask": "67510",
+    "at": "2026-10-25T11:59:55+00:00",
+    "bid": "67500",
+    "received_at": "2026-10-25T11:59:56+00:00",
+    "source": "synthetic"
+   },
+   "quote_fresh": true,
+   "symbol": "BTC",
+   "type": "crypto",
+   "unrealized": 0.5
+  },
+  {
+   "basis": 0.0,
+   "market_value": 0.0,
+   "price": null,
+   "quantity": 0.0,
+   "quote": {},
+   "quote_fresh": false,
+   "symbol": "ETH",
+   "type": "crypto",
+   "unrealized": 0.0
+  },
+  {
+   "basis": 0.0,
+   "market_value": 0.0,
+   "price": null,
+   "quantity": 0.0,
+   "quote": {},
+   "quote_fresh": false,
+   "symbol": "SOL",
+   "type": "crypto",
+   "unrealized": 0.0
+  },
+  {
+   "basis": 0.0,
+   "market_value": 0.0,
+   "price": 580.15,
+   "quantity": 0.0,
+   "quote": {
+    "ask": "580.2",
+    "at": "2026-10-25T11:59:20+00:00",
+    "bid": "580.1",
+    "received_at": "2026-10-25T11:59:21+00:00",
+    "source": "synthetic"
+   },
+   "quote_fresh": false,
+   "symbol": "SPY",
+   "type": "etf",
+   "unrealized": 0.0
+  },
+  {
+   "basis": 0.0,
+   "market_value": 0.0,
+   "price": null,
+   "quantity": 0.0,
+   "quote": {},
+   "quote_fresh": false,
+   "symbol": "QQQ",
+   "type": "etf",
+   "unrealized": 0.0
+  },
+  {
+   "basis": 0.0,
+   "market_value": 0.0,
+   "price": null,
+   "quantity": 0.0,
+   "quote": {},
+   "quote_fresh": false,
+   "symbol": "GLD",
+   "type": "etf",
+   "unrealized": 0.0
+  },
+  {
+   "basis": 0.0,
+   "market_value": 0.0,
+   "price": null,
+   "quantity": 0.0,
+   "quote": {},
+   "quote_fresh": false,
+   "symbol": "TLT",
+   "type": "etf",
+   "unrealized": 0.0
+  },
+  {
+   "basis": 0.0,
+   "market_value": 0.0,
+   "price": null,
+   "quantity": 0.0,
+   "quote": {},
+   "quote_fresh": false,
+   "symbol": "IWM",
+   "type": "etf",
+   "unrealized": 0.0
+  }
+ ],
+ "configured": true,
+ "connected": true,
+ "crypto_universe": null,
+ "equity_history": [
+  {
+   "at": "2026-10-25T11:58:00+00:00",
+   "value": "100000"
+  },
+  {
+   "at": "2026-10-25T11:58:30+00:00",
+   "value": "100001"
+  },
+  {
+   "at": "2026-10-25T11:59:00+00:00",
+   "value": "100002"
+  },
+  {
+   "at": "2026-10-25T11:59:30+00:00",
+   "value": "100003"
+  }
+ ],
+ "execution_pilot": null,
+ "exit_plans": [],
+ "experiment": {
+  "code_matches": true,
+  "execution_enabled": false,
+  "fill_assumed": false,
+  "history_diagnostic": null,
+  "id": "btc-daily-swing-v1",
+  "last_observation_at": null,
+  "manifest_sha256": "a1cd3a0ed46e16460f8d7aa47f54ee795239b4405456b63bc766a46223ee7f08",
+  "notional_cap_usd": "25",
+  "observations": 0,
+  "promotion_enabled": false,
+  "recent": [],
+  "registered_at": null,
+  "scope": "Prospective evidence journal; portfolio replay and profitability remain unvalidated"
+ },
+ "fee_activities": [
+  {
+   "activity_type": "CFEE",
+   "id": "fee-1",
+   "qty": "-0.000001",
+   "status": "executed",
+   "symbol": "BTCUSD"
+  }
+ ],
+ "fee_coverage": null,
+ "fills": [
+  {
+   "at": "2026-10-25T11:55:05+00:00",
+   "client_id": "astral-fixture-buy1",
+   "fee": "0.25",
+   "id": "astral-fixture-buy1:0.0015",
+   "price": "67166.66",
+   "quantity": "0.0015",
+   "side": "buy",
+   "source": "simulator",
+   "symbol": "BTC",
+   "value": "100.74999"
+  }
+ ],
+ "halted": false,
+ "inventory": {
+  "books": {
+   "BTC": {
+    "external": "0",
+    "intraday": "0",
+    "manual": "0.001499",
+    "swing": "0"
+   }
+  },
+  "differences": [],
+  "entry_times": {
+   "BTC": {
+    "external": null,
+    "intraday": null,
+    "manual": "2026-10-25T11:55:05+00:00",
+    "swing": null
+   }
+  },
+  "errors": [],
+  "fee_scope": "Recorded CFEE asset debits; ambiguous fees remain unassigned",
+  "status": "matched"
+ },
+ "last_api_call": null,
+ "learning": {
+  "observations": 1,
+  "promotions": 0,
+  "status": "dataset-only"
+ },
+ "liquidity_experiment": null,
+ "mode": "simulator",
+ "news": [
+  {
+   "created_at": "2026-10-25T11:45:00+00:00",
+   "first_seen_at": "2026-10-25T11:45:50+00:00",
+   "headline": "Fixture headline",
+   "id": "n1",
+   "source": "fixture",
+   "symbols": [
+    "BTCUSD"
+   ],
+   "updated_at": "2026-10-25T11:45:00+00:00",
+   "url": null
+  }
+ ],
+ "orders": [
+  {
+   "broker": {
+    "client_order_id": "astral-fixture-buy1",
+    "fee": "0.25",
+    "filled_at": "2026-10-25T11:55:05+00:00",
+    "filled_avg_price": "67166.66",
+    "filled_qty": "0.0015",
+    "id": "sim-1",
+    "qty": "0.0015",
+    "side": "buy",
+    "status": "filled",
+    "symbol": "BTC/USD"
+   },
+   "client_id": "astral-fixture-buy1",
+   "external": false,
+   "request": {
+    "intent": {
+     "client_order_id": "astral-fixture-buy1",
+     "execution": "bounded",
+     "notional": 100.0,
+     "side": "buy",
+     "strategy_id": "manual",
+     "symbol": "BTC",
+     "ttl_seconds": 60
+    },
+    "payload": {
+     "client_order_id": "astral-fixture-buy1",
+     "limit_price": "67600",
+     "qty": "0.0015",
+     "side": "buy",
+     "symbol": "BTC/USD",
+     "time_in_force": "ioc",
+     "type": "limit"
+    }
+   },
+   "status": "filled",
+   "updated_at": "2026-10-25T11:55:10+00:00"
+  },
+  {
+   "broker": {
+    "client_order_id": "astral-fixture-open",
+    "filled_qty": "0",
+    "id": "sim-2",
+    "qty": "0.001",
+    "side": "buy",
+    "status": "new",
+    "symbol": "BTC/USD"
+   },
+   "client_id": "astral-fixture-open",
+   "external": false,
+   "request": {
+    "intent": {
+     "client_order_id": "astral-fixture-open",
+     "execution": "bounded",
+     "notional": 100.0,
+     "side": "buy",
+     "strategy_id": "manual",
+     "symbol": "BTC",
+     "ttl_seconds": 60
+    },
+    "payload": {
+     "client_order_id": "astral-fixture-open",
+     "limit_price": "67600",
+     "qty": "0.001",
+     "side": "buy",
+     "symbol": "BTC/USD",
+     "time_in_force": "ioc",
+     "type": "limit"
+    }
+   },
+   "status": "new",
+   "updated_at": "2026-10-25T11:55:10+00:00"
+  }
+ ],
+ "orders_enabled": true,
+ "paper_only": true,
+ "portfolio_replay": null,
+ "readiness": null,
+ "research": {
+  "budget": null,
+  "enabled": false,
+  "last_model_review": null,
+  "model_enabled": false,
+  "packets": [
+   {
+    "as_of": "2026-10-25T11:58:20+00:00",
+    "eligible": false,
+    "evidence": [],
+    "expires_at": "2026-10-25T12:03:20+00:00",
+    "facts": {
+     "signal": "hold"
+    },
+    "input_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "symbol": "BTC",
+    "vetoes": [
+     "Fixture veto"
+    ]
+   }
+  ],
+  "review": {
+   "execution_enabled": false,
+   "status": "disabled"
+  }
+ },
+ "risk_policy": {
+  "automatic_entries": false,
+  "automatic_stops": false,
+  "crypto_fraction": "0.05",
+  "daily_loss_fraction": "0.01",
+  "etf_fraction": "0.10",
+  "highwater_loss_fraction": "0.05",
+  "latched": null,
+  "local_exit_monitor": false,
+  "max_gross_fraction": "0.50",
+  "max_group_fraction": "0.25",
+  "max_market_order_usd": "100",
+  "max_order_usd": "1000",
+  "planner": "ATR14 Wilder + trend/breakout; research only",
+  "quote_max_age_seconds": 15,
+  "snapshot_max_age_seconds": 30,
+  "unprotected_full_value_fraction": "0.005",
+  "version": "deterministic-risk-v3"
+ },
+ "sequence": 2,
+ "server_time": "<server_time>",
+ "service_version": "0.2",
+ "shadow": {
+  "counts": [
+   {
+    "count": 1,
+    "decision": "veto"
+   }
+  ],
+  "enabled": false,
+  "recent": [
+   {
+    "at": "2026-10-25T11:59:00+00:00",
+    "input_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+    "intent": {
+     "symbol": "BTC"
+    },
+    "result": {
+     "decision": "veto",
+     "reason": "Fixture"
+    }
+   }
+  ]
+ },
+ "timing": [
+  {
+   "action": "wait",
+   "reason": "Fixture",
+   "strategy": "swing",
+   "symbol": "BTC"
+  }
+ ],
+ "untracked_positions": [],
+ "uptime_seconds": "<uptime_seconds>",
+ "workers": [
+  {
+   "at": "<worker_at>",
+   "detail": "Synthetic",
+   "duration_ms": "<duration_ms>",
+   "name": "quotes",
+   "status": "healthy"
+  },
+  {
+   "at": "<worker_at>",
+   "detail": "Intent submitted once and read back",
+   "duration_ms": null,
+   "name": "execution",
+   "status": "healthy"
+  }
+ ]
+}

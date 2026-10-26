@@ -81,6 +81,8 @@ def create_app(settings=None, broker_factory=None, background=True):
         store = Store(cfg.db_path, cfg.mode)
         engine = Engine(cfg, store, broker_factory(cfg, store) if broker_factory else None)
         app.state.engine = engine
+        # One serialized SSE state frame per lifespan/engine; never persisted.
+        app.state.state_frame = {"at": 0.0, "body": None}
         try:
             if background:
                 await engine.start()
@@ -120,11 +122,11 @@ def create_app(settings=None, broker_factory=None, background=True):
 
     @app.get("/api/health")
     async def health(request: Request):
+        # Liveness only; the full dashboard state is never assembled here.
         e = request.app.state.engine
-        state = e.state()
         return {"service_version": "0.2", "alive": True, "paper_only": True, "mode": cfg.mode,
-                "configured": cfg.configured, "broker_ready": state["connected"],
-                "orders_enabled": cfg.enable_orders, "uptime_seconds": state["uptime_seconds"]}
+                "configured": cfg.configured, "broker_ready": e.broker_ready(),
+                "orders_enabled": cfg.enable_orders, "uptime_seconds": round(time.monotonic()-e.started)}
 
     @app.get("/api/state")
     async def state(request: Request):
@@ -200,6 +202,15 @@ def create_app(settings=None, broker_factory=None, background=True):
         await request.app.state.engine.reconcile()
         return request.app.state.engine.state()
 
+    def state_frame(app):
+        # Streams share one frame for at most 2 s. Expiry is checked before
+        # delivery, and a failed rebuild leaves nothing stale to reuse.
+        frame = app.state.state_frame
+        if frame["body"] is None or time.monotonic()-frame["at"] >= 2:
+            frame["body"] = None
+            frame["body"], frame["at"] = dumps(app.state.engine.state()), time.monotonic()
+        return frame["body"]
+
     @app.get("/api/events")
     async def stream(request: Request, after: int = 0):
         e = request.app.state.engine
@@ -217,7 +228,7 @@ def create_app(settings=None, broker_factory=None, background=True):
                     cursor = row["seq"]
                     yield f"id: {cursor}\nevent: ledger\ndata: {dumps(row)}\n\n"
                 if time.monotonic() >= next_state:
-                    yield f"event: state\ndata: {dumps(e.state())}\n\n"
+                    yield f"event: state\ndata: {state_frame(request.app)}\n\n"
                     next_state = time.monotonic()+2
                 if not rows: yield ": heartbeat\n\n"
                 await asyncio.sleep(.5)

@@ -789,6 +789,10 @@ class Engine:
         self.store.event("risk_plan", {"input_sha256": result["input_sha256"], "symbol": symbol, "horizon": candidate["horizon"], "signal": result["signal"]})
         return result
 
+    def broker_ready(self, snap=None):
+        snap = self.store.get("account_snapshot", {}) if snap is None else snap
+        return self.connected and bool(snap) and age(snap["at"]) <= self.settings.max_snapshot_age
+
     def state(self):
         snap = self.store.get("account_snapshot", {})
         a = snap.get("account", {});quotes = self.store.get("quotes", {})
@@ -809,7 +813,7 @@ class Engine:
         orders = [self.order_view(r) for r in self.store.rows("SELECT * FROM orders ORDER BY created_at DESC LIMIT 50")]
         last_seq = self.store.rows("SELECT COALESCE(MAX(seq),0) n FROM events")[0]["n"]
         latest_news = self.store.rows("SELECT payload FROM news n WHERE revision=(SELECT MAX(revision) FROM news WHERE id=n.id) ORDER BY revision DESC LIMIT 20")
-        healthy = self.connected and bool(snap) and age(snap["at"]) <= self.settings.max_snapshot_age
+        healthy = self.broker_ready(snap)
         return {"service_version": "0.2", "mode": self.settings.mode, "paper_only": True, "configured": self.settings.configured,
                 "connected": healthy, "as_of": snap.get("at"), "server_time": utcnow(), "halted": self.store.get("halted", False) or bool(self.store.get("risk_latch")),
                 "risk_policy": self.risk_policy(),
