@@ -11,6 +11,10 @@ export const upstreamFetch: typeof fetch = async (input, options = {}) => {
       {
         method: options.method,
         headers: Object.fromEntries(new Headers(options.headers)),
+        // No socket reuse: an idle keep-alive socket can be closed by the
+        // upstream (uvicorn: 5 s) as the next poll reuses it, surfacing as a
+        // false 503 or an "uncertain" mutation. Loopback connects are cheap.
+        agent: false,
         signal: options.signal ?? undefined,
       },
       (response) => {

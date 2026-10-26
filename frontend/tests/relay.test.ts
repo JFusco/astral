@@ -145,3 +145,27 @@ describe("local API boundary", () => {
     expect(options.signal?.aborted).toBe(true);
   });
 });
+describe("upstream transport", () => {
+  it("opens a fresh connection per relay request instead of reusing idle sockets", async () => {
+    const { createServer } = await import("node:http");
+    const { upstreamFetch } = await import("../lib/upstream");
+    let connections = 0;
+    const headers: (string | undefined)[] = [];
+    const server = createServer((req, res) => {
+      headers.push(req.headers.connection);
+      res.end("{}");
+    });
+    server.on("connection", () => connections++);
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const { port } = server.address() as { port: number };
+    try {
+      for (let i = 0; i < 3; i++)
+        await (await upstreamFetch(`http://127.0.0.1:${port}/api/health/state`)).arrayBuffer();
+      expect(connections).toBe(3);
+      expect(headers).toEqual(["close", "close", "close"]);
+    } finally {
+      server.closeAllConnections();
+      await new Promise((resolve) => server.close(resolve));
+    }
+  });
+});
