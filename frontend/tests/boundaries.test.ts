@@ -2,11 +2,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 const root = join(import.meta.dirname, "..");
-// Over-limit client files awaiting their milestone split. This list may only shrink.
-const allowlist = new Set([
-  "components/overview.tsx",
-  "components/research.tsx",
-]);
+// Over-limit client files awaiting a split. Empty since S3; it may only shrink.
+const allowlist = new Set<string>([]);
 const sources = (dir: string): string[] =>
   readdirSync(join(root, dir), { withFileTypes: true }).flatMap((entry) =>
     entry.isDirectory()
@@ -36,6 +33,12 @@ describe("server/client boundaries", () => {
       expect(files).toContain(file);
       expect(lines(file)).toBeGreaterThan(160);
     }
+  });
+  it("keeps every component file at or under 200 lines", () => {
+    const over = files
+      .filter((f) => f.startsWith("components/") && lines(f) > 200)
+      .map((f) => `${f}: ${lines(f)}`);
+    expect(over).toEqual([]);
   });
   it("starts every lib/server module with the server-only import", () => {
     const server = files.filter((f) => f.startsWith("lib/server/"));
