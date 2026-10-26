@@ -192,6 +192,8 @@ The user-authorized [$25 automated execution experiment](docs/EXECUTION-PILOT.md
 
 Portfolio execution mechanics, read-only replay operations and remaining validity limits: [PORTFOLIO-REPLAY.md](docs/PORTFOLIO-REPLAY.md). Modeled fills never enter the Alpaca fill ledger.
 
+Compare the frozen BTC price signals with an isolated QuantConnect backtest: [QUANTCONNECT-VALIDATION.md](docs/QUANTCONNECT-VALIDATION.md). This comparison preserves existing experiments and holdouts; cloud execution status is recorded separately from local tests.
+
 Current fee, depth, liquidity and event evidence: [READINESS-GATES.md](docs/READINESS-GATES.md). The dashboard exposes each gate without overriding the frozen strategy.
 # Event and liquidity follow-up
 
