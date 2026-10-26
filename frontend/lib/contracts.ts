@@ -225,6 +225,23 @@ export const accountingSchema = z.object({
     ),
   }),
   operating_costs: z.object({
+    receipt_links: z.array(z.object({
+      provider: text,
+      url: z.string().max(2048).url().refine((value) => {
+        try {
+          const u = new URL(value);
+          const account = u.searchParams.get("authuser");
+          return !/\s/.test(value) && u.origin === "https://mail.google.com" &&
+            !u.username && !u.password && /^\/mail\/u\/(?:\d+\/)?$/.test(u.pathname) &&
+            /^#(?:all|inbox)\/[A-Za-z0-9_-]{8,100}$/.test(u.hash) &&
+            [...u.searchParams.keys()].every((k) => k === "authuser") &&
+            u.searchParams.getAll("authuser").length <= 1 &&
+            (account === null || /^(?:\d+|[\w.+-]+@[\w.-]+)$/.test(account));
+        } catch {
+          return false;
+        }
+      }),
+    })).default([]),
     monthly_astral_personal_budget_by_currency: z
       .record(text, numeric)
       .nullable(),

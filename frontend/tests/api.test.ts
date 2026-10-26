@@ -1,9 +1,18 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { api } from "../lib/api";
-import { dashboardSchema } from "../lib/contracts";
+import { accountingSchema, dashboardSchema } from "../lib/contracts";
 import { dashboard } from "./fixtures";
 afterEach(() => vi.unstubAllGlobals());
+it("rejects unsafe receipt navigation in an accounting response without throwing", async () => {
+  const receipts = accountingSchema.shape.operating_costs.shape.receipt_links;
+  for (const url of ["not-a-url", "javascript:alert(1)", "https://evil.example/mail/u/0/#all/0123456789abcdef",
+    "https://user:secret@mail.google.com/mail/u/0/#all/0123456789abcdef",
+    "https://mail.google.com/mail/u/0/?redirect=https://evil.example#all/0123456789abcdef"]) {
+    vi.stubGlobal("fetch", vi.fn<typeof fetch>(async () => Response.json([{ provider: "Fixture vendor", url }])));
+    await expect(api("/api/accounting/report", receipts)).rejects.toMatchObject({ kind: "invalid-response" });
+  }
+});
 it("rejects malformed values instead of inventing defaults", async () => {
   vi.stubGlobal(
     "fetch",

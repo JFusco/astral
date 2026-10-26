@@ -60,6 +60,27 @@ test.afterEach(async ({ request }) => {
   expect(diagnostics).toEqual([]);
 });
 
+test("confirmed expense receipt opens from the keyboard without changing the saved report", async ({ page, request, context }) => {
+  await control(request, { accounting: "fixture" });
+  const url = "https://mail.google.com/mail/u/0/#all/0123456789abcdef";
+  await context.route("https://mail.google.com/**", (route) => route.fulfill({
+    contentType: "text/html", body: "<h1>Fixture receipt email</h1>",
+  }));
+  await page.goto("/accounting");
+  const receipt = page.getByRole("link", { name: "Fixture vendor receipt (opens Gmail in a new tab)" });
+  await expect(receipt).toHaveAttribute("href", url);
+  await receipt.focus();
+  await expect(receipt).toBeFocused();
+  const opened = page.waitForEvent("popup");
+  await receipt.press("Enter");
+  const popup = await opened;
+  await expect(popup.getByRole("heading", { name: "Fixture receipt email" })).toBeVisible();
+  expect(await popup.evaluate(() => window.opener === null)).toBe(true);
+  await popup.close();
+  await expect(page.getByRole("heading", { name: "Accounting", exact: true })).toBeVisible();
+  await expect(page.getByText("Recorded confirmed charge subtotal: USD 10")).toBeVisible();
+});
+
 async function health(page: Page) {
   await page.route("**/api/health/state", (route) =>
     route.fulfill({
