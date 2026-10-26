@@ -32,7 +32,6 @@ export type Seed = {
   now: number;
   state: Dashboard | null;
   health: Health | null;
-  intelligence: Intelligence | null;
 };
 const empty: Snapshot = {
   state: null,
@@ -74,8 +73,6 @@ export class Connection {
           health: seed.health,
           healthConnected: !!seed.health,
           healthLoading: !seed.health,
-          intelligence: seed.intelligence,
-          intelligenceConnected: !!seed.intelligence,
           now: seed.now,
         }
       : empty;

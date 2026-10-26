@@ -178,12 +178,11 @@ const seed = (patch: Partial<Seed> = {}): Seed => ({
   now: Date.now(),
   state: dashboard(),
   health: null,
-  intelligence: null,
   ...patch,
 });
 const pending = () => new Promise<Response>(() => {});
 it("starts from a display-only seed and keeps a stable initial snapshot", async () => {
-  const initial = seed({ intelligence: { sources: [], items: [] } });
+  const initial = seed();
   const connection = new Connection(initial);
   const first = connection.getSnapshot();
   expect(first).toMatchObject({
@@ -192,7 +191,8 @@ it("starts from a display-only seed and keeps a stable initial snapshot", async 
     seeded: true,
     healthConnected: false,
     healthLoading: true,
-    intelligenceConnected: true,
+    intelligence: null,
+    intelligenceConnected: false,
     now: initial.now,
   });
   expect(connection.getInitialSnapshot()).toBe(first);
