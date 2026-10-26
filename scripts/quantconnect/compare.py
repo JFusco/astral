@@ -1,14 +1,13 @@
-"""Package the cloud algorithm or compare its downloaded log with frozen ASTRAL."""
+"""Package an in-cloud comparison or validate its aggregate-only diagnostic log."""
 import argparse
-from collections import Counter
-from datetime import date
+import ast
 from decimal import Decimal, InvalidOperation
 import hashlib
 import json
 from pathlib import Path
 import tempfile
 
-from .model import CONTRACT, START, END, FROZEN_MANIFEST, FIELDS, validate_bar
+from .model import CONTRACT, START, END, FROZEN_MANIFEST, FIELDS
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
@@ -32,12 +31,22 @@ def pinned_sources(root=ROOT):
 
 
 def bundle():
+    pinned_sources()
+    frozen = (ROOT / "backend/risk.py").read_text()
+    functions = [node for node in ast.parse(frozen).body
+                 if isinstance(node, ast.FunctionDef) and node.name == "price_signal"]
+    if len(functions) != 1:
+        raise ValueError("Frozen signal function is ambiguous")
+    oracle = ast.get_source_segment(frozen, functions[0])
     model = (HERE / "model.py").read_text()
     algorithm = (HERE / "algorithm.py").read_text()
-    module_import = "from scripts.quantconnect.model import (\n    CONTRACT, START, END, FROZEN_MANIFEST, FIELDS, validate_bar, evaluate,\n)\n"
-    if algorithm.count(module_import) != 1:
-        raise ValueError("Cloud packaging import changed")
-    source = model + "\n" + algorithm.replace(module_import, "")
+    imports = ("from scripts.quantconnect.model import (\n    CONTRACT, START, END, FROZEN_MANIFEST, FIELDS, validate_bar, evaluate,\n)\n",
+               "from backend.risk import price_signal\n")
+    for statement in imports:
+        if algorithm.count(statement) != 1:
+            raise ValueError("Cloud packaging import changed")
+        algorithm = algorithm.replace(statement, "")
+    source = model + "\n" + oracle + "\n\n" + algorithm
     identity = sha(source.encode())
     return source.replace('BUNDLE_ID = "unprepared"', f'BUNDLE_ID = "{identity}"'), identity
 
@@ -58,73 +67,47 @@ def compare(text, *, origin="unverified-export"):
     if origin not in {"unverified-export", "local-fixture", "quantconnect-cloud-export"}:
         raise ValueError("Unknown evidence origin")
     sources = pinned_sources()
-    # Verify frozen code before importing even the pure oracle module.
-    from backend.risk import price_signal
-
     _, identity = bundle()
     records = [line.split("ASTRAL_QC|", 1)[1].strip() for line in text.splitlines() if "ASTRAL_QC|" in line]
     metadata = "|".join(("M", CONTRACT, "coinbase", "BTCUSD", str(START), str(END), FROZEN_MANIFEST, identity))
-    if not records or records[0] != metadata or not records[-1].startswith("E|"):
-        raise ValueError("Missing or mismatched comparison header/completion record")
-    previous = None
-    window = []
-    counts = Counter()
-    mismatches = []
-    bars = signals = 0
-    pending = None
-    digest = hashlib.sha256()
-    for record in records[1:-1]:
-        digest.update((record + "\n").encode())
-        parts = record.split("|")
-        if parts[0] == "B" and len(parts) == 7:
-            if pending is not None:
-                raise ValueError("Missing signal for an evaluated bar")
-            day = date.fromisoformat(parts[1])
-            if previous is None and day != START:
-                raise ValueError("Missing first historical day")
-            _, high, low, close, _ = validate_bar(day, parts[2:], previous)
-            previous = day
-            bars += 1
-            window = (window + [(high, low, close)])[-90:]
-            if len(window) >= 51:
-                pending = (str(day), price_signal(window))
-        elif parts[0] == "S" and len(parts) == 7:
-            if pending is None or parts[1] != pending[0]:
-                raise ValueError("Unexpected, duplicated or misaligned signal")
-            expected = pending[1]
-            for key, observed in zip(FIELDS, parts[2:]):
-                if key == "signal":
-                    different = observed != expected[key]
-                else:
-                    value = Decimal(observed)
-                    if not value.is_finite():
-                        raise ValueError("Non-finite comparison indicator")
-                    different = abs(value - expected[key]) > TOLERANCE
-                if different:
-                    mismatches.append({"day": parts[1], "field": key, "astral": str(expected[key]), "lean": observed})
-            counts[expected["signal"]] += 1
-            signals += 1
-            pending = None
-        else:
-            raise ValueError("Unexpected comparison record")
-    expected_end = f"E|{bars}|{signals}|0|{digest.hexdigest()}"
-    if (pending is not None or bars != (END - START).days or signals != bars - 50
-            or records[-1] != expected_end):
-        raise ValueError("Incomplete, altered or nonzero-order comparison export")
+    if len(records) != 2 or records[0] != metadata or not records[1].startswith("R|"):
+        raise ValueError("Expected the pinned header and one aggregate completion record; raw-data exports are refused")
+    summary = json.loads(records[1][2:])
+    fields = {"bars", "signals", "orders", "mismatched_signals", "signal_counts", "max_absolute_errors"}
+    if not isinstance(summary, dict) or set(summary) != fields:
+        raise ValueError("Unexpected aggregate comparison fields")
+    def count(value):
+        if type(value) is not int or value < 0:
+            raise ValueError("Comparison counts must be nonnegative integers")
+        return value
+    bars, signals, orders, mismatches = (count(summary[key]) for key in ("bars", "signals", "orders", "mismatched_signals"))
+    if bars != (END - START).days or signals != bars - 50 or orders or mismatches > signals:
+        raise ValueError("Incomplete or nonzero-order comparison")
+    counts, errors = summary["signal_counts"], summary["max_absolute_errors"]
+    if (not isinstance(counts, dict) or set(counts) != {"hold", "entry_candidate", "exit_review"}
+            or sum(count(value) for value in counts.values()) != signals
+            or not isinstance(errors, dict) or set(errors) != set(FIELDS) - {"signal"}):
+        raise ValueError("Invalid signal counts or comparison errors")
+    numeric = {key: Decimal(value) if isinstance(value, str) else Decimal("NaN") for key, value in errors.items()}
+    if any(not value.is_finite() or value < 0 for value in numeric.values()):
+        raise ValueError("Comparison errors must be finite and nonnegative")
+    if not mismatches and any(value > TOLERANCE for value in numeric.values()):
+        raise ValueError("Mismatch count contradicts indicator errors")
     return {
         "contract": CONTRACT, "status": "pass" if not mismatches else "mismatch",
-        "evidence_origin": origin,
+        "evidence_origin": origin, "comparison_location": "Both implementations in the same cloud process",
         "declared_venue": "Coinbase; not Alpaca", "symbol": "BTCUSD",
-        "start": str(START), "end_exclusive": str(END), "bars": bars, "signals": signals,
-        "signal_counts": dict(counts), "mismatches": mismatches,
+        "start": str(START), "end_exclusive": str(END), **summary,
         "absolute_indicator_tolerance": str(TOLERANCE), "signal_tolerance": "exact",
         "frozen_manifest_sha256": FROZEN_MANIFEST, "frozen_sources": sources,
         "bundle_sha256": identity, "log_sha256": sha(text.encode()),
         "comparator_sha256": sha(Path(__file__).read_bytes()),
-        "execution_enabled": False, "orders": 0, "profitability_evaluated": False,
-        "limitations": ["Historical development data; not an untouched holdout",
-                        "Price hypothesis only; no calendar, liquidity, sizing, exits, costs or fill validation",
-                        "Cloud provenance and zero orders must also be checked in the saved QuantConnect backtest"],
+        "execution_enabled": False, "profitability_evaluated": False,
+        "limitations": ["Aggregate diagnostics only; no raw bars, indicator series or raw-data digests exported",
+                        "Historical development data; no untouched holdout or Alpaca execution validation",
+                        "No calendar, liquidity, sizing, exits, costs, fill or profitability validation",
+                        "Local validation checks the summary contract, not a recomputation of cloud market data",
+                        "Verify source, completion and zero orders in the saved QuantConnect backtest separately"],
     }
 
 
@@ -144,7 +127,7 @@ def main():
             source, identity = bundle()
             destination = new_output(args.output)
             (destination / "main.py").write_text(source)
-            print(f"Prepared signal-only main.py in {destination}; bundle {identity}")
+            print(f"Prepared aggregate-only main.py in {destination}; bundle {identity}")
             return 0
         result = compare(Path(args.log).read_text(), origin=args.origin)
         destination = new_output(args.output)
@@ -152,11 +135,9 @@ def main():
         (destination / "report.md").write_text(
             f"# BTC signal comparison\n\nStatus: {result['status']}. "
             f"Evidence origin (operator supplied): {result['evidence_origin']}. "
-            f"Compared {result['signals']} signals from {result['bars']} daily bars "
-            "under the Coinbase input contract. "
-            f"Mismatched fields: {len(result['mismatches'])}. Orders: 0.\n\n"
-            "Signal implementation agreement only. No profitability or Alpaca execution claim.\n"
-        )
+            f"In-cloud summary: {result['signals']} signals, {result['bars']} bars, "
+            f"{result['mismatched_signals']} mismatches and zero orders.\n\n"
+            "Aggregate contract validation only; no local raw-data recomputation, profitability or Alpaca execution claim.\n")
         print(json.dumps(result, indent=2))
         return 0 if result["status"] == "pass" else 1
     except (ValueError, InvalidOperation, OSError) as error:

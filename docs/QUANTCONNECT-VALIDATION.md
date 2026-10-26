@@ -1,57 +1,100 @@
-# Compare frozen BTC signals with QuantConnect
+# Compare frozen BTC signals inside QuantConnect
 
-Use this isolated comparison to check whether QuantConnect's LEAN backtesting engine reproduces ASTRAL's frozen BTC price hypothesis. It evaluates identical historical bars and reports differences. It does not evaluate profitability or authorize trading.
+This isolated comparison checks the independent LEAN port against ASTRAL's exact
+frozen BTC signal function on identical bars inside the cloud process. It exports
+aggregate diagnostics only. It evaluates neither profitability nor trading readiness.
 
 ## Scope and fixed inputs
 
-The comparison uses Coinbase BTCUSD daily trade bars from January 1 through June 30, 2025, in UTC. These are historical development inputs, separate from Alpaca evidence and every registered prospective window. No runtime database, existing observation, experiment registration or holdout is read or updated.
+Use Coinbase BTCUSD completed daily trade bars, January 1 through June 30, 2025,
+in UTC. These historical development inputs are separate from Alpaca evidence
+and all registered prospective windows. No runtime database, existing observation,
+registration or holdout is read or updated.
 
-The independent port preserves SMA20/SMA50, a close strictly above the prior 20 highs, Wilder ATR14, 50 initial warmup bars and a maximum 90-bar rolling window. ATR restarts within each window, matching frozen v1. Every eligible day produces an entry candidate, hold or exit-review signal. Those signals are price diagnostics; ASTRAL's calendar, liquidity, inventory, sizing and execution gates still apply separately.
+The independent port preserves SMA20/SMA50, the strict prior-20-high breakout,
+Wilder ATR14, 50 warmup bars and a maximum 90-bar rolling window. ATR restarts
+within each window, matching frozen v1. Both implementations run against each
+same in-memory window; the frozen function is extracted unchanged after all four
+registered source hashes and the manifest identity pass verification.
 
-The tool verifies the existing manifest identity and all four registered source hashes before preparing or comparing. It refuses code drift without changing any registration. The algorithm rejects every live deployment, including a broker's paper deployment. It has no order-placement calls and checks zero orders and zero invested holdings before emitting a completion record.
+The algorithm refuses every live deployment, including paper hosts. It has no
+order-placement calls and requires zero orders and zero invested holdings before
+emitting its completion summary. Calendar, liquidity, custody, sizing and
+execution gates remain separate.
 
 ## Prepare the cloud file
 
-Run commands from the repository root with the existing Python environment. Preparation needs no QuantConnect credentials, network connection, Docker installation or running ASTRAL service.
-
-Create a new output directory for each preparation:
+Run from the repository root using the existing Python environment. Preparation
+requires no credentials, network, Docker or running ASTRAL service:
 
 ```sh
 .venv/bin/python -m scripts.quantconnect.compare prepare \
-  --output outputs/quantconnect/prepared-run
+  --output outputs/quantconnect/prepared-v2-run
 ```
 
-Replace the isolated QuantConnect project's `main.py` with the generated file, save it, and run **Backtest Project**. Use the included backtesting node. Do not deploy live, add resources or purchase local datasets for this comparison. The cloud dates include July 1 only so LEAN can deliver the completed June 30 bar; July 1 bars are excluded.
+Each output directory must be new. After provider restrictions have cleared,
+replace the isolated project's `main.py` with this generated file and verify the
+saved source before running a backtest on the included node. Do not add resources,
+purchase local data or deploy live. July 1 is included only to receive the completed
+June 30 bar; July 1 bars are excluded.
 
-## Compare a completed cloud export
+## Validate a completed aggregate log
 
-Check the saved cloud backtest for successful completion, Coinbase BTCUSD input and zero orders. Download its full log. The file needs the comparison header, 181 bars, 131 signals and the completion record. Copied terminal excerpts can omit records and cannot substitute for the complete export.
+Verify the saved backtest's exact source, successful completion and zero orders.
+Download its ordinary diagnostic log. Contract v2 emits only a source/header line
+and one completion summary: 181 processed bars, 131 evaluated signals, signal
+counts, mismatched-signal count and maximum numerical comparison errors.
 
-Compare the downloaded log into a new directory:
+It exports no raw OHLCV rows, indicator series or raw-data digests. Comparison
+happens inside QuantConnect. Local log validation checks the aggregate contract;
+it cannot independently recompute cloud results from exported market data.
 
 ```sh
 .venv/bin/python -m scripts.quantconnect.compare compare \
   --log /absolute/path/to/downloaded-backtest-log.txt \
   --origin quantconnect-cloud-export \
-  --output outputs/quantconnect/compared-run
+  --output outputs/quantconnect/compared-v2-run
 ```
 
-The tool writes `report.json` and `report.md`. Exit status 0 means complete exported signals agree; 1 means a comparison mismatch; 2 means invalid evidence or another refusal. Signals must match exactly. Indicators allow an absolute difference of `1e-20`, independent of displayed rounding.
+The tool saves JSON and Markdown reports. Exit 0 means the complete aggregate
+reports agreement; 1 means mismatches; 2 means invalid evidence or refusal.
+Signal decisions must match exactly; indicator differences allow `1e-20` absolute
+tolerance. Old raw-export logs, missing/duplicated summaries, wrong source identities,
+invalid counts and contradictory/non-finite errors cannot pass.
 
-Use `--origin local-fixture` for synthetic tests. Origin labels are operator-supplied provenance, not provider authentication. A passing fixture report cannot establish cloud acceptance.
+Use `--origin local-fixture` for synthetic checks. Origin labels are supplied by
+the operator; they do not authenticate a cloud run. Verify the saved provider result
+separately. Generated files, logs, account details and screenshots stay outside Git.
+Outputs may use new directories under `outputs/quantconnect/` or system temporary
+storage; existing evidence is never overwritten.
 
-Missing days, duplicate or out-of-period bars, invalid prices, absent or misaligned signals, wrong source identities and incomplete exports cannot pass. A digest binds every exported bar and signal. A matching digest establishes export integrity; verify its QuantConnect origin against the saved backtest separately. Reports retain the input log, comparator, bundle and frozen-source hashes, but do not authenticate a pasted log.
+## Connected findings on October 26, 2026
 
-Output directories must be new and under `outputs/quantconnect/` or the system temporary directory. Existing output is never overwritten. Keep generated bundles, raw logs, account information and screenshots out of Git.
+The active Researcher seat and receipt confirmed USD 10 monthly. Private Accounting
+inputs retain the monthly budget and one confirmed charge separately, with an
+email receipt link. Overall cost completeness and net trading results remain unknown.
 
-## Connected setup on October 26, 2026
+The existing [cloud project](https://www.quantconnect.com/project/38487956),
+**Dancing Light Brown Lion**, remains isolated. Its IDE initially failed with a
+QuantConnect extension startup error: `navigator is now a global in nodejs`.
+Recycling only its coding session produced another failed environment with a
+WebSocket 1006 error. No backtest was launched through the editor.
 
-The signed-in organization showed an active Researcher plan, a $10 estimated bill for October 26 through November 26, one backtesting node, one research node and zero live hosts. A later Gmail receipt and matching invoice confirmed a USD 10 payment on October 26 for that service period.
+The official API authenticated successfully using the account's existing emailed
+token, without rotating it or saving it in this repository. API readback verified
+the saved source, and upload/readback verified the final v1 source exactly.
+The compiler then rejected v1's raw OHLCV log export and reported an account
+suspension until `2026-10-26 20:33:39` (provider timestamp). That rejection is retained
+as a failure; it is not a compilation or historical validation pass.
 
-At the owner's request, private Accounting inputs now record the active USD 10 monthly budget and one receipt-backed USD 10 charge. A new saved report and the running Accounting page show both figures separately. Earlier inputs and saved reports are retained; overall spending coverage and net trading results remain unknown. Receipt identifiers, payment details and account information remain outside Git.
+No further cloud submissions were attempted after that guard. The local v2
+correction keeps comparison in cloud memory and exports aggregate diagnostics.
+It has not yet been uploaded, compiled or accepted by QuantConnect. The existing
+cloud project still has the rejected v1 source; do not rerun it. Resume only with
+the corrected bundle after the provider restriction has cleared, and retain any
+new rejection without changing identity or trying another export channel.
 
-The isolated [QuantConnect project](https://www.quantconnect.com/project/38487956) was created under the generated name **Dancing Light Brown Lion**. Its editor buffer matched the packaged signal-only source after saving. Cloud synchronization remains unverified because the QuantConnect extension host failed to start and Backtest Project produced no run or result. A reload remained on **Loading coding environment**. Browser diagnostics reported a QuantConnect extension startup error, `navigator is now a global in nodejs`, and an extension-host startup timeout.
-
-The cloud comparison is **blocked**, with no backtest result or historical parity claim. Resume with this existing project after its coding environment recovers, or authenticate the official LEAN CLI outside the repository. Verify the saved cloud source matches a freshly prepared bundle before running it. No API token, credential, subscription change, data purchase or live deployment was created.
-
-Local controlled-dependency tests cover all three signal outcomes, exact thresholds, rolling-window behavior, altered results, incomplete or invalid exports, frozen-source drift, protected output paths, zero-order completion and live-mode refusal. These tests do not establish QuantConnect runtime compatibility or provider acceptance.
+Local controlled-dependency tests exercise the packaged algorithm, all signal
+states, threshold equality, capped-window behavior, drift, invalid/missing bars,
+aggregate refusal, output isolation and zero-order/live-mode boundaries. These
+checks prove local behavior, not provider acceptance or profitable performance.

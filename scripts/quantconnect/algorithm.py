@@ -1,12 +1,15 @@
-"""Cloud entry point; package with compare prepare before uploading main.py."""
+"""Compare both implementations in cloud memory; export aggregate diagnostics only."""
 from AlgorithmImports import QCAlgorithm, Resolution, Market, TimeZones
 from datetime import timedelta
+from decimal import Decimal
 from scripts.quantconnect.model import (
     CONTRACT, START, END, FROZEN_MANIFEST, FIELDS, validate_bar, evaluate,
 )
-import hashlib
+from backend.risk import price_signal
+import json
 
 BUNDLE_ID = "unprepared"
+TOLERANCE = Decimal("1e-20")
 
 
 class AstralBtcSignalParity(QCAlgorithm):
@@ -24,15 +27,12 @@ class AstralBtcSignalParity(QCAlgorithm):
         ).symbol
         self._window = []
         self._previous = None
-        self._bars = self._signals = 0
-        self._digest = hashlib.sha256()
+        self._bars = self._signals = self._mismatches = 0
+        self._counts = {name: 0 for name in ("hold", "entry_candidate", "exit_review")}
+        self._errors = {key: Decimal(0) for key in FIELDS if key != "signal"}
         self.log("ASTRAL_QC|M|" + "|".join((
             CONTRACT, "coinbase", "BTCUSD", str(START), str(END), FROZEN_MANIFEST, BUNDLE_ID,
         )))
-
-    def _emit(self, content):
-        self._digest.update((content + "\n").encode())
-        self.log("ASTRAL_QC|" + content)
 
     def on_data(self, data):
         if self._symbol not in data.bars:
@@ -47,16 +47,25 @@ class AstralBtcSignalParity(QCAlgorithm):
             raise ValueError("Expected completed, non-filled daily UTC trade bars")
         if self._previous is None and day != START:
             raise ValueError("Missing first historical day")
-        values = tuple(str(value) for value in (bar.open, bar.high, bar.low, bar.close, bar.volume))
-        opening, high, low, close, volume = validate_bar(day, values, self._previous)
+        _, high, low, close, _ = validate_bar(day,
+            (bar.open, bar.high, bar.low, bar.close, bar.volume), self._previous)
         self._previous = day
         self._bars += 1
-        self._emit("B|" + "|".join((str(day), *values)))
         self._window = (self._window + [(high, low, close)])[-90:]
-        if len(self._window) >= 51:
-            result = evaluate(self._window)
-            self._signals += 1
-            self._emit("S|" + "|".join((str(day), *(str(result[key]) for key in FIELDS))))
+        if len(self._window) < 51:
+            return
+        expected = price_signal(self._window)
+        observed = evaluate(self._window)
+        self._signals += 1
+        self._counts[expected["signal"]] += 1
+        different = expected["signal"] != observed["signal"]
+        for key in self._errors:
+            error = abs(expected[key] - observed[key])
+            if not error.is_finite():
+                raise ValueError("Non-finite comparison result")
+            self._errors[key] = max(self._errors[key], error)
+            different = different or error > TOLERANCE
+        self._mismatches += int(different)
 
     def on_end_of_algorithm(self):
         orders = sum(1 for _ in self.transactions.get_orders())
@@ -64,4 +73,7 @@ class AstralBtcSignalParity(QCAlgorithm):
             raise RuntimeError("Zero-order comparison boundary violated")
         if self._bars != (END - START).days or self._signals != self._bars - 50:
             raise ValueError("Historical coverage is incomplete")
-        self.log(f"ASTRAL_QC|E|{self._bars}|{self._signals}|{orders}|{self._digest.hexdigest()}")
+        summary = {"bars": self._bars, "signals": self._signals, "orders": orders,
+                   "mismatched_signals": self._mismatches, "signal_counts": self._counts,
+                   "max_absolute_errors": {key: str(value) for key, value in self._errors.items()}}
+        self.log("ASTRAL_QC|R|" + json.dumps(summary, sort_keys=True, separators=(",", ":")))

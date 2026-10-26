@@ -2,7 +2,7 @@
 from datetime import date, timedelta
 from decimal import Decimal, localcontext
 
-CONTRACT = "btc-signal-parity-v1"
+CONTRACT = "btc-signal-parity-v2"
 START = date(2025, 1, 1)
 END = date(2025, 7, 1)  # Exclusive; historical development data only.
 FROZEN_MANIFEST = "a1cd3a0ed46e16460f8d7aa47f54ee795239b4405456b63bc766a46223ee7f08"
