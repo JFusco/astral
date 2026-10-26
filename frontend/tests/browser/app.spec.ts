@@ -60,6 +60,27 @@ test.afterEach(async ({ request }) => {
   expect(diagnostics).toEqual([]);
 });
 
+test("confirmed expense receipt opens from the keyboard without changing the saved report", async ({ page, request, context }) => {
+  await control(request, { accounting: "fixture" });
+  const url = "https://mail.google.com/mail/u/0/#all/0123456789abcdef";
+  await context.route("https://mail.google.com/**", (route) => route.fulfill({
+    contentType: "text/html", body: "<h1>Fixture receipt email</h1>",
+  }));
+  await page.goto("/accounting");
+  const receipt = page.getByRole("link", { name: "Fixture vendor receipt (opens Gmail in a new tab)" });
+  await expect(receipt).toHaveAttribute("href", url);
+  await receipt.focus();
+  await expect(receipt).toBeFocused();
+  const opened = page.waitForEvent("popup");
+  await receipt.press("Enter");
+  const popup = await opened;
+  await expect(popup.getByRole("heading", { name: "Fixture receipt email" })).toBeVisible();
+  expect(await popup.evaluate(() => window.opener === null)).toBe(true);
+  await popup.close();
+  await expect(page.getByRole("heading", { name: "Accounting", exact: true })).toBeVisible();
+  await expect(page.getByText("Recorded confirmed charge subtotal: USD 10")).toBeVisible();
+});
+
 async function health(page: Page) {
   await page.route("**/api/health/state", (route) =>
     route.fulfill({
@@ -143,9 +164,7 @@ test("all four routes render and navigation keeps one stream while graphics rele
     await expect(
       page.getByRole("heading", { name: "App health", exact: true }),
     ).toBeVisible();
-    await expect
-      .poll(() => page.locator('canvas[data-renderer="three-webgl"]').count())
-      .toBe(1);
+    await expect(page.getByRole("heading", { name: "Health universe", exact: true })).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Application API healthy" }),
     ).toBeVisible();
@@ -190,65 +209,44 @@ test("all four routes render and navigation keeps one stream while graphics rele
     page.getByRole("heading", { name: "Page not found" }),
   ).toBeVisible();
 });
-test("Health keeps its WebGL canvas while ambient motion stops and resumes", async ({
-  page,
-}) => {
-  test.setTimeout(45000);
-  const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
+test("Health universe supports keyboard exploration, filtering and motion controls", async ({ page }) => {
   await health(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/health");
-  const canvas = page.locator('canvas[data-renderer="three-webgl"]');
-  await expect(canvas).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Application API healthy" }),
-  ).toBeVisible();
-  const renderer = await canvas.evaluateHandle((canvas) => {
-    const state = { canvas, lost: 0, restored: 0 };
-    canvas.addEventListener("webglcontextlost", () => state.lost++);
-    canvas.addEventListener("webglcontextrestored", () => state.restored++);
-    return state;
+  await page.getByRole("button", { name: "Select Application", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("combobox", { name: "Topic" })).toHaveValue("core");
+  const system = page.getByRole("button", { name: "Select Application API", exact: true });
+  await system.focus();
+  await page.keyboard.press("Enter");
+  await expect(system).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("heading", { name: "Application API", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Pause motion", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Resume motion", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Reset orbit ↻", exact: true }).click();
+  await page.getByRole("button", { name: "Resume motion", exact: true }).click();
+  await page.getByRole("button", { name: "Needs attention", exact: true }).click();
+  await expect(system).toHaveCount(0);
+  await expect(page.getByText("No systems match these filters.")).toBeVisible();
+  await page.getByRole("button", { name: "All nodes", exact: true }).click();
+  await expect(system).toBeVisible();
+  await page.getByRole("button", { name: "All topics", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Select Application", exact: true })).toBeVisible();
+});
+test("Health dependency selection survives an unavailable universe canvas", async ({ page }) => {
+  await health(page);
+  await page.addInitScript(() => {
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, ...args: Parameters<typeof getContext>) {
+      if (this.getAttribute("aria-label")?.includes("health universe")) return null;
+      return getContext.apply(this, args);
+    } as typeof getContext;
   });
-  await expect
-    .poll(async () => Number(await canvas.getAttribute("data-shooting-stars")), {
-      timeout: 15000,
-      intervals: [100],
-    })
-    .toBeGreaterThan(0);
-  await page.evaluate(() => {
-    localStorage.setItem("astral-motion", "reduced");
-    window.dispatchEvent(new Event("astral-motion-change"));
-  });
-  await expect
-    .poll(() => canvas.getAttribute("data-shooting-stars"))
-    .toBe("0");
-  await page.evaluate(() => {
-    localStorage.setItem("astral-motion", "cinematic");
-    window.dispatchEvent(new Event("astral-motion-change"));
-  });
-  await expect
-    .poll(async () => Number(await canvas.getAttribute("data-shooting-stars")), {
-      timeout: 15000,
-      intervals: [100],
-    })
-    .toBeGreaterThan(0);
-  await expect(canvas).toHaveCount(1);
-  expect(
-    await renderer.evaluate((state) => ({
-      sameCanvas:
-        state.canvas ===
-        document.querySelector('canvas[data-renderer="three-webgl"]'),
-      lost: state.lost,
-      restored: state.restored,
-    })),
-  ).toEqual({ sameCanvas: true, lost: 0, restored: 0 });
-  await expect(
-    page.getByText(/3D view unavailable|3D view paused/),
-  ).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: "Application API healthy" }),
-  ).toBeVisible();
-  expect(errors).toEqual([]);
+  await page.goto("/health");
+  await expect(page.getByText("Canvas unavailable · use selection buttons")).toBeVisible();
+  await page.getByRole("button", { name: "Select Application", exact: true }).click();
+  await page.getByRole("button", { name: "Select Application API", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Application API", exact: true })).toBeVisible();
 });
 test("loading feedback honors reduced motion and narrow screens remain usable", async ({
   page,

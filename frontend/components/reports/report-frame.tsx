@@ -73,7 +73,7 @@ export function ReportFrame({
       ) : !pending ? (
         <p className={ui.panelBody}>{empty}</p>
       ) : null}
-      <footer className={ui.footer}>
+      <footer className={`${ui.footer} [&>span]:text-muted`}>
         <span>{title.toUpperCase()} / SAVED LOCAL REPORT</span>
         <span>
           {shown ? `Report cutoff ${shown.asOf}` : "Waiting for a saved report"}

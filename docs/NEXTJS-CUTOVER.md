@@ -1,8 +1,12 @@
 # Next.js cutover verification
 
-Verified locally on October 25, 2026 against the working tree. The frontend is
-Next.js 16.4.3, React 19.3.1, Motion 14.6.0 and Tailwind 4.3.3; Three.js remains
-0.186.1. Node 24.14.0 and the existing Python 3.13 virtual environment were used.
+Verified locally on October 25, 2026 against the working tree. The frontend used
+Next.js 16.4.3, React 19.3.1, Motion 14.6.0, Tailwind 4.3.3 and Three.js 0.186.1.
+Node 24.14.0 and the existing Python 3.13 virtual environment were used.
+
+On October 26, Health adopted Overview's shared orbital renderer and removed
+Three.js; see [HEALTH-ENGINE.md](HEALTH-ENGINE.md). The results below retain the
+original cutover evidence.
 
 ## Result
 

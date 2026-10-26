@@ -16,12 +16,4 @@
   --color-status-unknown: #b4a1e0;
   --color-status-inactive: #8b99ad;
   --color-status-checking: #63e0dc;
-  --color-topic-core: #88d8ff;
-  --color-topic-execution: #ffc88a;
-  --color-topic-market: #b5a2ff;
-  --color-topic-workers: #ff9cba;
-  --color-topic-sources: #9de4ba;
-  --color-topic-providers: #80e2dd;
-  --color-topic-models: #d5a7ff;
-  --color-topic-local: #e4d7a0;
 }

@@ -1,5 +1,5 @@
 // Decorative projection only; backend state and confirmed fill events arrive as inputs.
-export function createMarketUniverse(canvas, labels, assets, getState) {
+export function createMarketUniverse(canvas, labels, assetSource, getState) {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas unavailable");
   let width = 800,
@@ -95,6 +95,7 @@ export function createMarketUniverse(canvas, labels, assets, getState) {
   }
   function renderScene(now) {
     if (disposed) return;
+    const assets = typeof assetSource === "function" ? assetSource() : assetSource;
     const { selected, paused, motion, fill, fillAt } = getState();
     if (fill && fillAt !== lastFill) {
       if (
@@ -177,6 +178,10 @@ export function createMarketUniverse(canvas, labels, assets, getState) {
     ctx.strokeStyle = "rgba(134,225,210,.20)";
     ctx.stroke();
     ctx.setLineDash([]);
+    const sizes = new Map(assets.map((a) => {
+      const el = labels.get(a.symbol);
+      return [a.symbol, { width: el?.offsetWidth || 0, height: el?.offsetHeight || 0 }];
+    }));
     const sorted = assets
       .map((a) => ({ a, p: pointFor(a) }))
       .sort((x, y) => y.p.z - x.p.z);
@@ -206,9 +211,10 @@ export function createMarketUniverse(canvas, labels, assets, getState) {
       }
       const el = labels.get(a.symbol);
       if (!el) continue;
-      el.style.left = `${p.x}px`;
-      el.style.top = `${p.y + 22 * p.scale}px`;
-      el.style.opacity = String(Math.max(0.4, Math.min(1, p.scale * 0.85)));
+      const size = sizes.get(a.symbol);
+      el.style.left = `${Math.max(size.width / 2 + 8, Math.min(width - size.width / 2 - 8, p.x))}px`;
+      el.style.top = `${Math.max(size.height / 2 + 45, Math.min(height - size.height / 2 - 12, p.y + 22 * p.scale))}px`;
+      el.style.opacity = "1";
       el.style.zIndex = String(Math.round(720 - p.z));
     }
     for (let e = effects.length - 1; e >= 0; e--) {
@@ -219,8 +225,9 @@ export function createMarketUniverse(canvas, labels, assets, getState) {
         continue;
       }
       if (motion === "reduced") continue;
-      const a = assets.find((a) => a.symbol === effect.symbol),
-        p = pointFor(a);
+      const a = assets.find((a) => a.symbol === effect.symbol);
+      if (!a) continue;
+      const p = pointFor(a);
       const f = 1 - age / 6;
       const power = motion === "calm" ? 0.35 : 1;
       if (effect.side === "buy") {

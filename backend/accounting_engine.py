@@ -18,6 +18,7 @@ import sqlite3
 import uuid
 
 from .fee_evidence import validate_activity
+from .accounting_receipts import receipt_url
 
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = 'accounting-proof-v1'
@@ -136,6 +137,9 @@ def cost_report(document, cutoff):
         role = v.get('role', 'charge')
         if role not in ('charge', 'included_allocation'):
             raise ValueError('Invalid billing role')
+        link = receipt_url(v.get('receipt_url'))
+        if link and (status != 'confirmed' or role != 'charge'):
+            raise ValueError('Receipt links require a confirmed ordinary charge')
         if status == 'confirmed' and (not isinstance(source, str) or not source.strip()):
             raise ValueError('Confirmed charge requires a receipt reference')
         if role == 'included_allocation':
@@ -154,7 +158,7 @@ def cost_report(document, cutoff):
         if status == 'unknown':counts['unknown_charges'] += 1
         rows.append({'id': key, 'provider': v['provider'], 'status': status, 'role': role,
                      'amount': str(amount) if amount is not None else None, 'currency': v['currency'], 'source_ref': source,
-                     'known_at': v['known_at'], 'incurred_at': v['incurred_at']})
+                     'known_at': v['known_at'], 'incurred_at': v['incurred_at'], 'receipt_url': link})
     for key, v in plans.items():
         if v.get('status') not in ('active', 'proposed', 'cancelled', 'unverified') or v.get('billing_interval') not in ('monthly', 'annual') or not isinstance(v.get('currency'), str) or not re.fullmatch('[A-Z]{3}', v['currency']):
             raise ValueError('Invalid subscription contract')
@@ -304,7 +308,7 @@ def run(source, as_of, output, costs_file=None):
         (folder/name).chmod(0o600)
     contract = {'version': VERSION, 'source_ledger': str(Path(source).resolve()), 'as_of': cutoff.isoformat(),
                 'input_sha256': digest(data), 'cost_inputs_sha256': digest(costs),
-                'source_sha256': {name: hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ('backend/accounting_engine.py', 'backend/fee_evidence.py', 'backend/risk.py')},
+                'source_sha256': {name: hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ('backend/accounting_engine.py', 'backend/accounting_receipts.py', 'backend/fee_evidence.py', 'backend/risk.py')},
                 'assumptions': 'Gross FIFO diagnostic per book, USD instruments only; no net P&L, synthetic adjustments or filing claims'}
     save('contract.json', json.dumps(contract, indent=2)+'\n')
     report = evaluate(data, costs, cutoff)

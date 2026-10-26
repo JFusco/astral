@@ -31,14 +31,14 @@ broker credentials here. The root Python `.env` is independent of this workspace
 - `lib/relay.ts` and `lib/upstream.ts`: exact API allowlist, local host/origin checks,
   uncached forwarding and streaming cancellation. Native Node HTTP preserves the
   validated browser Host and Origin; Node Fetch replaces Host with the upstream host.
-- `graphics/`: retained Canvas and Three.js drawing algorithms. These imperative
-  JavaScript modules have cleanup ownership; strict TypeScript owns the React/API layer.
+- `graphics/`: shared orbital canvas drawing algorithm. The renderer owns cleanup;
+  strict TypeScript owns the React/API layer.
 - `styles/app.css`: the only CSS entry, local Fontsource assets and explicit source scans.
 - `styles/tokens/`: existing semantic colors, typography and four-pixel layout scale.
 
 Preserve complete Tailwind class names and shared utility recipes. Avoid alternate
 spacing/font scales, page stylesheets and component CSS wrappers. Runtime geometry
-stays in the renderer. Three.js remains pinned to 0.186.1, with its package MIT license;
+stays in the renderer. Health and Overview share the orbital renderer;
 fonts retain their package licenses. There are no runtime CDN requests.
 
 Motion is the standard UI animation library. `LazyMotion`/`m`, `MotionConfig` and
