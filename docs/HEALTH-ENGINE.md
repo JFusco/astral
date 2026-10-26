@@ -9,34 +9,23 @@ Health is a child page in ASTRAL, using the same logo, sidebar, header and main
 navigation as Overview and Accounting. Only the assessment engine/process is
 independent; the health UI is not a separate application or brand.
 Open **App health** in the main navigation or the **System Heartbeat** card, or visit
-`http://127.0.0.1:3000/health`. The health universe shows every discovered
-dependency as a node. Click a node or its keyboard-accessible dependency button
-to inspect its state, scope and observation time. Drag/zoom the map; filter to
-dependencies needing attention. The central pulse and heartbeat trace follow
-completed assessments. Eight types share one three-dimensional star field. Topic hues and glows
-identify types; small status lights and outlines retain the same health colors.
-Connected Systems uses expandable sections by type, retaining expansion state
-across health refreshes. The dependency inspector organizes the inventory by type; there are no
-separate application-level topic pages. The type selector filters the map and inspector together. Shooting stars, breathing glows and neuron trails circling the shared disk
-are labeled ambient motion. The heartbeat trace and expanding wave reflect real
-assessments. Reduced-motion preferences stop ambient animation.
-Status text in Systems by type uses green for healthy, lavender for unknown,
-red/coral for down/degraded issues, slate for inactive and cyan for checking.
-Text labels remain present alongside the colors.
+`http://127.0.0.1:3000/health`. Health and the Overview stock picker use the
+same orbital universe component and canvas renderer. The overview groups
+Health dependencies into eight topics to keep labels readable. Select a topic
+to show its systems, then select a system for details. The type selector and
+Needs attention filter apply to both the universe and dependency inspector.
+All topics returns to the grouped view; the inspector also provides direct
+keyboard-accessible dependency buttons.
 
-The scene uses the same Three.js 0.186.1 WebGL renderer and additive radial
-sprite approach as the local Brain viewer, with irregular dust/nebulae rather
-than rigid spiral arms. Shooting stars use soft, tapered textured ribbons and
-luminous heads; a fixed pool of four neurons has varied tilted paths that cross the front and back of the disk,
-with depth-dependent brightness and perspective size. Each neuron has a smooth,
-textured ribbon that follows its recent 3D path and fades toward the tail, using
-the same light-trail texture as shooting stars. Stars have deterministic varied
-sizes, gentle independent drift and asynchronous decorative pulses. The complete field rotates continuously at a slow rate;
-reduced-motion preferences keep it still. Three.js is pinned to 0.186.1 in the npm workspace and bundled locally with its
-MIT license. `frontend/graphics/health-galaxy.js` owns the renderer; no CDN, Brain
-data or Brain service is connected. The
-force-layout wrapper from Brain is unnecessary for these fixed health nodes.
-If WebGL is unavailable, the categorized health inspector remains usable.
+Pause motion, Reset orbit and reduced-motion preferences work on both pages.
+The orbit and glows are decorative; only the separate heartbeat trace reflects
+completed health assessments. Dependency labels retain explicit status text and
+health colors. Missed or unavailable health checks remain unknown.
+
+`frontend/components/orbital-universe.tsx` owns the shared view and
+`frontend/graphics/market-universe.js` owns its canvas renderer. If canvas is
+unavailable, the labels become a usable grid and the inspector stays available.
+No Brain service, new provider check or trading authority is involved.
 
 ## Three separate responsibilities
 
@@ -44,7 +33,7 @@ If WebGL is unavailable, the categorized health inspector remains usable.
 | --- | --- | --- |
 | Existing application/collector telemetry | Worker observations, source fetches, quote/account timestamps, model execution receipts | Existing trading and intelligence ledgers |
 | `backend/health_engine.py` | Assess observations, freshness, local failures and recovery | Separate `runtime/astral-health.sqlite` |
-| `backend/health_app.py` and `frontend/components/health.tsx` | Read-only cached API and live 3D health universe | No browser trading state or credentials |
+| `backend/health_app.py` and `frontend/components/health/health-page.tsx` | Read-only cached API and live 3D health universe | No browser trading state or credentials |
 
 Run one independent health process from the project root:
 

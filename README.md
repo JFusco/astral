@@ -53,7 +53,7 @@ never in the frontend workspace or `NEXT_PUBLIC_*` variables.
 
 Motion 14.6.0 is the standard UI animation library. Route and data loading states,
 dialog transitions and connection notices respect system reduced-motion preferences
-and the browser display setting. Canvas/Three.js scenes keep their existing drawing
+and the browser display setting. Shared orbital canvas scenes keep their existing drawing
 algorithms and release resources on navigation. See [frontend ownership and verification](frontend/README.md).
 
 ## Persistent simulator

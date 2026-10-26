@@ -22,7 +22,7 @@ export function HealthDetails() {
             </span>
             <h3 className="font-display text-xl">{inspected.name}</h3>
             <p className="text-caption text-muted">{inspected.detail}</p>
-            <p className="text-xxs text-faint">
+            <p className="text-xxs text-muted">
               {inspected.checked_at ?? "No retained check"}
             </p>
           </>
@@ -50,7 +50,7 @@ export function HealthDetails() {
           </select>
         </label>
       </div>
-      <div className="max-h-96 overflow-y-auto p-3" aria-label="Dependencies">
+      <div role="region" className="max-h-96 overflow-y-auto p-3" aria-label="Dependencies">
         {Object.entries(topicNames).map(([group, name]) => {
           const members = visible.filter((node) => node.group === group);
           return members.length ? (

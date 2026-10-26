@@ -44,7 +44,7 @@ export function HealthPage() {
           </div>
         </Panel>
       </div>
-      <footer className={ui.footer}>
+      <footer className={`${ui.footer} [&>span]:text-muted`}>
         <span>Health checks do not enable trading</span>
         <HealthFooterStatus />
       </footer>
