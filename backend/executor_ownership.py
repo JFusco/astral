@@ -3,12 +3,13 @@ import fcntl
 import hashlib
 import os
 from pathlib import Path
+import pwd
 import re
 import stat
 
 from .config import PAPER_URL
 
-LOCK_DIRECTORY = Path.home() / ".astral-paper-executors"
+LOCK_DIRECTORY = Path(pwd.getpwuid(os.getuid()).pw_dir) / ".astral-paper-executors"
 
 
 class OwnershipError(Exception):

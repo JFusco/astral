@@ -154,6 +154,20 @@ def test_closed_adapter_cannot_reacquire_authority_and_market_data_cannot_mutate
     assert not adapter.seen
 
 
+@pytest.mark.parametrize("override", [
+    {"headers": {"APCA-API-KEY-ID": "different-fixture-key"}},
+    {"auth": None},
+    {"follow_redirects": True},
+    {"cookies": {"session": "different-fixture-session"}},
+    {"extensions": {"custom_authentication": "fixture"}},
+], ids=["credentials", "authentication", "redirects", "cookies", "extensions"])
+def test_write_cannot_override_the_verified_authentication_or_redirect_policy(adapters, override):
+    adapter = adapters()
+    with pytest.raises(BrokerFailure, match="fixed authentication and redirect") as error:
+        run(adapter.broker.request("POST", "/v2/orders", **override))
+    assert error.value.sent is False and not adapter.seen
+
+
 def test_close_keeps_ownership_until_the_inflight_write_finishes(adapters):
     owner, contender = adapters(), adapters()
 
@@ -184,15 +198,18 @@ def test_close_keeps_ownership_until_the_inflight_write_finishes(adapters):
 
 
 PROCESS_WORKER = """
-import asyncio,os,sys
+import asyncio,os,pwd,sys
 sys.modules['readline']=None
 from pathlib import Path
+from types import SimpleNamespace
+# The OS account home stays shared while process HOME profiles differ.
+pwd.getpwuid=lambda uid:SimpleNamespace(pw_dir=sys.argv[1])
+os.environ['HOME']=str(Path(sys.argv[1])/(sys.argv[2]+'-profile'))
 import httpx
 from backend import executor_ownership
 from backend.broker import AlpacaPaper,BrokerFailure
 from backend.config import Settings
 from backend.store import Store
-executor_ownership.LOCK_DIRECTORY=Path(sys.argv[1])/'locks'
 cfg=Settings(db_path=Path(sys.argv[1])/(sys.argv[2]+'.sqlite'),api_key='fixture',secret_key='fixture',enable_orders=True)
 store=Store(cfg.db_path,'alpaca');writes=[];seen=[]
 def handle(req):
@@ -231,7 +248,7 @@ asyncio.run(scenario())
 
 
 @pytest.mark.parametrize("owner_mode", ["owner", "fork-owner"])
-def test_account_writer_is_exclusive_between_processes_and_recovers_after_sigkill(tmp_path, owner_mode):
+def test_distinct_home_profiles_share_ownership_and_recover_after_sigkill(tmp_path, owner_mode):
     args = [sys.executable, "-c", PROCESS_WORKER, str(tmp_path)]
     owner = subprocess.Popen(args + [owner_mode], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     selector = selectors.DefaultSelector()

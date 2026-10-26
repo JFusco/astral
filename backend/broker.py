@@ -65,6 +65,8 @@ class AlpacaPaper:
             return await self._request(method, path, data=data, critical=critical, **kwargs)
         if data:
             raise BrokerFailure("Market data is GET-only", 403, sent=False)
+        if set(kwargs) - {"json", "params"}:
+            raise BrokerFailure("Broker writes require fixed authentication and redirect policy", 403, sent=False)
         async with self.write_lock:
             if self.closed or self.identity_changed:
                 raise BrokerFailure("Broker write authority is unavailable; reconcile before reopening", sent=False)
