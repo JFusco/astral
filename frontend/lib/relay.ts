@@ -1,3 +1,5 @@
+import { promisify } from "node:util";
+import { gzip } from "node:zlib";
 import { upstreamFetch } from "./upstream";
 import { allowedHost, serviceUrl, type Service } from "./server/services";
 const getPaths = new Map<string, Service>([
@@ -23,6 +25,17 @@ const responseHeaders = {
   "Cache-Control": "no-store",
   "X-Content-Type-Options": "nosniff",
 };
+const compress = promisify(gzip);
+/** Smaller bodies gain little and cost a gzip header plus CPU. */
+const compressFrom = 1024;
+function acceptsGzip(header: string | null) {
+  return (header ?? "").split(",").some((entry) => {
+    const [coding, ...params] = entry.trim().toLowerCase().split(";");
+    return (
+      coding === "gzip" && !params.some((p) => /^\s*q=0(\.0*)?\s*$/.test(p))
+    );
+  });
+}
 function reject(detail: string, status: number) {
   return Response.json({ detail }, { status, headers: responseHeaders });
 }
@@ -132,14 +145,22 @@ export async function relay(
     const payload = await response.arrayBuffer();
     clearTimeout(timer);
     request.signal.removeEventListener("abort", abort);
-    return new Response(payload, {
-      status: response.status,
-      headers: {
-        ...responseHeaders,
-        "Content-Type":
-          response.headers.get("content-type") ?? "application/json",
-      },
+    const replyHeaders = new Headers({
+      ...responseHeaders,
+      "Content-Type":
+        response.headers.get("content-type") ?? "application/json",
     });
+    // Next compresses pages but not route handlers, and the backend sends JSON uncompressed.
+    const gzipped =
+      request.method === "GET" &&
+      payload.byteLength >= compressFrom &&
+      acceptsGzip(request.headers.get("accept-encoding"));
+    if (request.method === "GET") replyHeaders.set("Vary", "Accept-Encoding");
+    if (gzipped) replyHeaders.set("Content-Encoding", "gzip");
+    return new Response(
+      gzipped ? new Uint8Array(await compress(payload)) : payload,
+      { status: response.status, headers: replyHeaders },
+    );
   } catch {
     clearTimeout(timer);
     request.signal.removeEventListener("abort", abort);
