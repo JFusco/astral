@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+# Git supplies one proposed ref update per line. Check the destination, not the
+# checked-out branch, so aliases, explicit refspecs, and multi-ref pushes cannot
+# accidentally update main. Reject the entire push before running verification.
+while read -r qa_push_local_ref qa_push_local_oid qa_push_remote_ref qa_push_remote_oid; do
+  if [ "$qa_push_remote_ref" = 'refs/heads/main' ]; then
+    printf '%s\n' 'Direct pushes to main are blocked. Push an issue-linked branch and open a pull request.' >&2
+    exit 1
+  fi
+done
+unset qa_push_local_ref qa_push_local_oid qa_push_remote_ref qa_push_remote_oid
+
+for git_environment_variable in $(git rev-parse --local-env-vars); do
+  unset "$git_environment_variable"
+done
+unset git_environment_variable
+
+npm run verify:push

@@ -10,12 +10,28 @@
     "node": ">=22"
   },
   "scripts": {
+    "prepare": "husky",
     "dev": "npm run dev --workspace frontend",
     "build": "npm run build --workspace frontend",
     "start": "npm run start --workspace frontend",
     "lint": "npm run lint --workspace frontend",
     "typecheck": "npm run typecheck --workspace frontend",
     "test": "npm run test --workspace frontend",
-    "test:e2e": "npm run test:e2e --workspace frontend"
+    "test:e2e": "npm run test:e2e --workspace frontend",
+    "test:backend": ".venv/bin/python -c \"import sys; sys.modules['readline'] = None; import pytest; raise SystemExit(pytest.main(['-q']))\"",
+    "test:tooling": "node --test --test-concurrency=2 --test-timeout=60000 test/tooling/*.test.cjs",
+    "architecture:check": "npm run test --workspace frontend -- tests/boundaries.test.ts",
+    "lint:commit": "commitlint --config commitlint.config.cjs",
+    "lint:pr": "node scripts/validate_pr_body.cjs",
+    "verify:push": "npm run architecture:check && npm run lint && npm run typecheck",
+    "verify:ci": "npm run verify:push && npm test && npm run test:tooling && npm run test:backend && npm run build && npm run test:e2e",
+    "verify": "npm run verify:ci"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "20.5.3",
+    "@commitlint/config-conventional": "20.5.3",
+    "@commitlint/lint": "20.5.3",
+    "@commitlint/load": "20.5.3",
+    "husky": "9.1.7"
   }
 }
