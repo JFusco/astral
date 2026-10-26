@@ -816,6 +816,24 @@ test("only the Overview document carries the dashboard seed", async ({
   for (const body of await Promise.all(flight))
     expect(body).not.toContain("equity_history");
 });
+test("the strategies view renders on the server inside its dialog", async ({
+  page,
+  request,
+}) => {
+  const dialogs = await rendered(page, request, "/?view=strategies", "dialog");
+  expect(dialogs).toEqual([
+    expect.stringContaining(
+      "ATR14, trend and prior-20-bar breakouts are reproducible research hypotheses",
+    ),
+  ]);
+  expect(dialogs[0]).toContain("Deterministic rules. Measured risk.");
+  expect(dialogs[0]).toContain("Learning promotion is disabled.");
+  for (const view of ["constructor", "hasOwnProperty", "__proto__"])
+    expect(
+      await rendered(page, request, `/?view=${view}`, "h1, dialog"),
+      view,
+    ).toEqual(["Market overview"]);
+});
 // Development React reports attribute and style mismatches that production builds stay silent on.
 test.describe("development hydration smoke @dev", () => {
   test.describe.configure({ timeout: 180000 });
