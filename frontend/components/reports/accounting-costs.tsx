@@ -22,6 +22,22 @@ export function AccountingCosts({ r }: { r: Accounting }) {
           {amounts(c.recorded_confirmed_charges_by_currency)}
         </p>
         <p>Estimated charges: {amounts(c.estimated_charges_by_currency)}</p>
+        {c.receipt_links.length ? (
+          <div>
+            <h3 className="mb-2 font-medium text-ink">Receipt links</h3>
+            <p className="mb-3">Open Gmail to view and download the original documents.</p>
+            <ul className="space-y-2" aria-label="Expense receipts">
+              {c.receipt_links.map((receipt) => (
+                <li key={receipt.url}>
+                  <a className={`${ui.button} max-w-full break-words text-left`}
+                    href={receipt.url} target="_blank" rel="noopener noreferrer">
+                    {receipt.provider} receipt (opens Gmail in a new tab)
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         <p>
           Budgets, bills and included allocations are separate. Missing records
           do not mean zero spending. Employer-funded subscriptions can have a $0

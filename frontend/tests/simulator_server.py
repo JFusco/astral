@@ -3,6 +3,7 @@ from pathlib import Path
 import asyncio
 import sys
 import tempfile
+import json
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from backend.app import create_app
@@ -30,7 +31,12 @@ if __name__ == '__main__':
         cutoff = '2026-01-02T12:00:00+00:00'
         accounting_dir = Path(directory)/'accounting'
         learning_dir = Path(directory)/'learning'
-        accounting_run(source, cutoff, accounting_dir)
+        costs = Path(directory)/'costs.json'
+        costs.write_text(json.dumps({'version': 1, 'subscriptions': [], 'charges': [{
+            'id': 'receipt-fixture', 'provider': 'Fixture vendor', 'status': 'confirmed',
+            'amount': '10', 'currency': 'USD', 'known_at': cutoff, 'incurred_at': cutoff,
+            'source_ref': 'fixture-only', 'receipt_url': 'https://mail.google.com/mail/u/0/#all/0123456789abcdef'}]}))
+        accounting_run(source, cutoff, accounting_dir, costs)
         learning_run(source, cutoff, learning_dir)
         app = create_app(settings)
 

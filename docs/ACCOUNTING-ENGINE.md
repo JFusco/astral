@@ -104,6 +104,14 @@ actual totals remain unknown unless the user asserts complete charge coverage,
 with no unknowns or estimates. Monthly budget completeness is separately asserted
 and requires known active amounts and no unverified subscription entries.
 
+Confirmed ordinary charges can also include an optional `receipt_url` pointing
+to a message in Gmail over HTTPS. Accounting shows the provider name and an
+**opens Gmail in a new tab** link. Sign in to Gmail to view the source email and
+download its receipt or invoice attachments. Local filesystem paths, arbitrary
+websites, embedded credentials and redirect URLs are rejected. Raw references,
+charge IDs, funding notes and attachment contents remain private. Older saved
+reports without receipt links still work. This does not create a tax-ready export.
+
 These assertions cover the supplied input set; they are not independent evidence
 that every subscription or expense was discovered. Per-run model USD attribution
 is separate from recurring budgets. Employer funding is not a tax deduction

@@ -42,6 +42,25 @@ def plan(identity='plan', **fields):
             'billing_amount': '10', 'currency': 'USD', 'known_at': KNOWN, 'source_ref': 'user-confirmation', **fields}
 
 
+@pytest.mark.parametrize('url', [
+    'javascript:alert(1)', 'http://mail.google.com/mail/u/0/#all/0123456789abcdef',
+    'https://example.com/mail/u/0/#all/0123456789abcdef',
+    'https://mail.google.com@evil.example/mail/u/0/#all/0123456789abcdef',
+    'https://user:secret@mail.google.com/mail/u/0/#all/0123456789abcdef',
+    'https://mail.google.com/mail/u/0/?redirect=https://evil.example#all/0123456789abcdef',
+    'file:///private/receipt.pdf',
+])
+def test_untrusted_receipt_destinations_are_rejected(url):
+    doc = costs();doc['charges'] = [charge(receipt_url=url)]
+    with pytest.raises(ValueError):cost_report(doc, CUTOFF)
+
+
+@pytest.mark.parametrize('status', ['estimated', 'unknown'])
+def test_unconfirmed_expense_cannot_publish_a_receipt_link(status):
+    doc = costs();doc['charges'] = [charge(status=status, receipt_url='https://mail.google.com/mail/u/0/#all/0123456789abcdef')]
+    with pytest.raises(ValueError, match='confirmed ordinary'):cost_report(doc, CUTOFF)
+
+
 def test_fifo_partial_sales_and_horizons_remain_separate():
     data = source()
     fill(data, 'a', 'buy', '2', '100', when='2026-01-01T12:00:00+00:00')
