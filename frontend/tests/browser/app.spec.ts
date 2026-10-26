@@ -769,6 +769,53 @@ test("SSR renders seeded data without enabling actions", async ({
   await expect(buy).toBeEnabled(recovery);
   await expect(halt).toBeEnabled(recovery);
 });
+test("only the Overview document carries the dashboard seed", async ({
+  page,
+  request,
+}) => {
+  // Flight strings escape their quotes inside HTML, so match the bare key; "/" is the positive control.
+  const raw = async (path: string) => (await request.get(path)).text();
+  expect(await raw("/")).toContain("equity_history");
+  for (const path of ["/accounting", "/learning", "/health"]) {
+    expect(await raw(path), path).not.toContain("equity_history");
+    const status = await rendered(
+      page,
+      request,
+      path,
+      'header [role="status"]',
+    );
+    expect(status.length, path).toBeGreaterThan(0);
+    expect(new Set(status), path).toEqual(new Set(["CONNECTING TO SERVICE"]));
+  }
+  const flight: Promise<string>[] = [];
+  page.on("response", (response) => {
+    const headers = response.request().headers();
+    if (headers["rsc"] === "1" && !headers["next-router-prefetch"])
+      flight.push(response.text());
+  });
+  await control(request, { accounting: "fixture" });
+  await page.goto("/accounting");
+  const refreshed = page.waitForResponse(
+    (response) =>
+      response.url().includes("/accounting") &&
+      response.request().headers()["rsc"] === "1" &&
+      !response.request().headers()["next-router-prefetch"],
+  );
+  await page.getByRole("button", { name: "Refresh report" }).click();
+  expect(await (await refreshed).text()).not.toContain("equity_history");
+  await page.goto("/?view=settings");
+  await expect(
+    page.getByRole("dialog", { name: "Display settings" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Market overview" }),
+  ).toBeVisible();
+  // Client-cache navigations may issue no flight request; any that did must be seed-free.
+  for (const body of await Promise.all(flight))
+    expect(body).not.toContain("equity_history");
+});
 // Development React reports attribute and style mismatches that production builds stay silent on.
 test.describe("development hydration smoke @dev", () => {
   test.describe.configure({ timeout: 180000 });
