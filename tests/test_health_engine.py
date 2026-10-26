@@ -128,6 +128,25 @@ def test_missing_heartbeat_invalidates_all_cached_green_nodes(tmp_path):
     finally:asyncio.run(engine.close());store.close()
 
 
+@pytest.mark.parametrize('status,expected',[('healthy','healthy'),('error','degraded')])
+def test_event_driven_execution_worker_is_judged_by_status_not_age(tmp_path,status,expected):
+    store=Store(tmp_path/'health.sqlite','health');app,collector=observations()
+    old=(datetime.now(timezone.utc)-timedelta(seconds=600)).isoformat()
+    app['workers'].append({'name':'execution','status':status,'at':old})
+    app['workers'].append({'name':'exit_monitor','status':'healthy','at':old})
+    def handler(request):
+        return httpx.Response(200,json=app if request.url.port==8766 else collector)
+    async def exercise():
+        engine=HealthEngine(store,httpx.AsyncClient(transport=httpx.MockTransport(handler)),Providers())
+        await engine.cycle();nodes={n['id']:n for n in engine.state()['nodes']}
+        assert nodes['worker:execution']['status']==expected
+        # Scheduled workers keep their freshness requirement.
+        assert nodes['worker:exit_monitor']['status']=='degraded'
+        assert nodes['worker:quotes']['status']=='healthy'
+        await engine.close()
+    asyncio.run(exercise());store.close()
+
+
 @pytest.mark.parametrize('failure',['http','stale','schema'])
 def test_local_observation_failures_do_not_reuse_healthy_state(tmp_path,failure):
     store=Store(tmp_path/'health.sqlite','health');app,collector=observations()

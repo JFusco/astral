@@ -278,3 +278,94 @@ def test_only_one_executor_can_own_database(tmp_path):
         with pytest.raises(RuntimeError, match="Another ASTRAL executor"):
             with TestClient(create_app(cfg, background=False), base_url="http://localhost"):
                 pass
+
+
+@pytest.mark.parametrize("preflight", ["cooldown", "limiter"])
+def test_unsent_submission_is_rejected_not_uncertain(tmp_path, preflight):
+    import time
+    from backend.store import utcnow
+    cfg = Settings(mode="alpaca", db_path=tmp_path/"unsent.sqlite", api_key="fixture-key", secret_key="fixture-secret", enable_orders=True)
+    store = Store(cfg.db_path, cfg.mode);seen = []
+    account = {"id": "fixture-account", "status": "ACTIVE", "crypto_status": "ACTIVE", "equity": "100000", "cash": "100000",
+               "buying_power": "100000", "non_marginable_buying_power": "100000"}
+    accepted = {}
+    def handle(request):
+        seen.append((request.method, request.url.path, dict(request.url.params)))
+        path = request.url.path
+        if request.method == "POST" and path == "/v2/orders":
+            body = json.loads(request.content)
+            accepted[body["client_order_id"]] = {**body, "id": "fixture-"+body["client_order_id"], "status": "new", "filled_qty": "0"}
+            return httpx.Response(200, json=accepted[body["client_order_id"]])
+        if path == "/v2/orders:by_client_order_id":
+            raw = accepted.get(request.url.params["client_order_id"])
+            return httpx.Response(200, json=raw) if raw else httpx.Response(404)
+        if path == "/v2/orders": return httpx.Response(200, json=[])
+        if path == "/v2/account": return httpx.Response(200, json=account)
+        if path == "/v2/positions": return httpx.Response(200, json=[])
+        if path == "/v2/clock": return httpx.Response(200, json={"is_open": False})
+        raise AssertionError("Unexpected request "+request.method+" "+path)
+    adapter = AlpacaPaper(cfg, store, httpx.MockTransport(handle))
+    e = Engine(cfg, store, adapter)
+    now = utcnow()
+    store.put("assets", {"BTC": {"symbol": "BTC", "broker_symbol": "BTC/USD", "type": "crypto", "tradable": True,
+                                 "increment": "0.000001", "minimum": "0.000001", "price_increment": "0.01", "source": "alpaca", "at": now}})
+    store.put("quotes", {"BTC": {"bid": "67500", "ask": "67510", "at": now, "received_at": now, "source": "alpaca-us"}})
+    store.put("account_snapshot", {"account": account, "positions": [], "clock": {"is_open": False}, "at": now})
+    store.put("account_binding", account["id"])
+    e.connected = e.identity_checked = True
+    if preflight == "cooldown":
+        adapter.cooldown["trading"] = time.monotonic()+300
+    else:
+        adapter.trading.calls.extend([time.monotonic()]*adapter.trading.normal)
+    order = intent("astral-unsent0001", notional=25.0)
+    try:
+        assert run(e.place(order))["status"] == "rejected"
+        assert not [r for r in seen if r[0] == "POST"]
+        assert any(r["type"] == "submission_rejected" and r["payload"]["client_id"] == order["client_order_id"]
+                   for r in store.events_after(0, limit=1000))
+        # Recovery: budget restored and readback succeeds. The rejected ID is
+        # terminal, so it is never polled and does not block new risk.
+        adapter.cooldown["trading"] = 0;adapter.trading.calls.clear()
+        run(e.reconcile())
+        assert not [r for r in seen if r[1] == "/v2/orders:by_client_order_id" and r[2].get("client_order_id") == order["client_order_id"]]
+        assert run(e.place(intent("astral-unsent0002", notional=25.0)))["status"] == "new"
+        assert len([r for r in seen if r[0] == "POST"]) == 1
+    finally:
+        run(adapter.close());store.close()
+
+
+def test_scheduled_research_tick_yields_to_manual_run(engine):
+    e = engine;calls = [];ticks = [];outcome = {"fail": False}
+    async def cycle():
+        # Stub: no provider history, collector or model calls.
+        calls.append(1)
+        if outcome["fail"]: raise RuntimeError("fixture research failure")
+    e.research_cycle = cycle
+    async def tick():
+        ticks.append(await e.research_tick());return ticks[-1]
+    errors = lambda: e.store.rows("SELECT COUNT(*) n FROM events WHERE type='worker_error'")[0]["n"]
+    async def wait_for(predicate):
+        for _ in range(500):
+            if predicate(): return
+            await asyncio.sleep(.01)
+        raise AssertionError("Timed out waiting for the research loop")
+    async def scenario():
+        task = asyncio.create_task(e.loop("research", tick, .01))
+        try:
+            e.worker("research", "running", "Manual run in progress")
+            running, before = dict(e.workers["research"]), errors()
+            # Pending flag first, then the lock, with no gap between them.
+            e.research_pending = True
+            await wait_for(lambda: len(ticks) >= 2)
+            async with e.research_lock:
+                e.research_pending = False;seen = len(ticks)
+                await wait_for(lambda: len(ticks) >= seen+2)
+                assert e.workers["research"] == running and errors() == before and not calls
+            await wait_for(lambda: e.workers["research"]["status"] == "healthy")
+            assert calls
+            outcome["fail"] = True;before = errors()
+            await wait_for(lambda: e.workers["research"]["status"] == "error")
+            assert errors() > before
+        finally:
+            task.cancel();await asyncio.gather(task, return_exceptions=True)
+    run(scenario())

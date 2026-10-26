@@ -17,6 +17,8 @@ LOCAL = {'application':os.getenv('ASTRAL_HEALTH_APPLICATION_ORIGIN', 'http://127
 WORKER_TTL = {'quotes':30, 'reconciliation':45, 'fees':300, 'news':600,
               'research':1800, 'portfolio_replay':1800, 'event_context':180,
               'liquidity_experiment':90, 'exit_monitor':30, 'shadow':180}
+# Written only when an order/cancel happens; no heartbeat, so age is not a fault.
+EVENT_DRIVEN = {'execution'}
 SYMBOLS = ('BTC','ETH','SOL','SPY','QQQ','GLD','TLT','IWM')
 
 
@@ -92,7 +94,7 @@ class HealthEngine:
                 disabled = status == 'disabled'
                 ttl = WORKER_TTL.get(name,45)
                 observed_at = app.get('ledger_at') if name=='ledger' else w.get('at')
-                good = status in ('healthy','recording') and fresh(observed_at,ttl,now)
+                good = status in ('healthy','recording') and (name in EVENT_DRIVEN or fresh(observed_at,ttl,now))
                 assessed = 'inactive' if disabled else 'healthy' if good else 'degraded'
                 detail = 'Disabled by server configuration' if disabled else 'Worker observation: '+str(status)
                 if name == 'learning' and status == 'recording':

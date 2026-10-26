@@ -21,9 +21,10 @@ TERMINAL = {"filled", "canceled", "expired", "rejected", "replaced"}
 
 
 class BrokerFailure(Exception):
-    def __init__(self, message, status=503):
+    # sent=False only where the adapter certifies no request left the process.
+    def __init__(self, message, status=503, *, sent=True):
         super().__init__(message)
-        self.status = status
+        self.status, self.sent = status, sent
 
 
 class Limiter:
@@ -35,7 +36,7 @@ class Limiter:
         while self.calls and self.calls[0] < now - 60:
             self.calls.popleft()
         if len(self.calls) >= self.normal + (self.reserve if critical else 0):
-            raise BrokerFailure("Local request budget reached; capacity reserved for recovery", 429)
+            raise BrokerFailure("Local request budget reached; capacity reserved for recovery", 429, sent=False)
         self.calls.append(now)
 
 
@@ -51,12 +52,12 @@ class AlpacaPaper:
 
     async def request(self, method, path, *, data=False, critical=False, **kwargs):
         if method != "GET" and not self.settings.enable_orders:
-            raise BrokerFailure("Read-only adapter blocks broker writes", 403)
+            raise BrokerFailure("Read-only adapter blocks broker writes", 403, sent=False)
         if not self.settings.configured:
-            raise BrokerFailure("Alpaca paper credentials are not configured")
+            raise BrokerFailure("Alpaca paper credentials are not configured", sent=False)
         pool = "data" if data else "trading"
         if time.monotonic() < self.cooldown[pool]:
-            raise BrokerFailure("Provider cooldown active", 429)
+            raise BrokerFailure("Provider cooldown active", 429, sent=False)
         (self.data if data else self.trading).take(critical)
         started = time.monotonic()
         try:
