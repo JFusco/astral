@@ -1,0 +1,15 @@
+# Paper account writer ownership
+
+The Alpaca adapter permits one writer for each verified paper account under the same OS user on one host. Different database paths, checkout directories and API keys do not create separate account authority. Read-only observers can continue reading while a writer holds ownership.
+
+Before each submission, cancellation or other broker mutation, the adapter reads the account identity from the fixed Alpaca paper host. An absent identity or failed read blocks that mutation before transport. A different identity from the ledger binding or the adapter's previous write identity blocks further writes until the adapter closes and reconciliation establishes the correct account. Existing risk and order-state checks still apply.
+
+The first write acquires a nonblocking operating-system lock in the private `~/.astral-paper-executors` directory. The filename hashes the fixed paper provider and verified account identity. It contains no credentials or raw account identifier. The adapter checks ownership, private permissions, regular-file type and stable directory/file identity. Unsafe, replaced or unavailable storage denies writes without fallback.
+
+The writer holds ownership until its adapter closes or its process dies. Close waits for an in-flight write before releasing ownership. A child process cannot use an inherited adapter or release its parent's lease; it must open its own adapter. Lock filenames remain after release: file existence is not proof of an active writer. Never delete, replace or force-unlock them while ASTRAL processes run. Restart recovery must still reconcile uncertain orders; acquiring the lease does not authorize a second submission or transfer history between ledgers.
+
+This is cooperative coordination for one OS user on one host. It cannot coordinate separate machines or OS users, or prevent someone placing orders through the provider UI. Multiple-host or multiple-user execution remains unsupported. There is no remote lease service or automatic takeover policy.
+
+Local controlled transports verify both submission and cancellation boundaries, unknown and changed identity, observer coexistence, separate accounts, unsafe storage, replaced locks and close during a write. Real subprocesses verify contention across different databases and recovery after SIGKILL. Tests use temporary storage and fake credentials; no connected broker write is needed to validate this guard.
+
+Research packet source identities include the ownership module alongside the broker. The historical gate-data-adapter registrations remain source snapshots. This guard does not rewrite those hashes, the frozen strategy, portfolio holdout or liquidity experiment. It does not enable orders, research execution, exit monitoring, model calls or a paper pilot, and it cannot explain the unresolved BTC custody debit.

@@ -11,6 +11,7 @@ import httpx
 
 from .config import DATA_URL, PAPER_URL, SYMBOLS
 from .store import utcnow
+from .executor_ownership import AccountLease, OwnershipError, account_identity
 
 def D(value):
     number = Decimal(str(value))
@@ -49,10 +50,43 @@ class AlpacaPaper:
         self.trading, self.data = Limiter(), Limiter(100, 10)
         self.cooldown = {"trading": 0, "data": 0}
         self.metadata = {}
+        self.account_lease = AccountLease()
+        self.write_lock = asyncio.Lock()
+        self.identity_changed = self.closed = False
 
     async def request(self, method, path, *, data=False, critical=False, **kwargs):
+        try:
+            self.account_lease.check_process()
+        except OwnershipError as exc:
+            raise BrokerFailure(str(exc), sent=False) from exc
         if method != "GET" and not self.settings.enable_orders:
             raise BrokerFailure("Read-only adapter blocks broker writes", 403, sent=False)
+        if method == "GET":
+            return await self._request(method, path, data=data, critical=critical, **kwargs)
+        if data:
+            raise BrokerFailure("Market data is GET-only", 403, sent=False)
+        async with self.write_lock:
+            if self.closed or self.identity_changed:
+                raise BrokerFailure("Broker write authority is unavailable; reconcile before reopening", sent=False)
+            try:
+                account = await self._request("GET", "/v2/account", critical=True)
+            except BrokerFailure as exc:
+                raise BrokerFailure("Paper account identity read failed; broker write blocked", exc.status, sent=False) from exc
+            try:
+                identity = account_identity(account)
+                bound = self.store.get("account_binding")
+                if ((bound is not None and bound != identity)
+                        or (self.account_lease.identity is not None and self.account_lease.identity != identity)):
+                    self.identity_changed = True
+                    raise OwnershipError("Paper account identity changed; reconcile before reopening")
+                self.account_lease.acquire(identity)
+                if bound is None:
+                    self.store.put("account_binding", identity)
+            except OwnershipError as exc:
+                raise BrokerFailure(str(exc), sent=False) from exc
+            return await self._request(method, path, critical=critical, **kwargs)
+
+    async def _request(self, method, path, *, data=False, critical=False, **kwargs):
         if not self.settings.configured:
             raise BrokerFailure("Alpaca paper credentials are not configured", sent=False)
         pool = "data" if data else "trading"
@@ -258,7 +292,19 @@ class AlpacaPaper:
         return history
 
     async def close(self):
-        await self.http.aclose()
+        try:
+            self.account_lease.check_process()
+        except OwnershipError:
+            # Do not touch inherited async locks, sockets or ledger connections.
+            self.closed = True
+            self.account_lease.close()
+            return
+        async with self.write_lock:
+            self.closed = True
+            try:
+                await self.http.aclose()
+            finally:
+                self.account_lease.close()
 
 
 class Simulator:

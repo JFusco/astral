@@ -229,11 +229,14 @@ def test_live_host_configuration_rejected(monkeypatch):
         Settings.from_env()
 
 
-def test_adapter_fixed_hosts_no_post_retries_and_cooldown(tmp_path):
+def test_adapter_fixed_hosts_no_post_retries_and_cooldown(tmp_path, monkeypatch):
+    from backend import executor_ownership
+    monkeypatch.setattr(executor_ownership, "LOCK_DIRECTORY", tmp_path/"account-locks")
     cfg = Settings(mode="alpaca", db_path=tmp_path/"adapter.sqlite", api_key="secret-key", secret_key="secret-value", enable_orders=True)
     store = Store(cfg.db_path, cfg.mode);seen = []
     def handle(request):
         seen.append((request.method, request.url.host))
+        if request.url.path == "/v2/account": return httpx.Response(200, json={"id":"fixture-account"})
         if request.method == "POST": raise httpx.ReadTimeout("Uncertain", request=request)
         return httpx.Response(429, headers={"Retry-After":"60"})
     adapter = AlpacaPaper(cfg, store, httpx.MockTransport(handle))
@@ -243,7 +246,7 @@ def test_adapter_fixed_hosts_no_post_retries_and_cooldown(tmp_path):
         with pytest.raises(BrokerFailure, match="cooldown"): await adapter.get_order("astral-mock1234")
         await adapter.close()
     run(scenario())
-    assert seen == [("POST","paper-api.alpaca.markets"),("GET","paper-api.alpaca.markets")]
+    assert seen == [("GET","paper-api.alpaca.markets"),("POST","paper-api.alpaca.markets"),("GET","paper-api.alpaca.markets")]
     assert "secret-key" not in json.dumps(store.get("last_api_call"))
     store.close()
 
@@ -281,7 +284,9 @@ def test_only_one_executor_can_own_database(tmp_path):
 
 
 @pytest.mark.parametrize("preflight", ["cooldown", "limiter"])
-def test_unsent_submission_is_rejected_not_uncertain(tmp_path, preflight):
+def test_unsent_submission_is_rejected_not_uncertain(tmp_path, preflight, monkeypatch):
+    from backend import executor_ownership
+    monkeypatch.setattr(executor_ownership, "LOCK_DIRECTORY", tmp_path/"account-locks")
     import time
     from backend.store import utcnow
     cfg = Settings(mode="alpaca", db_path=tmp_path/"unsent.sqlite", api_key="fixture-key", secret_key="fixture-secret", enable_orders=True)

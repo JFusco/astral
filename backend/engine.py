@@ -60,7 +60,7 @@ class Engine:
         # Local files only; this does not attest the separate collector process.
         if self.local_adapter_source_sha256 is None:
             names = ("public_context", "calendar_evidence", "event_sources", "intelligence",
-                     "calendar_context", "bea_calendar", "market_depth", "trade_history", "broker")
+                     "calendar_context", "bea_calendar", "market_depth", "trade_history", "broker", "executor_ownership")
             self.local_adapter_source_sha256 = {
                 "backend/"+name+".py": hashlib.sha256(Path(__file__).with_name(name+".py").read_bytes()).hexdigest()
                 for name in names}

@@ -268,7 +268,7 @@ def test_adapter_hashes_are_cached_local_and_covered_by_packet_hash(research_eng
     import backend.engine as engine_module
     e = research_engine
     sources = ('public_context','calendar_evidence','event_sources','intelligence','calendar_context',
-               'bea_calendar','market_depth','trade_history','broker')
+               'bea_calendar','market_depth','trade_history','broker','executor_ownership')
     local = tmp_path/'adapters';local.mkdir()
     for name in sources:
         (local/(name+'.py')).write_bytes(Path(engine_module.__file__).with_name(name+'.py').read_bytes())
