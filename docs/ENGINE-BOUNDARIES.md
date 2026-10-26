@@ -23,6 +23,10 @@ These are responsibility boundaries, not a requirement to build five services.
 Keep each proof as small as it needs to be. Strategy, research and broker
 execution continue to use their existing deterministic enforcement paths.
 
+The [paper account ownership guard](EXECUTOR-OWNERSHIP.md) protects the common
+broker write path across different local databases. It coordinates one verified
+paper account for the same OS user and host; read-only observers remain allowed.
+
 ## Learning: two separate evaluations
 
 ### 1. Data and outcomes
