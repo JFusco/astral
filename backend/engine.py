@@ -829,7 +829,7 @@ class Engine:
                 "crypto_universe": self.store.get("crypto_universe"),
                 "timing": [{"symbol": r["symbol"], "strategy": r["strategy"], **json.loads(r["result"])} for r in self.store.rows("SELECT * FROM timing ORDER BY id DESC LIMIT 16")],
                 "orders_enabled": self.settings.enable_orders, "assets": assets,
-                "account": {"equity": equity, "cash": cash, "opening_equity": 100000 if self.settings.mode == "simulator" else baseline,
+                "account": {"equity": equity, "cash": cash, "opening_equity": 100000 if self.settings.mode == "simulator" else float(D(baseline)) if baseline is not None else None,
                             "deployed": sum(float(D(p["market_value"])) for p in snap.get("positions", [])),
                             "realized": float(D(a["realized"])) if a.get("realized") is not None else None,
                             "unrealized": sum(float(D(p.get("unrealized_pl") or 0)) for p in snap.get("positions", [])),

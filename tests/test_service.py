@@ -369,3 +369,24 @@ def test_scheduled_research_tick_yields_to_manual_run(engine):
         finally:
             task.cancel();await asyncio.gather(task, return_exceptions=True)
     run(scenario())
+
+
+@pytest.mark.parametrize("baseline", ["100000", None])
+def test_alpaca_state_account_fields_match_dashboard_number_contract(tmp_path, baseline):
+    # The dashboard schema accepts number|null; a broker string rejects the whole state.
+    from backend.store import utcnow
+    cfg = Settings(mode="alpaca", db_path=tmp_path/"contract.sqlite", api_key="fixture-key", secret_key="fixture-secret")
+    store = Store(cfg.db_path, cfg.mode)
+    adapter = AlpacaPaper(cfg, store, httpx.MockTransport(lambda request: httpx.Response(500)))
+    e = Engine(cfg, store, adapter)
+    try:
+        store.put("account_snapshot", {"account": {"id": "fixture-account", "equity": "100250.5", "cash": "99000"},
+                                       "positions": [], "clock": {"is_open": False}, "at": utcnow()})
+        if baseline is not None: store.put("baseline_equity", baseline)
+        account = e.state()["account"]
+        for field in ("equity", "cash", "opening_equity", "equity_change"):
+            assert account[field] is None or type(account[field]) in (int, float), (field, account[field])
+        assert account["opening_equity"] == (100000.0 if baseline else None)
+        assert account["equity_change"] == (250.5 if baseline else None)
+    finally:
+        run(adapter.close());store.close()
