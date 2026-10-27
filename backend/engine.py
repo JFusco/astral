@@ -41,7 +41,7 @@ def symbol_for(raw):
 
 
 class Engine:
-    def __init__(self, settings, store, broker=None):
+    def __init__(self, settings, store, broker=None, activity_observation=None):
         self.settings, self.store = settings, store
         self.broker = broker or (Simulator(settings, store) if settings.mode == "simulator" else AlpacaPaper(settings, store))
         self.lock = asyncio.Lock()
@@ -55,6 +55,11 @@ class Engine:
         self.research_lock = asyncio.Lock()
         self.liquidity_report = None
         self.local_adapter_source_sha256 = None
+        self.activity_observation = activity_observation
+
+    @property
+    def activity_enabled(self):
+        return self.settings.enable_activity_feed and (self.activity_observation is None or self.activity_observation.active)
 
     def adapter_source_hashes(self):
         # Local files only; this does not attest the separate collector process.
@@ -94,7 +99,8 @@ class Engine:
         if self.settings.enable_news and self.settings.mode == "alpaca":
             self.tasks.append(asyncio.create_task(self.loop("news", self.refresh_news, 60)))
         if self.settings.mode == "alpaca" and self.settings.enable_activity_feed:
-            self.tasks.append(asyncio.create_task(self.loop("fees", self.refresh_activity_feed, 60)))
+            self.tasks.append(asyncio.create_task(self.activity_observation.run(self) if self.activity_observation
+                                                  else self.loop("fees", self.refresh_activity_feed, 60)))
         self.worker("shadow", "waiting" if self.settings.enable_shadow else "disabled", "Risk probes only; no strategy or broker orders")
         if self.settings.enable_shadow:
             self.tasks.append(asyncio.create_task(self.loop("shadow", self.shadow_cycle, self.settings.shadow_interval)))
@@ -501,6 +507,8 @@ class Engine:
 
     async def refresh_activity_feed(self):
         from .activity_feed import collect_batch, publish_projection, FeedError
+        if self.activity_observation:
+            return await self.activity_observation.acquire(self)
         if not self.settings.enable_activity_feed or not self.settings.activity_mapping_path:
             raise FeedError('Activity reader and reviewed mapping are unavailable')
         mapping = json.loads(self.settings.activity_mapping_path.read_text())
@@ -834,7 +842,7 @@ class Engine:
                 "experiment": experiment.state(self.store),
                 "portfolio_replay": self.replay_view(),
                 "liquidity_experiment": self.liquidity_view(),
-                "readiness": readiness_view(self.store, feed_enabled=self.settings.enable_activity_feed,
+                "readiness": readiness_view(self.store, feed_enabled=self.activity_enabled,
                                             max_snapshot_age=self.settings.max_snapshot_age) if self.settings.mode == "alpaca" and self.settings.configured else None,
                 "execution_pilot": self.store.get("execution_pilot"),
                 "shadow": {"enabled": self.settings.enable_shadow, "counts": self.store.rows("SELECT json_extract(result,'$.decision') decision,COUNT(*) count FROM shadow GROUP BY decision"),

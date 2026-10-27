@@ -12,9 +12,12 @@ from .config import ROOT, Settings
 from .store import Store, dumps, utcnow
 
 
-def verify_inputs(mapping_file, *, allow_fixture=False):
+def verify_inputs(mapping_file, *, allow_fixture=False, expected_sha256=None):
     path = Path(mapping_file).resolve(strict=True)
-    mapping = load_mapping(json.loads(path.read_text()))
+    raw = path.read_bytes()
+    if expected_sha256 is not None and hashlib.sha256(raw).hexdigest() != expected_sha256:
+        raise ValueError('Reviewed mapping hash mismatch')
+    mapping = load_mapping(json.loads(raw))
     if mapping['kind'] != 'reviewed-provider' and not allow_fixture:
         raise ValueError('Private original acceptance requires a reviewed-provider mapping')
     if mapping['kind'] == 'reviewed-provider' and path.is_relative_to(ROOT):

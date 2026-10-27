@@ -179,10 +179,10 @@ class AlpacaPaper:
                 if symbol in result: result[symbol]["depth_status"] = "book readback unavailable"
         return result
 
-    async def snapshot(self):
-        account = await self.request("GET", "/v2/account", critical=True)
-        positions = await self.request("GET", "/v2/positions", critical=True)
-        clock = await self.request("GET", "/v2/clock", critical=True)
+    async def snapshot(self, *, critical=True):
+        account = await self.request("GET", "/v2/account", critical=critical)
+        positions = await self.request("GET", "/v2/positions", critical=critical)
+        clock = await self.request("GET", "/v2/clock", critical=critical)
         if not isinstance(account, dict) or not account.get("id") or not isinstance(positions, list) or not isinstance(clock, dict):
             raise BrokerFailure("Incomplete account, positions, or session response")
         return {"account": account, "positions": positions, "clock": clock, "at": utcnow()}

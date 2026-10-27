@@ -194,7 +194,9 @@ def retain_batch(store, batch, account, result):
         store.db.execute('INSERT INTO activity_batches VALUES(?,?,?,?,?)', (batch, 'outcome', account, at, canonical(receipt)))
 
 
-async def collect_batch(broker, store):
+async def collect_batch(broker, store, *, critical=True, refresh_snapshot=False):
+    if refresh_snapshot and (broker.settings.enable_orders or broker.settings.mode != 'alpaca'):
+        raise FeedError('Accounting snapshot refresh requires orders-off paper settings')
     binding = store.get('account_binding')
     if not binding:
         raise FeedError('Verified account binding required')
@@ -206,10 +208,18 @@ async def collect_batch(broker, store):
     batch = start_batch(store, binding, since, until)
     broker._last_activity_stream = None
     result = {'complete': False, 'events': [], 'raw': b'', 'since': since, 'until': until,
-              'account_id': binding, 'received_at': utcnow(), 'error': 'activity_acquisition_incomplete'}
+              'account_id': binding, 'received_at': utcnow(), 'error': 'activity_acquisition_incomplete',
+              'request_attempts': 0}
     try:
         async with asyncio.timeout(ATTEMPT_SECONDS):
-            before = await broker.request('GET', '/v2/account', critical=True)
+            if refresh_snapshot:
+                result['request_attempts'] += 3
+                snapshot = await broker.snapshot(critical=critical)
+                if account_identity(snapshot['account']) != binding:
+                    raise FeedError('Paper account identity changed')
+                store.put('account_snapshot', snapshot)
+            result['request_attempts'] += 1
+            before = await broker.request('GET', '/v2/account', critical=critical)
             result['before'] = before
             if account_identity(before) != binding:
                 raise FeedError('Paper account identity changed')
@@ -217,13 +227,16 @@ async def collect_batch(broker, store):
                 created = datetime.fromisoformat(before['created_at'].replace('Z', '+00:00'))
                 since = min(start, created).isoformat()
             until = utcnow()
+            result['request_attempts'] += 1
             stream = await broker.stream_activities(since, until)
             result.update(stream, account_id=binding)
-            after = await broker.request('GET', '/v2/account', critical=True)
+            result['request_attempts'] += 1
+            after = await broker.request('GET', '/v2/account', critical=critical)
             result['after'] = after
             if account_identity(after) != binding:
                 raise FeedError('Paper account identity changed')
-            result['after_positions'] = await broker.request('GET', '/v2/positions', critical=True)
+            result['request_attempts'] += 1
+            result['after_positions'] = await broker.request('GET', '/v2/positions', critical=critical)
             if not isinstance(result['after_positions'], list):
                 raise FeedError('Post-stream positions unavailable')
             if any(e.get('account_id', binding) != binding for e in result['events']):
@@ -236,6 +249,7 @@ async def collect_batch(broker, store):
     finally:
         result['received_at'] = utcnow()
         retain_batch(store, batch, binding, result)
+        broker._last_activity_acquisition = result
     return batch, result
 
 
