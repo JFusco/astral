@@ -4,6 +4,8 @@ import json
 
 from .broker import D
 from .config import SYMBOLS
+from .custody import analyze, fee_moment, moment, retained
+from .store import utcnow
 
 BOOKS = ("manual", "swing", "intraday", "external")
 
@@ -18,6 +20,8 @@ def book_for(intent):
 
 
 def attribute(store, snapshot):
+    paper = store.get('mode') == 'alpaca'
+    cutoff = moment(utcnow()) if paper else None
     orders = {r["client_id"]: r for r in store.rows("SELECT * FROM orders")}
     balances, owners, errors, entries = {}, {}, [], {}
     if store.get("fee_reconciliation_required"):
@@ -39,9 +43,15 @@ def attribute(store, snapshot):
             if buckets[book] <= 0: times[book] = None
             if buckets[book] < 0:
                 errors.append({"symbol": symbol, "book": book, "reason": "Sell exceeds attributed inventory"})
+    gross_books = {s: {b: str(q) for b,q in buckets.items()} for s,buckets in balances.items()}
     # CFEE is a signed asset debit. A late fee without an order ID cannot be
     # assigned across multiple strategy owners. Keep that ambiguity visible.
-    for row in store.rows("SELECT payload FROM activities WHERE type='CFEE'"):
+    for row in store.rows("SELECT at,payload FROM activities WHERE type='CFEE'"):
+        try:
+            if paper and fee_moment(row['at']) > cutoff:
+                errors.append({'reason': 'Fee timestamp is after accounting read; review required'});continue
+        except (ValueError, TypeError, AttributeError):
+            errors.append({'reason': 'Invalid fee timestamp; review required'});continue
         fee = json.loads(row["payload"])
         if fee.get("status") != "executed" or not fee.get("qty"): continue
         symbol = canonical_symbol(fee.get("symbol", ""))
@@ -51,6 +61,13 @@ def attribute(store, snapshot):
             balances[symbol][owner] += D(fee["qty"])
         else:
             errors.append({"symbol": symbol, "reason": "Fee cannot be assigned to a unique strategy"})
+    custody = analyze(**retained(store), snapshot=snapshot, account_id=store.get('account_binding'),
+                      mode='alpaca', as_of=cutoff.isoformat()) if paper else {'issues': [], 'additional_debits': {}}
+    errors.extend(custody['issues'])
+    for symbol, books in custody['additional_debits'].items():
+        for book, qty in books.items():
+            balances[symbol][book] -= D(qty)
+            if balances[symbol][book] <= 0:entries[symbol][book] = None
     actual = {canonical_symbol(p["symbol"]) or p["symbol"]: D(p["qty"]) for p in snapshot.get("positions", [])}
     differences = []
     assets = store.get("assets", {})
@@ -63,6 +80,7 @@ def attribute(store, snapshot):
                                 "ledger_qty": str(expected), "difference": str(delta),
                                 "reason": "Unreconciled inventory; fees, external activity or missing history"})
     return {"books": {s: {b: str(q) for b, q in v.items()} for s, v in balances.items()},
+            **({"gross_books": gross_books, "custody_reconciliation": custody} if paper else {}),
             "entry_times": entries,
             "differences": differences, "errors": errors,
             "status": "needs-review" if differences or errors else "matched",

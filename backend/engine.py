@@ -227,6 +227,8 @@ class Engine:
             self.connected = False
             raise BrokerFailure("Paper account identity changed")
         with self.store.transaction():
+            from .custody import retain_checkpoint
+            if self.settings.mode == 'alpaca':retain_checkpoint(self.store, snapshot)
             self.store.put("account_snapshot", snapshot)
             if self.store.get("baseline_equity") is None:
                 self.store.put("baseline_equity", account["equity"])
