@@ -7,7 +7,7 @@ import argparse
 from collections import Counter, defaultdict, deque
 from contextlib import contextmanager
 import csv
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, localcontext
 from functools import wraps
 import hashlib
@@ -19,7 +19,7 @@ import uuid
 
 from .fee_evidence import validate_activity
 from .accounting_receipts import receipt_url
-from .custody import analyze as analyze_custody
+from .custody import analyze as analyze_custody, fee_moment
 
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = 'accounting-proof-v2'
@@ -82,14 +82,15 @@ def source_snapshot(path, cutoff):
     with readonly(path) as db:
         tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         specs = {'fills': ('at', 'id,client_id,at,payload'), 'activities': ('at', 'id,type,at,payload'),
-                 'orders': ('created_at', 'client_id,request,raw,status,external,created_at'), 'equity': ('at', 'id,at,value')}
+                 'orders': ('created_at', 'client_id,request,raw,status,external,created_at,updated_at'), 'equity': ('at', 'id,at,value')}
         for table, (clock, columns) in specs.items():
             selected[table] = []
             if table not in tables:
                 issues['missing_'+table] += 1;continue
             for row in db.execute(f'SELECT {columns} FROM {table} ORDER BY rowid'):
                 try:
-                    if at(row[clock]) > cutoff:
+                    known = fee_moment(row[clock]) if table == 'activities' else at(row[clock])
+                    if known > cutoff:
                         issues['after_cutoff_'+table] += 1;continue
                     selected[table].append(dict(row))
                 except (ValueError, TypeError, AttributeError):
@@ -263,11 +264,14 @@ def evaluate(source, costs, cutoff):
             for clock in ('transaction_time', 'date'):
                 if p.get(clock):
                     event_time = at(p[clock]+'T00:00:00+00:00') if re.fullmatch(r'\d{4}-\d{2}-\d{2}', p[clock]) else at(p[clock])
-                    if event_time > at(row['at']):raise ValueError()
+                    if event_time > fee_moment(row['at']):raise ValueError()
             status = validate_activity(p)
-            normalized = {'id': row['id'], 'type': row['type'], 'known_at': row['at'], 'status': status,
+            normalized = {'id': row['id'], 'type': row['type'], 'known_at': row['at'],
+                          'time_precision': 'day' if re.fullmatch(r'\d{4}-\d{2}-\d{2}', row['at']) else 'timestamp', 'status': status,
                           'symbol': symbol(p.get('symbol', '')), 'quantity': p.get('qty'), 'net_amount': p.get('net_amount'), 'currency': p.get('currency')}
             fees.append(normalized)
+            if normalized['time_precision'] == 'day' and fee_moment(row['at'])+timedelta(days=1) > cutoff:
+                issues.append('day_precision_fee_on_cutoff_date')
             if status != 'confirmed-provider-record':issues.append('pending_fee_confirmation');continue
             if row['type'] == 'CFEE':balances[symbol(p['symbol'])] += number(p['qty'])
             else:

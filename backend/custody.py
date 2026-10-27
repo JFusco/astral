@@ -1,8 +1,9 @@
 """Measured gross-to-net custody evidence; never a fee estimate or write-off."""
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal, localcontext
 import json
+import re
 
 from .fee_evidence import validate_activity
 
@@ -14,6 +15,11 @@ def moment(value):
     result = datetime.fromisoformat(value.replace('Z', '+00:00'))
     if result.tzinfo is None:raise ValueError('Timezone required')
     return result
+
+
+def fee_moment(value):
+    """Provider activities may carry a UTC date instead of a timestamp."""
+    return moment(value+'T00:00:00+00:00' if re.fullmatch(r'\d{4}-\d{2}-\d{2}', value) else value)
 
 
 def quantity(value):
@@ -30,14 +36,15 @@ def asset(value):
 
 def retained(store):
     """Read existing rows only, including legacy decision-context snapshots."""
+    seqs = store.get('custody_checkpoint', {}).get('seqs', [])
     return {'orders': store.rows('SELECT * FROM orders'), 'fills': store.rows('SELECT * FROM fills'),
             'activities': store.rows('SELECT * FROM activities'),
             'observations': store.rows('SELECT id,at,outcome,context FROM observations WHERE outcome=\'approved\''),
-            'checkpoints': store.rows("SELECT seq AS id,at,payload FROM events WHERE type='custody_snapshot'")}
+            'checkpoints': store.rows(f"SELECT seq AS id,at,payload FROM events WHERE seq IN ({','.join('?' for _ in seqs)})", seqs) if seqs else []}
 
 
 def retain_checkpoint(store, snapshot):
-    """Append future custody changes without altering fills or old evidence."""
+    """Append custody changes inside the caller's reconciliation transaction."""
     orders = store.rows('SELECT client_id,status,raw FROM orders')
     payload = {'snapshot': snapshot, 'working_orders': [o['client_id'] for o in orders if o['status'] not in TERMINAL]}
     # Cash/mark changes are not custody evidence. Retain baseline, position and
@@ -45,11 +52,12 @@ def retain_checkpoint(store, snapshot):
     signature = [snapshot['account']['id'], sorted((p['symbol'], p['qty']) for p in snapshot['positions']),
                  sorted((o['client_id'], o['status'], json.loads(o['raw']).get('filled_qty')) for o in orders)]
     signature = json.loads(json.dumps(signature))
-    previous = store.rows("SELECT payload FROM events WHERE type='custody_snapshot' ORDER BY seq DESC LIMIT 1")
-    if not previous or json.loads(previous[0]['payload'])['signature'] != signature:
+    previous = store.get('custody_checkpoint', {})
+    if previous.get('signature') != signature:
         # JSON round-trip makes comparison independent of tuple/list encoding.
         payload['signature'] = signature
-        store.event('custody_snapshot', payload)
+        seq = store.event('custody_snapshot', payload)
+        store.put('custody_checkpoint', {'signature': signature, 'seqs': previous.get('seqs', [])+[seq]})
 
 
 def analyze(*, orders, fills, activities, observations=(), checkpoints=(), snapshot,
@@ -76,14 +84,22 @@ def _analyze(orders, fills, activities, observations, checkpoints, snapshot, acc
     issues, order_map, owners, broker_ids = [], {}, defaultdict(set), set()
     for row in orders:
         raw = json.loads(row['raw']);request = json.loads(row['request'])
+        if (raw == {} and row['status'] == 'rejected' and not row['external']
+                and not any(f['client_id'] == row['client_id'] for f in fills)):continue
         if raw['id'] in broker_ids or raw['client_order_id'] != row['client_id']:raise ValueError('Conflicting order identity')
         broker_ids.add(raw['id'])
         name = request.get('intent', {}).get('strategy_id', 'manual')
         book = name if name in {'swing', 'intraday'} else 'manual' if name in {'manual', 'lifecycle_test'} else 'unknown'
         if row['external']:book = 'external'
-        order_map[row['client_id']] = {**row, 'broker': raw, 'book': book}
+        terminal_clock = {'filled': 'filled_at', 'canceled': 'canceled_at', 'expired': 'expired_at',
+                          'rejected': 'failed_at', 'replaced': 'replaced_at'}.get(row['status'])
+        ended = raw.get(terminal_clock) if terminal_clock else None
+        order_map[row['client_id']] = {**row, 'broker': raw, 'book': book, 'ended': moment(ended) if ended else None}
         symbol = asset(raw.get('symbol'))
-        if symbol:owners[symbol].add(book)
+        if symbol:
+            owners[symbol].add(book)
+            if row['status'] in TERMINAL and (not ended or moment(ended) > end or moment(row['updated_at']) > end):
+                issues.append({'symbol': symbol, 'reason': 'Terminal order evidence unavailable at accounting cutoff'})
     executions = []
     for row in fills:
         fill = json.loads(row['payload']);known = moment(row['at']);at = moment(fill['at'])
@@ -101,7 +117,11 @@ def _analyze(orders, fills, activities, observations, checkpoints, snapshot, acc
         snap = point['snapshot'];at = moment(snap['at']);received = moment(received)
         if received > end or at > end:continue
         if snap['account']['id'] != account_id or snap['account']['currency'] != 'USD':raise ValueError()
-        if not 0 <= (received-at).total_seconds() <= 15:raise ValueError()
+        lag = (received-at).total_seconds()
+        if lag < 0:raise ValueError()
+        if lag > 15:
+            issues.append({'symbol': None, 'reason': 'Stale custody checkpoint excluded; review required'})
+            continue
         quantities = {}
         for p in snap['positions']:
             symbol = asset(p['symbol'])
@@ -115,40 +135,47 @@ def _analyze(orders, fills, activities, observations, checkpoints, snapshot, acc
     if conflicts:raise ValueError('Conflicting checkpoints')
     points = sorted(valid.values(), key=lambda p: p['at'])
     reductions = {}
-    for before, after in zip(points, points[1:]):
-        if not 0 < (after['at']-before['at']).total_seconds() <= 60:continue
-        between = [f for f in executions if before['at'] < f['executed'] <= after['at']]
-        for symbol in PAIRS.values():
-            trades = [f for f in between if f['symbol'] == symbol]
-            if not trades:continue
-            clients = {f['client_id'] for f in trades}
-            if len(clients) != 1 or any(f['side'] != 'buy' or f['known'] > after['at'] for f in trades):continue
-            cid = next(iter(clients));order = order_map[cid];raw = order['broker']
-            if (before['working'] | after['working']) - {cid}:continue
-            # Never bridge an unrecorded or concurrent order, including a zero
-            # fill/uncertain order that a polling gap might otherwise conceal.
-            nearby = [o for o in order_map.values() if asset(o['broker'].get('symbol')) == symbol
-                      and moment(o['broker']['submitted_at']) <= after['at']
-                      and (o['broker'].get('filled_at') is None or moment(o['broker']['filled_at']) > before['at'])]
-            if len(nearby) != 1 or nearby[0]['client_id'] != cid or order['status'] not in TERMINAL:continue
-            gross = sum((quantity(f['quantity']) for f in trades), Decimal(0))
-            all_fills = [f for f in executions if f['client_id'] == cid]
-            if sum((quantity(f['quantity']) for f in all_fills), Decimal(0)) != quantity(raw['filled_qty']):continue
-            debit = before['quantities'].get(symbol, Decimal(0))+gross-after['quantities'].get(symbol, Decimal(0))
-            if not 0 < debit < gross:continue
-            if owners[symbol] != {order['book']} or order['book'] in {'external', 'unknown'}:
-                issues.append({'symbol': symbol, 'reason': 'Custody reduction has ambiguous strategy ownership'});continue
-            item = reductions.setdefault(cid, {'client_id': cid, 'order_id': raw['id'], 'symbol': symbol,
-                'book': order['book'], 'quantity': Decimal(0), 'checkpoints': []})
-            item['quantity'] += debit
-            item['checkpoints'].append({'before': before['ref'], 'after': after['ref'],
-                'before_at': before['at'].isoformat(), 'after_at': after['at'].isoformat(),
-                'before_quantity': str(before['quantities'].get(symbol, 0)), 'gross_buy_quantity': str(gross),
-                'after_quantity': str(after['quantities'].get(symbol, 0)), 'reduction_quantity': str(debit)})
-    linked, unlinked, seen = defaultdict(Decimal), set(), {}
+    for cid, order in order_map.items():
+        raw = order['broker'];symbol = asset(raw.get('symbol'))
+        if raw.get('side') != 'buy' or symbol is None or order['status'] not in TERMINAL:continue
+        if order['ended'] is None or order['ended'] > end or moment(order['updated_at']) > end:continue
+        trades = [f for f in executions if f['client_id'] == cid]
+        gross = sum((quantity(f['quantity']) for f in trades), Decimal(0))
+        if not trades or gross != quantity(raw['filled_qty']):continue
+        submitted = moment(raw['submitted_at'])
+        if any(f['side'] != 'buy' or f['symbol'] != symbol for f in trades):raise ValueError()
+        if any(not submitted <= f['executed'] <= order['ended'] for f in trades):
+            issues.append({'symbol': symbol, 'client_id': cid, 'reason': 'Order execution time outside terminal window; review required'})
+            continue
+        # A cumulative REST delta may already be reflected in an intervening
+        # position snapshot. Only a complete pre-submission-to-terminal window
+        # establishes its gross quantity; receipt time is not execution proof.
+        anchors = [p for p in reversed(points) if p['at'] < submitted and not p['working']]
+        complete = max(order['ended'], moment(order['updated_at']), *(f['known'] for f in trades))
+        endings = [p for p in points if p['at'] >= complete and not p['working']]
+        window = next(((a,b) for b in endings for a in anchors if 0 < (b['at']-a['at']).total_seconds() <= 60), None)
+        if window is None:continue
+        before, after = window
+        between = [f for f in executions if f['symbol'] == symbol and before['at'] < f['executed'] <= after['at']]
+        if any(f['client_id'] != cid for f in between):continue
+        # Never bridge a concurrent or uncertain order, including zero fills.
+        nearby = [o for o in order_map.values() if asset(o['broker'].get('symbol')) == symbol
+                  and moment(o['broker']['submitted_at']) <= after['at']
+                  and (o['ended'] is None or o['ended'] > before['at'])]
+        if len(nearby) != 1 or nearby[0]['client_id'] != cid:continue
+        debit = before['quantities'].get(symbol, Decimal(0))+gross-after['quantities'].get(symbol, Decimal(0))
+        if not 0 < debit < gross:continue
+        if owners[symbol] != {order['book']} or order['book'] in {'external', 'unknown'}:
+            issues.append({'symbol': symbol, 'reason': 'Custody reduction has ambiguous strategy ownership'});continue
+        reductions[cid] = {'client_id': cid, 'order_id': raw['id'], 'symbol': symbol,
+            'book': order['book'], 'quantity': debit, 'checkpoints': [{'before': before['ref'], 'after': after['ref'],
+            'before_at': before['at'].isoformat(), 'after_at': after['at'].isoformat(),
+            'before_quantity': str(before['quantities'].get(symbol, 0)), 'gross_buy_quantity': str(gross),
+            'after_quantity': str(after['quantities'].get(symbol, 0)), 'reduction_quantity': str(debit)}]}
+    linked, unlinked, seen, fee_windows = defaultdict(Decimal), set(), {}, []
     for row in activities:
         fee = json.loads(row['payload'])
-        if moment(row['at']) > end or fee.get('activity_type') != 'CFEE' or fee.get('status') != 'executed':continue
+        if fee_moment(row['at']) > end or fee.get('activity_type') != 'CFEE' or fee.get('status') != 'executed':continue
         if row['id'] != fee['id'] or row['type'] != 'CFEE':raise ValueError('Conflicting fee identity')
         if fee['id'] in seen:
             if seen[fee['id']] != fee:raise ValueError('Conflicting fees')
@@ -158,11 +185,30 @@ def _analyze(orders, fills, activities, observations, checkpoints, snapshot, acc
         cid = next((cid for cid,o in order_map.items() if o['broker'].get('id') == fee.get('order_id') and fee.get('order_id')), None)
         if cid is None:unlinked.add(symbol)
         elif asset(order_map[cid]['broker'].get('symbol')) != symbol:raise ValueError('Fee order symbol differs')
-        else:linked[cid] -= quantity(fee['qty'])
+        else:
+            linked[cid] -= quantity(fee['qty'])
+            start = fee_moment(row['at'])
+            finish = start+timedelta(days=1) if re.fullmatch(r'\d{4}-\d{2}-\d{2}', row['at']) else start
+            fee_windows.append((cid, symbol, start, finish))
+    # An order ID identifies the charge, not the checkpoint interval that
+    # contains its debit. Only unambiguous reductions establish fee coverage;
+    # propagate uncovered overlap before calculating any additional debit.
+    ambiguous_orders = {cid for cid, item in reductions.items()
+                        if item['symbol'] in unlinked or linked[cid] > item['quantity']}
+    while True:
+        uncovered = [(cid, symbol, start, finish) for cid, symbol, start, finish in fee_windows
+                     if cid in ambiguous_orders or linked[cid] > reductions.get(cid, {}).get('quantity', Decimal(0))]
+        affected = {cid for cid, item in reductions.items() if cid not in ambiguous_orders
+                    and any(other != cid and name == item['symbol']
+                            and start <= moment(item['checkpoints'][0]['after_at'])
+                            and finish > moment(item['checkpoints'][0]['before_at'])
+                            for other, name, start, finish in uncovered)}
+        if not affected:break
+        ambiguous_orders.update(affected)
     additional, output = defaultdict(Decimal), []
     for cid, item in reductions.items():
         symbol = item['symbol'];debit = item['quantity'];confirmed = linked[cid]
-        ambiguous = symbol in unlinked or confirmed > debit
+        ambiguous = cid in ambiguous_orders
         pending = Decimal(0) if ambiguous else debit-confirmed
         if ambiguous:issues.append({'symbol': symbol, 'reason': 'Confirmed fee overlap with custody reduction requires review'})
         elif pending:issues.append({'symbol': symbol, 'reason': 'Observed custody reduction requires fee classification'})
