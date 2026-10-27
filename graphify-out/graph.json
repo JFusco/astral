@@ -4147,7 +4147,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_liquidity",
-      "community": 57,
+      "community": 27,
       "community_name": "test_liquidity_experiment.py",
       "norm_label": "liquidity.py"
     },
@@ -4172,7 +4172,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_liquidity_floor",
-      "community": 57,
+      "community": 27,
       "community_name": "test_liquidity_experiment.py",
       "norm_label": "floor()"
     },
@@ -4184,7 +4184,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_liquidity_turnover",
-      "community": 57,
+      "community": 27,
       "community_name": "test_liquidity_experiment.py",
       "norm_label": "turnover()"
     },
@@ -4196,7 +4196,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_liquidity_walk",
-      "community": 57,
+      "community": 27,
       "community_name": "test_liquidity_experiment.py",
       "norm_label": "walk()"
     },
@@ -4208,7 +4208,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_liquidity_evaluate",
-      "community": 57,
+      "community": 27,
       "community_name": "test_liquidity_experiment.py",
       "norm_label": "evaluate()"
     },
@@ -4219,7 +4219,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_liquidity_rationale_1",
-      "community": 57,
+      "community": 27,
       "community_name": "test_liquidity_experiment.py",
       "norm_label": "quote-only liquidity experiment. no orders, fills, positions, p&l or promotion."
     },
@@ -4384,7 +4384,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_market_depth",
-      "community": 57,
+      "community": 27,
       "community_name": "test_liquidity_experiment.py",
       "norm_label": "market_depth.py"
     },
@@ -4396,7 +4396,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_market_depth_validate_book",
-      "community": 57,
+      "community": 27,
       "community_name": "test_liquidity_experiment.py",
       "norm_label": "validate_book()"
     },
@@ -4408,7 +4408,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_market_depth_validate",
-      "community": 57,
+      "community": 27,
       "community_name": "test_liquidity_experiment.py",
       "norm_label": "_validate()"
     },
@@ -4419,7 +4419,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_market_depth_rationale_1",
-      "community": 57,
+      "community": 27,
       "community_name": "test_liquidity_experiment.py",
       "norm_label": "same-venue rest book/quote validation. visible depth never guarantees a fill."
     },
@@ -4856,7 +4856,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_reconciliation",
-      "community": 27,
+      "community": 50,
       "community_name": "audit_crypto",
       "norm_label": "reconciliation.py"
     },
@@ -4868,7 +4868,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_reconciliation_audit_crypto",
-      "community": 27,
+      "community": 50,
       "community_name": "audit_crypto",
       "norm_label": "audit_crypto()"
     },
@@ -4879,7 +4879,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_reconciliation_rationale_1",
-      "community": 27,
+      "community": 50,
       "community_name": "audit_crypto",
       "norm_label": "read-only reconciliation analysis. hypotheses cannot become ledger entries."
     },
@@ -4890,7 +4890,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "backend_reconciliation_rationale_6",
-      "community": 27,
+      "community": 50,
       "community_name": "audit_crypto",
       "norm_label": "compare authoritative gross executions and positions; explain, never waive. fee..."
     },
@@ -15885,7 +15885,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_liquidity_experiment",
-      "community": 57,
+      "community": 27,
       "community_name": "test_liquidity_experiment.py",
       "norm_label": "test_liquidity_experiment.py"
     },
@@ -15897,7 +15897,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_liquidity_experiment_inputs",
-      "community": 57,
+      "community": 27,
       "community_name": "test_liquidity_experiment.py",
       "norm_label": "inputs()"
     },
@@ -15909,7 +15909,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_liquidity_experiment_test_baseline_rejects_while_separate_half_depth_model_can_cover_25",
-      "community": 57,
+      "community": 27,
       "community_name": "test_liquidity_experiment.py",
       "norm_label": "test_baseline_rejects_while_separate_half_depth_model_can_cover_25()"
     },
@@ -15920,7 +15920,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "tests_test_liquidity_experiment_py_parametrize",
-      "community": 57,
+      "community": 27,
       "community_name": "test_liquidity_experiment.py",
       "norm_label": "parametrize"
     },
@@ -15932,7 +15932,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_liquidity_experiment_test_corrupt_stale_and_unverified_evidence_does_not_become_liquidity_pass",
-      "community": 57,
+      "community": 27,
       "community_name": "test_liquidity_experiment.py",
       "norm_label": "test_corrupt_stale_and_unverified_evidence_does_not_become_liquidity_pass()"
     },
@@ -15944,7 +15944,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_liquidity_experiment_test_daily_turnover_cap_and_fee_reduced_exit_minimum_are_binding",
-      "community": 57,
+      "community": 27,
       "community_name": "test_liquidity_experiment.py",
       "norm_label": "test_daily_turnover_cap_and_fee_reduced_exit_minimum_are_binding()"
     },
@@ -15956,7 +15956,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_liquidity_experiment_seed",
-      "community": 57,
+      "community": 27,
       "community_name": "test_liquidity_experiment.py",
       "norm_label": "seed()"
     },
@@ -15968,7 +15968,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_liquidity_experiment_append",
-      "community": 57,
+      "community": 27,
       "community_name": "test_liquidity_experiment.py",
       "norm_label": "append()"
     },
@@ -17689,7 +17689,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_stage2_validation_reconciliation_fixture",
-      "community": 27,
+      "community": 50,
       "community_name": "audit_crypto",
       "norm_label": "reconciliation_fixture()"
     },
@@ -17701,7 +17701,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_stage2_validation_test_exact_fee_hypothesis_never_clears_an_unconfirmed_difference",
-      "community": 27,
+      "community": 50,
       "community_name": "audit_crypto",
       "norm_label": "test_exact_fee_hypothesis_never_clears_an_unconfirmed_difference()"
     },
@@ -17713,7 +17713,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_stage2_validation_test_confirmed_fee_matches_and_duplicate_activity_is_not_counted_twice",
-      "community": 27,
+      "community": 50,
       "community_name": "audit_crypto",
       "norm_label": "test_confirmed_fee_matches_and_duplicate_activity_is_not_counted_twice()"
     },
@@ -17725,7 +17725,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_stage2_validation_test_incomplete_or_conflicting_execution_evidence_cannot_match",
-      "community": 27,
+      "community": 50,
       "community_name": "audit_crypto",
       "norm_label": "test_incomplete_or_conflicting_execution_evidence_cannot_match()"
     },
@@ -78026,5 +78026,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "552e1588a8cdc04432a3716fd6fa0148a8e46572"
+  "built_at_commit": "b0562a02d57eddf821fd25dfe19777965da404bb"
 }

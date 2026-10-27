@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `552e1588`
+- Built from commit: `b0562a02`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -42,7 +42,7 @@
 - test_experiment.py
 - activity_feed.py
 - quantconnect/__init__.py
-- audit_crypto
+- test_liquidity_experiment.py
 - devDependencies
 - intelligence.py
 - AlpacaPaper
@@ -65,10 +65,10 @@
 - boundaries.test.ts
 - import_ledger
 - check-skills.cjs
+- audit_crypto
 - commitlint.config.cjs
 - proxy.ts
 - next.config.ts
-- test_liquidity_experiment.py
 - test_quantconnect_validation.py
 - prepare-standalone.mjs
 - Connection
@@ -213,9 +213,9 @@ Nodes (24): Meetings, parse_fomc(), HTMLParser, Official FOMC meeting dates, sco
 Cohesion: 0.20
 Nodes (24): activity_identifier(), batch_events(), main(), publish_projection(), Bounded paper activity acquisition and immutable evidence publication., Validate the selected acquisition, including legacy frame semantics., balances_match(), canonical() (+16 more)
 
-### Community 27 - "audit_crypto"
-Cohesion: 0.32
-Nodes (7): audit_crypto(), Read-only reconciliation analysis. Hypotheses cannot become ledger entries., Compare authoritative gross executions and positions; explain, never waive. Fee…, reconciliation_fixture(), test_confirmed_fee_matches_and_duplicate_activity_is_not_counted_twice(), test_exact_fee_hypothesis_never_clears_an_unconfirmed_difference(), test_incomplete_or_conflicting_execution_evidence_cannot_match()
+### Community 27 - "test_liquidity_experiment.py"
+Cohesion: 0.23
+Nodes (15): evaluate(), floor(), Quote-only liquidity experiment. No orders, fills, positions, P&L or promotion., turnover(), walk(), Same-venue REST book/quote validation. Visible depth never guarantees a fill., _validate(), validate_book() (+7 more)
 
 ### Community 28 - "devDependencies"
 Cohesion: 0.04
@@ -301,13 +301,13 @@ Nodes (13): import_ledger(), Copy captured rows into a new disposable Store, lea
 Cohesion: 0.33
 Nodes (6): checkSkills(), crypto, fs, hashSkillFolder(), path, ROOT
 
+### Community 50 - "audit_crypto"
+Cohesion: 0.32
+Nodes (7): audit_crypto(), Read-only reconciliation analysis. Hypotheses cannot become ledger entries., Compare authoritative gross executions and positions; explain, never waive. Fee…, reconciliation_fixture(), test_confirmed_fee_matches_and_duplicate_activity_is_not_counted_twice(), test_exact_fee_hypothesis_never_clears_an_unconfirmed_difference(), test_incomplete_or_conflicting_execution_evidence_cannot_match()
+
 ### Community 52 - "commitlint.config.cjs"
 Cohesion: 0.83
 Nodes (3): bodyMaxLineLength(), footerMaxLineLength(), maxLineLength()
-
-### Community 57 - "test_liquidity_experiment.py"
-Cohesion: 0.23
-Nodes (15): evaluate(), floor(), Quote-only liquidity experiment. No orders, fills, positions, P&L or promotion., turnover(), walk(), Same-venue REST book/quote validation. Visible depth never guarantees a fill., _validate(), validate_book() (+7 more)
 
 ### Community 58 - "test_quantconnect_validation.py"
 Cohesion: 0.16
@@ -321,7 +321,7 @@ Nodes (28): bundle(), compare(), main(), new_output(), pinned_sources(), Package
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Store` connect `Store` to `timestamp`, `run`, `dumps`, `test_portfolio_replay.py`, `test_learning_engine.py`, `test_state_contract.py`, `test_executor_ownership.py`, `screen`, `utcnow`, `replay_runner.py`, `test_activity_feed.py`, `liquidity_runner.py`, `test_experiment.py`, `activity_feed.py`, `intelligence.py`, `AlpacaPaper`, `datetime`, `test_activity_rollout.py`, `test_review_repairs.py`, `test_evidence_storage.py`, `test_health_engine.py`, `retain_batch`, `import_ledger`, `test_liquidity_experiment.py`?**
+- **Why does `Store` connect `Store` to `timestamp`, `run`, `dumps`, `test_portfolio_replay.py`, `test_learning_engine.py`, `test_state_contract.py`, `test_executor_ownership.py`, `screen`, `utcnow`, `replay_runner.py`, `test_activity_feed.py`, `liquidity_runner.py`, `test_experiment.py`, `activity_feed.py`, `test_liquidity_experiment.py`, `intelligence.py`, `AlpacaPaper`, `datetime`, `test_activity_rollout.py`, `test_review_repairs.py`, `test_evidence_storage.py`, `test_health_engine.py`, `retain_batch`, `import_ledger`?**
   _High betweenness centrality (0.070) - this node is a cross-community bridge._
 - **Why does `utcnow()` connect `utcnow` to `timestamp`, `Engine`, `run`, `dumps`, `test_execution_pilot.py`, `screen`, `replay_runner.py`, `activity_feed.py`, `intelligence.py`, `AlpacaPaper`, `datetime`, `test_activity_rollout.py`, `test_review_repairs.py`, `test_evidence_storage.py`, `ValueError`, `collect_batch`, `test_health_engine.py`, `retain_batch`, `Store`?**
   _High betweenness centrality (0.041) - this node is a cross-community bridge._
