@@ -19,7 +19,7 @@ Repeated activity payloads and frames share immutable content in the additive `e
 
 `unpack_row(row, db)` resolves these references within the caller's existing SQLite transaction. Keep the body table with the ledger when backing up or exporting data. A plain SQLite inspection exposes encoded values; use the codec for an evidence export. Do not decode by guessing a format or accepting a partial stream.
 
-Publication and cached reads validate the selected batch's decoded event and frame against each delivery's retained hash. Cached reads also check the number of distinct activities. Damaged markers, mismatched references and missing deliveries block accounting. If existing shared content is corrupt, retain the new rejected delivery inline with its outcome and full raw stream; leave the corrupt historical body unchanged.
+Publication and cached reads require the selected batch's account-bound outcome and validate its full raw stream against the retained SHA-256. Every ordered delivery, including duplicates, must match that stream's parsed event, frame, account and identities, with no missing associations. Cached reads also check the number of distinct activities. Validation decodes only the acquisition selected after the cutoff. Damaged outcomes, markers, mismatched references and missing deliveries block accounting. If existing shared content is corrupt, retain the new rejected delivery inline with its original acquisition error, a separate evidence-integrity marker and full raw stream; leave the corrupt historical body unchanged.
 
 ## Preserve frozen contracts and rollback evidence
 

@@ -86,6 +86,8 @@ def test_mixed_accounting_rows_keep_raw_streams_and_exact_cash_after_restart(tmp
                          (row['payload'], row['frame'], first['batch'], row['ordinal']))
     store.db.execute('UPDATE activity_projections SET payload=? WHERE id=(SELECT id FROM activity_projections LIMIT 1)',
                      (json.dumps(first),))
+    outcome = store.rows("SELECT payload FROM activity_batches WHERE id=? AND phase='outcome'", (first['batch'],))[0]['payload']
+    store.db.execute("UPDATE activity_batches SET payload=? WHERE id=? AND phase='outcome'", (outcome, first['batch']))
     assert store.rows('SELECT payload,frame FROM activity_events WHERE batch=? ORDER BY ordinal', (first['batch'],)) == [
         {'payload': row['payload'], 'frame': row['frame']} for row in legacy]
     old = source_snapshot(path, at(earlier))['activity_projection']
@@ -181,15 +183,89 @@ def test_missing_selected_delivery_blocks_cached_accounting(retained_accounting,
     assert not any(entry['passed'] for entry in current['accounting_by_symbol'].values())
 
 
-def test_accounting_cutoff_excludes_corrupt_later_acquisition(retained_accounting, monkeypatch):
+@pytest.mark.parametrize('attack', ['outcome_checksum', 'missing_outcome', 'outcome_account', 'receipt_account',
+                                  'incomplete_outcome', 'raw_checksum', 'duplicate_delivery', 'delivery_order',
+                                  'delivery_account', 'delivery_identity', 'changed_frame'])
+def test_selected_outcome_and_entire_delivery_sequence_are_required_for_accounting(retained_accounting, attack):
+    path, store, capture, _, mapping, first = retained_accounting
+    # Duplicate deliveries remain evidence, while their money is applied once.
+    capture['events'] = [*capture['events'], capture['events'][0]]
+    raw = b'\xef\xbb\xbf: heartbeat\r\n\r\n'+b''.join(
+        ('data: '+json.dumps(event)+'\r\n\r\n').encode() for event in capture['events'])
+    intact = import_capture(store, capture, raw, mapping, now=NOW)
+    for result in (intact, read_projection(store, cutoff=NOW), source_snapshot(path, at(NOW))['activity_projection']):
+        assert not result['issues'] and result['effects'] == first['effects']
+        assert result['cash_reconciliation'] == first['cash_reconciliation']
+    assert current_accounting(store, enabled=True, now=NOW)['accounting_by_symbol']['BTC']['passed']
+    batch = intact['batch']
+    if attack == 'outcome_checksum':
+        encoded = store.db.execute("SELECT payload FROM activity_batches WHERE id=? AND phase='outcome'", (batch,)).fetchone()[0]
+        assert encoded.startswith(MAGIC)
+        changed = encoded[:-1]+bytes([encoded[-1]^1])
+        store.db.execute("UPDATE activity_batches SET payload=? WHERE id=? AND phase='outcome'", (changed, batch))
+    elif attack == 'missing_outcome':
+        store.db.execute("DELETE FROM activity_batches WHERE id=? AND phase='outcome'", (batch,))
+    elif attack == 'outcome_account':
+        store.db.execute("UPDATE activity_batches SET account=? WHERE id=? AND phase='outcome'", ('another-account', batch))
+    elif attack in ('receipt_account', 'incomplete_outcome', 'raw_checksum'):
+        receipt = json.loads(store.rows("SELECT payload FROM activity_batches WHERE id=? AND phase='outcome'", (batch,))[0]['payload'])
+        if attack == 'receipt_account': receipt['account_id'] = 'another-account'
+        if attack == 'incomplete_outcome': receipt['complete'] = False
+        if attack == 'raw_checksum': receipt['raw_hex'] = (raw+b': heartbeat\n\n').hex()
+        store.db.execute("UPDATE activity_batches SET payload=? WHERE id=? AND phase='outcome'", (pack_text(json.dumps(receipt)), batch))
+    elif attack == 'duplicate_delivery':
+        store.db.execute('DELETE FROM activity_events WHERE batch=? AND ordinal=?', (batch, len(capture['events'])-1))
+    elif attack == 'delivery_order':
+        store.db.execute('UPDATE activity_events SET ordinal=-1 WHERE batch=? AND ordinal=0', (batch,))
+        store.db.execute('UPDATE activity_events SET ordinal=0 WHERE batch=? AND ordinal=1', (batch,))
+        store.db.execute('UPDATE activity_events SET ordinal=1 WHERE batch=? AND ordinal=-1', (batch,))
+    elif attack == 'delivery_account':
+        store.db.execute('UPDATE activity_events SET account=? WHERE batch=? AND ordinal=0', ('another-account', batch))
+    elif attack == 'delivery_identity':
+        store.db.execute('UPDATE activity_events SET event_id=? WHERE batch=? AND ordinal=0', ('another-delivery', batch))
+    elif attack == 'changed_frame':
+        frame = store.rows('SELECT frame FROM activity_events WHERE batch=? AND ordinal=0', (batch,))[0]['frame']
+        store.db.execute('UPDATE activity_events SET frame=? WHERE batch=? AND ordinal=0', (pack_bytes(b'id: changed\n'+frame), batch))
+    for result in (read_projection(store, cutoff=NOW), source_snapshot(path, at(NOW))['activity_projection']):
+        assert result['issues'] and not result['effects']
+        assert result['cash_reconciliation']['cash'] is None
+        assert not any(entry['passed'] for entry in result['by_symbol'].values())
+    current = current_accounting(store, enabled=True, now=NOW)
+    assert current['activity_coverage']['issues']
+    assert not any(entry['passed'] for entry in current['accounting_by_symbol'].values())
+    assert current['cash_reconciliation']['cash'] is None
+    try: publication = publish_projection(store, batch, mapping, now=NOW)
+    except ValueError: pass
+    else:
+        assert publication['issues'] and not publication['effects']
+        assert publication['cash_reconciliation']['cash'] is None
+
+
+@pytest.mark.parametrize('attack', ['frame_reference', 'outcome_checksum', 'missing_outcome', 'raw_checksum', 'duplicate_delivery'])
+def test_accounting_cutoff_excludes_corrupt_later_acquisition(retained_accounting, monkeypatch, attack):
     path, store, capture, _, mapping, first = retained_accounting
     later = '2030-01-01T00:01:00+00:00'
     monkeypatch.setattr('backend.activity_feed.utcnow', lambda: later)
     # A distinct later frame must not be decoded while reading the earlier batch.
+    if attack == 'duplicate_delivery': capture['events'] = [*capture['events'], capture['events'][0]]
     raw = b''.join(('id: later\ndata: '+json.dumps(event)+'\n\n').encode() for event in capture['events'])
     second = import_capture(store, capture, raw, mapping, now=later)
-    frame = store.db.execute('SELECT frame FROM activity_events WHERE batch=? LIMIT 1', (second['batch'],)).fetchone()[0]
-    store.db.execute('DELETE FROM evidence_blobs WHERE sha256=?', (frame[len(REFERENCE):],))
+    batch = second['batch']
+    if attack == 'frame_reference':
+        frame = store.db.execute('SELECT frame FROM activity_events WHERE batch=? LIMIT 1', (batch,)).fetchone()[0]
+        store.db.execute('DELETE FROM evidence_blobs WHERE sha256=?', (frame[len(REFERENCE):],))
+    elif attack == 'outcome_checksum':
+        encoded = store.db.execute("SELECT payload FROM activity_batches WHERE id=? AND phase='outcome'", (batch,)).fetchone()[0]
+        store.db.execute("UPDATE activity_batches SET payload=? WHERE id=? AND phase='outcome'",
+                         (encoded[:-1]+bytes([encoded[-1]^1]), batch))
+    elif attack == 'missing_outcome':
+        store.db.execute("DELETE FROM activity_batches WHERE id=? AND phase='outcome'", (batch,))
+    elif attack == 'raw_checksum':
+        receipt = json.loads(store.rows("SELECT payload FROM activity_batches WHERE id=? AND phase='outcome'", (batch,))[0]['payload'])
+        receipt['raw_hex'] = (raw+b': heartbeat\n\n').hex()
+        store.db.execute("UPDATE activity_batches SET payload=? WHERE id=? AND phase='outcome'", (pack_text(json.dumps(receipt)), batch))
+    else:
+        store.db.execute('DELETE FROM activity_events WHERE batch=? AND ordinal=?', (batch, len(capture['events'])-1))
     for result in (read_projection(store, cutoff=NOW), source_snapshot(path, at(NOW))['activity_projection']):
         assert result['batch'] == first['batch'] and not result['issues']
         assert len(result['effects']) == 8 and result['cash_reconciliation']['cash'] == '99999.70'
@@ -197,7 +273,8 @@ def test_accounting_cutoff_excludes_corrupt_later_acquisition(retained_accountin
 
 
 @pytest.mark.parametrize('column', ['payload', 'frame'])
-def test_shared_blob_corruption_retains_rejected_deliveries_and_raw_stream_after_restart(retained_accounting, column):
+@pytest.mark.parametrize('prior_error', [None, 'activity_acquisition_cancelled'])
+def test_shared_blob_corruption_retains_rejected_deliveries_and_raw_stream_after_restart(retained_accounting, column, prior_error):
     path, store, capture, raw, mapping, first = retained_accounting
     reference = store.db.execute('SELECT '+column+' FROM activity_events WHERE batch=? ORDER BY ordinal LIMIT 1',
                                  (first['batch'],)).fetchone()[0]
@@ -205,7 +282,7 @@ def test_shared_blob_corruption_retains_rejected_deliveries_and_raw_stream_after
     store.db.execute('UPDATE evidence_blobs SET payload=? WHERE sha256=?', (b'changed', key))
     binding = store.get('account_binding')
     batch = start_batch(store, binding, capture['request']['params']['since'], NOW)
-    result = {'complete': True, 'account_id': binding, 'events': capture['events'], 'raw': raw,
+    result = {'complete': prior_error is None, 'error': prior_error, 'account_id': binding, 'events': capture['events'], 'raw': raw,
               'received_at': NOW, 'historical_import': True, **capture['request']['params']}
     retain_batch(store, batch, binding, result)
     assert result['complete'] is False and result['error']
@@ -220,7 +297,8 @@ def test_shared_blob_corruption_retains_rejected_deliveries_and_raw_stream_after
         assert all(row['account'] == binding and row['at'] == NOW for row in rows)
         assert [row['sha256'] for row in rows] == [digest(event) for event in capture['events']]
         receipt = json.loads(reopened.rows("SELECT payload FROM activity_batches WHERE id=? AND phase='outcome'", (batch,))[0]['payload'])
-        assert receipt['complete'] is False and receipt['error'] == result['error']
+        assert receipt['complete'] is False and receipt['error'] == (prior_error or 'activity_evidence_integrity_error')
+        assert receipt['evidence_integrity_error'] is True
         assert bytes.fromhex(receipt['raw_hex']) == raw
         assert receipt['raw_sha256'] == hashlib.sha256(raw).hexdigest()
         assert reopened.db.execute('SELECT payload FROM evidence_blobs WHERE sha256=?', (key,)).fetchone()[0] == b'changed'

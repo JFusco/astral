@@ -194,7 +194,8 @@ def retain_batch(store, batch, account, result):
                 body, retained_frame = reference_text(store.db, payload), reference_bytes(store.db, frame)
             except ValueError:
                 # Preserve this delivery without replacing corrupt shared history.
-                result.update(complete=False, error='activity_evidence_integrity_error')
+                result.update(complete=False, evidence_integrity_error=True)
+                result['error'] = result.get('error') or 'activity_evidence_integrity_error'
                 body, retained_frame = pack_text(payload), pack_bytes(frame)
             store.db.execute('INSERT INTO activity_events VALUES(?,?,?,?,?,?,?,?,?,?)',
                              (batch, index, account, delivery, ref, kind, at, sha, body, retained_frame))
@@ -264,19 +265,35 @@ async def collect_batch(broker, store, *, critical=True, refresh_snapshot=False)
 
 
 def batch_events(store, batch):
-    """Validate the selected acquisition, including legacy frame semantics."""
-    rows = store.rows('SELECT payload,frame,sha256 FROM activity_events WHERE batch=? ORDER BY ordinal', (batch,))
+    """Validate the selected outcome and every delivery against its raw stream."""
+    binding = store.get('account_binding')
+    outcomes = store.rows("SELECT payload FROM activity_batches WHERE id=? AND phase='outcome' AND account=?", (batch, binding))
+    if not outcomes:
+        raise FeedError('Completed acquisition required')
+    coverage = json.loads(outcomes[0]['payload'])
+    if not isinstance(coverage, dict):
+        raise FeedError('Activity outcome object required')
+    rows = store.rows('SELECT ordinal,account,event_id,ref_id,type,payload,frame,sha256 FROM activity_events WHERE batch=? ORDER BY ordinal', (batch,))
     events = [json.loads(row['payload']) for row in rows]
-    issues = []
-    for row, event in zip(rows, events):
-        try:
-            frame = parse_sse(row['frame'])
-            if (digest(event) != row['sha256'] or len(frame) != 1
-                    or digest(frame[0]) != row['sha256']):
-                raise FeedError('Retained activity differs from its source hash')
-        except (ValueError, TypeError, KeyError):
-            issues = ['activity_evidence_integrity_error']
-    return events, issues
+    issues = ['incomplete_activity_coverage'] if coverage.get('complete') is not True else []
+    try:
+        if coverage.get('account_id') != binding or len(coverage['raw_hex']) > 2*MAX_BYTES:
+            raise FeedError('Activity outcome binding or byte budget differs')
+        raw = bytes.fromhex(coverage['raw_hex'])
+        if hashlib.sha256(raw).hexdigest() != coverage['raw_sha256']:
+            raise FeedError('Retained activity stream differs from its source hash')
+        parser = SSEParser();parser.feed(raw, final=True)
+        if len(rows) != len(parser.frames):
+            raise FeedError('Retained activity delivery sequence is incomplete')
+        for index, (row, event, (original, frame)) in enumerate(zip(rows, events, parser.frames)):
+            if (not isinstance(event, dict) or row['ordinal'] != index or row['account'] != binding
+                    or any(row[column] != activity_identifier(event.get(key)) for column, key in
+                           (('event_id', 'event_id'), ('ref_id', 'ref_id'), ('type', 'activity_type')))
+                    or digest(event) != row['sha256'] or digest(original) != row['sha256'] or row['frame'] != frame):
+                raise FeedError('Retained activity differs from its source delivery')
+    except (ValueError, TypeError, KeyError):
+        issues.append('activity_evidence_integrity_error')
+    return events, coverage, issues
 
 
 def publish_projection(store, batch, mapping, *, now=None):
@@ -285,11 +302,7 @@ def publish_projection(store, batch, mapping, *, now=None):
     with store.transaction():
         source = ledger_source(store)
         binding = source['state']['account_binding']
-        rows = store.rows("SELECT * FROM activity_batches WHERE id=? AND phase='outcome' AND account=?", (batch, binding))
-        if not rows:
-            raise FeedError('Completed acquisition required')
-        coverage = json.loads(rows[0]['payload'])
-        events, integrity_issues = batch_events(store, batch)
+        events, coverage, integrity_issues = batch_events(store, batch)
         result = project(source, events, mapping, coverage, knowledge_cutoff=now)
         result['issues'].extend(integrity_issues)
         if not coverage.get('historical_import'):
@@ -331,9 +344,9 @@ def read_projection(store, *, cutoff=None):
     for row in rows:
         if instant(row['at']) <= instant(cutoff):
             result = json.loads(store.rows('SELECT payload FROM activity_projections WHERE rowid=?', (row['rowid'],))[0]['payload'])
-            # Validate bodies and frames after cutoff selection, including legacy bytes.
+            # Decode and validate only the acquisition selected by the cutoff.
             try:
-                retained, integrity_issues = batch_events(store, result['batch'])
+                retained, _, integrity_issues = batch_events(store, result['batch'])
                 if not integrity_issues and len({event['ref_id'] for event in retained}) != result.get('activity_count'):
                     integrity_issues = ['activity_evidence_integrity_error']
                 result['issues'].extend(integrity_issues)
