@@ -15,9 +15,10 @@ from .config import ROOT
 from .experiment import contract, digest
 from .portfolio_replay import Assumptions, replay
 from .risk import timestamp, number as D
+from .evidence_codec import unpack_text
 
 HOLDOUT=ROOT/'experiments/btc-forward-holdout-v1.json'
-CODE=('backend/portfolio_replay.py','backend/replay_runner.py','backend/risk.py','backend/timing.py','backend/research.py','backend/experiment.py')
+CODE=('backend/portfolio_replay.py','backend/replay_runner.py','backend/risk.py','backend/timing.py','backend/research.py','backend/experiment.py','backend/evidence_codec.py')
 
 
 def code_hashes():
@@ -71,7 +72,7 @@ def export_events(db_path, *, starts_at, ends_at, after_seq=0, expected_manifest
         if maxseq<after_seq:raise ValueError('Ledger sequence regressed; retain the evaluation gap')
         for row in db.execute("SELECT seq,at,payload FROM events WHERE type='quotes' AND seq>? AND at>=? AND at<=? ORDER BY seq",(after_seq,starts_at,ends_at)):
             try:
-                known=timestamp(row['at']);q=json.loads(row['payload']).get('BTC')
+                known=timestamp(row['at']);q=json.loads(unpack_text(row['payload'])).get('BTC')
                 if q is None:continue
                 if not start<=known<=end:continue
                 if q.get('source')!='alpaca-us':raise ValueError('Wrong quote venue')

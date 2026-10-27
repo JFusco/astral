@@ -91,16 +91,20 @@ def test_projection_reads_fetch_one_payload_after_500_publications(setup, monkey
         expected.append(publish_projection(store, first['batch'], mapping,
             now=f'2030-01-01T00:00:00.{index:09d}Z'))
     rows = store.rows
-    fetched = []
+    fetched, selected_batches = [], []
     def observe_rows(sql, args=()):
         result = rows(sql, args)
-        fetched.extend(r['payload'] for r in result if 'payload' in r)
+        if 'FROM activity_projections' in sql:
+            fetched.extend(r['payload'] for r in result if 'payload' in r)
+        if 'FROM activity_events WHERE batch=?' in sql:
+            selected_batches.append(len(result))
         return result
     monkeypatch.setattr(store, 'rows', observe_rows)
     for index in (499, 498):
-        fetched.clear()
+        fetched.clear();selected_batches.clear()
         assert read_projection(store, cutoff=expected[index]['published_at']) == expected[index]
         assert len(fetched) == 1
+        assert selected_batches == [len(setup[1]['events'])]
 
 
 def test_repeated_batches_bound_prior_comparisons_without_changing_accounting(setup, monkeypatch):
@@ -116,7 +120,7 @@ def test_repeated_batches_bound_prior_comparisons_without_changing_accounting(se
     def observe_rows(sql, args=()):
         result = rows(sql, args)
         if 'FROM activity_events' in sql:
-            if any('sha256' in r for r in result):prior_hashes.append(len(result))
+            if 'batch=?' not in sql and any('sha256' in r for r in result):prior_hashes.append(len(result))
             if 'batch<>?' in sql:prior_events.append(len(result))
         return result
     monkeypatch.setattr(store, 'rows', observe_rows)

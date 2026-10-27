@@ -15,11 +15,12 @@ import sqlite3
 import uuid
 
 from .research import validate_review
+from .evidence_codec import unpack_row
 
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = 'offline-learning-proof-v1'
 PROTECTED = ('experiments/btc-forward-holdout-v1.json', 'experiments/btc-liquidity-depth-v1.json')
-SOURCES = ('backend/learning_engine.py', 'backend/research.py', 'backend/risk.py', 'backend/config.py')
+SOURCES = ('backend/learning_engine.py', 'backend/research.py', 'backend/risk.py', 'backend/config.py', 'backend/evidence_codec.py')
 AVAILABILITY = ('known_at', 'source_checked_at', 'at')
 SKIPPED = {'disabled', 'no-eligible-packets', 'budget-exhausted', 'cli-unavailable', 'input-budget-exceeded', 'stale-review'}
 
@@ -105,7 +106,7 @@ def snapshot(path, as_of, windows):
             selected[table] = []
             for identity in admitted:
                 columns = 'id,at,packet,result,usage' if table == 'research' else 'id,at,request,outcome'
-                row = dict(db.execute(f'SELECT {columns} FROM {table} WHERE id=?', (identity,)).fetchone())
+                row = unpack_row(db.execute(f'SELECT {columns} FROM {table} WHERE id=?', (identity,)).fetchone(), db)
                 footprint.append([table, row])
                 selected[table].append(row)
         mode = None

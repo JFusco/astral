@@ -15,10 +15,11 @@ from .config import ROOT
 from .experiment import contract, digest
 from .liquidity import Policy, SCENARIOS, evaluate
 from .risk import timestamp
+from .evidence_codec import unpack_text
 
 MANIFEST=ROOT/"experiments/btc-liquidity-depth-v1.json"
 OUTPUT=ROOT/"runtime/btc-liquidity-depth-v1.sqlite"
-CODE=("backend/liquidity.py","backend/liquidity_runner.py","backend/market_depth.py","backend/trade_history.py","backend/risk.py")
+CODE=("backend/liquidity.py","backend/liquidity_runner.py","backend/market_depth.py","backend/trade_history.py","backend/risk.py","backend/evidence_codec.py")
 
 
 def now():return datetime.now(timezone.utc).isoformat()
@@ -87,11 +88,11 @@ def load(path=MANIFEST):
 def snapshot(db):
     row=db.execute("SELECT seq,at,payload FROM events WHERE type='quotes' ORDER BY seq DESC LIMIT 1").fetchone()
     if not row:raise ValueError("No recorded quote event")
-    quote=json.loads(row["payload"]).get("BTC",{})
+    quote=json.loads(unpack_text(row["payload"])).get("BTC",{})
     sha=quote.get("depth",{}).get("raw_sha256")
     raw=db.execute("SELECT payload FROM depth_snapshots WHERE id=?",(sha,)).fetchone() if sha else None
     if not raw:raise ValueError("Recorded raw matching BTC depth unavailable")
-    book=json.loads(raw[0])
+    book=json.loads(unpack_text(raw[0]))
     if digest(book)!=sha:raise ValueError("Retained depth hash mismatch")
     history=get(db,"trade_history:BTC",{})
     return {"source_event_seq":row["seq"],"source_recorded_at":row["at"],"quote":quote,"raw_book":book,

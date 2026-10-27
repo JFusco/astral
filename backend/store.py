@@ -5,6 +5,8 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .evidence_codec import pack_text, unpack_row
+
 
 def utcnow():
     return datetime.now(timezone.utc).isoformat()
@@ -68,12 +70,15 @@ class Store:
 
     def event(self, kind, payload):
         with self.lock:
-            cur = self.db.execute("INSERT INTO events(at,type,payload) VALUES(?,?,?)", (utcnow(), kind, dumps(payload)))
+            encoded = dumps(payload)
+            if kind == 'quotes':
+                encoded = pack_text(encoded)
+            cur = self.db.execute("INSERT INTO events(at,type,payload) VALUES(?,?,?)", (utcnow(), kind, encoded))
             return cur.lastrowid
 
     def rows(self, sql, args=()):
         with self.lock:
-            return [dict(r) for r in self.db.execute(sql, args).fetchall()]
+            return [unpack_row(r, self.db) for r in self.db.execute(sql, args).fetchall()]
 
     def events_after(self, after, limit=250):
         return [{**r, "payload": json.loads(r["payload"])} for r in self.rows("SELECT * FROM events WHERE seq>? ORDER BY seq LIMIT ?", (after, limit))]

@@ -88,4 +88,6 @@ If acquisition coordination cannot produce usable covered publications, fail the
 
 Use the approved procedure to stop the observer and return to ordinary reader-disabled startup, keeping orders disabled. Recheck controls and retained execution rows. Preserve raw streams, association versions, conflicts, acquisition outcomes, projections and observation receipts. Existing projection effects may still explain historical inventory; they cannot establish current readiness.
 
+Use the updated [compatible evidence reader](EVIDENCE-STORAGE.md) for rollback. Older code cannot decode new binary payloads and immutable body references. Preserve the new tables and existing frozen manifests; the authorized replay/liquidity reader changes remain visible as code drift.
+
 Never restore old balances, clear a conflict, reset a baseline or treat an empty legacy fee response as zero fees. Restart recovery starts a new observation window and requires fresh covered acquisition. It never repeats an order or silently counts downtime as observed operation.

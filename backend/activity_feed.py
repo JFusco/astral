@@ -13,10 +13,12 @@ from .activity_projection import balances_match, canonical, digest, instant, inp
 from .config import SYMBOLS
 from .executor_ownership import account_identity
 from .store import utcnow
+from .evidence_codec import pack_bytes, pack_text, reference_text, reference_bytes
 
 ATTEMPT_SECONDS, STREAM_SECONDS, IDLE_SECONDS = 60, 30, 8
 MAX_EVENTS, MAX_BYTES, MAX_FRAME = 10000, 8*1024*1024, 64*1024
 SCHEMA = '''
+CREATE TABLE IF NOT EXISTS evidence_blobs(sha256 BLOB PRIMARY KEY,payload BLOB NOT NULL);
 CREATE TABLE IF NOT EXISTS activity_batches(id TEXT,phase TEXT,account TEXT,at TEXT,payload TEXT,PRIMARY KEY(id,phase));
 CREATE TABLE IF NOT EXISTS activity_events(batch TEXT,ordinal INTEGER,account TEXT,event_id TEXT,ref_id TEXT,type TEXT,at TEXT,sha256 TEXT,payload TEXT,frame BLOB,PRIMARY KEY(batch,ordinal));
 CREATE INDEX IF NOT EXISTS activity_delivery ON activity_events(account,event_id);
@@ -178,20 +180,29 @@ def retain_batch(store, batch, account, result):
             delivery, kind, ref = (activity_identifier(event.get(k)) for k in ('event_id', 'activity_type', 'ref_id'))
             if None in (delivery, kind, ref):
                 result.update(complete=False, error='invalid_activity_identity')
-            prior = store.rows('SELECT DISTINCT sha256 FROM activity_events WHERE account=? AND (event_id=? OR (type=? AND ref_id=?))',
-                               (account, delivery, kind, ref))
+            # Keep both identity checks indexed as acquisition history grows.
+            prior = store.rows('SELECT sha256 FROM activity_events WHERE account=? AND event_id=? '
+                               'UNION SELECT sha256 FROM activity_events WHERE account=? AND type=? AND ref_id=?',
+                               (account, delivery, account, kind, ref))
             for old in prior:
                 if old['sha256'] != sha:
                     conflict = {'prior_sha256': old['sha256'], 'new_sha256': sha, 'ref_id': event.get('ref_id')}
                     store.db.execute('INSERT OR IGNORE INTO activity_conflicts VALUES(?,?,?,?)',
                                      (digest(conflict), account, at, canonical(conflict)))
             frame = frames[index][1] if index < len(frames) else payload.encode()
+            try:
+                body, retained_frame = reference_text(store.db, payload), reference_bytes(store.db, frame)
+            except ValueError:
+                # Preserve this delivery without replacing corrupt shared history.
+                result.update(complete=False, evidence_integrity_error=True)
+                result['error'] = result.get('error') or 'activity_evidence_integrity_error'
+                body, retained_frame = pack_text(payload), pack_bytes(frame)
             store.db.execute('INSERT INTO activity_events VALUES(?,?,?,?,?,?,?,?,?,?)',
-                             (batch, index, account, delivery, ref, kind, at, sha, payload, frame))
+                             (batch, index, account, delivery, ref, kind, at, sha, body, retained_frame))
         receipt = {key: value for key, value in result.items() if key not in ('events', 'raw')}
         receipt['raw_hex'] = result.get('raw', b'').hex()
         receipt['raw_sha256'] = hashlib.sha256(result.get('raw', b'')).hexdigest()
-        store.db.execute('INSERT INTO activity_batches VALUES(?,?,?,?,?)', (batch, 'outcome', account, at, canonical(receipt)))
+        store.db.execute('INSERT INTO activity_batches VALUES(?,?,?,?,?)', (batch, 'outcome', account, at, pack_text(canonical(receipt))))
 
 
 async def collect_batch(broker, store, *, critical=True, refresh_snapshot=False):
@@ -253,18 +264,47 @@ async def collect_batch(broker, store, *, critical=True, refresh_snapshot=False)
     return batch, result
 
 
+def batch_events(store, batch):
+    """Validate the selected outcome and every delivery against its raw stream."""
+    binding = store.get('account_binding')
+    outcomes = store.rows("SELECT payload FROM activity_batches WHERE id=? AND phase='outcome' AND account=?", (batch, binding))
+    if not outcomes:
+        raise FeedError('Completed acquisition required')
+    coverage = json.loads(outcomes[0]['payload'])
+    if not isinstance(coverage, dict):
+        raise FeedError('Activity outcome object required')
+    rows = store.rows('SELECT ordinal,account,event_id,ref_id,type,payload,frame,sha256 FROM activity_events WHERE batch=? ORDER BY ordinal', (batch,))
+    events = [json.loads(row['payload']) for row in rows]
+    issues = ['incomplete_activity_coverage'] if coverage.get('complete') is not True else []
+    try:
+        if coverage.get('account_id') != binding or len(coverage['raw_hex']) > 2*MAX_BYTES:
+            raise FeedError('Activity outcome binding or byte budget differs')
+        raw = bytes.fromhex(coverage['raw_hex'])
+        if hashlib.sha256(raw).hexdigest() != coverage['raw_sha256']:
+            raise FeedError('Retained activity stream differs from its source hash')
+        parser = SSEParser();parser.feed(raw, final=True)
+        if len(rows) != len(parser.frames):
+            raise FeedError('Retained activity delivery sequence is incomplete')
+        for index, (row, event, (original, frame)) in enumerate(zip(rows, events, parser.frames)):
+            if (not isinstance(event, dict) or row['ordinal'] != index or row['account'] != binding
+                    or any(row[column] != activity_identifier(event.get(key)) for column, key in
+                           (('event_id', 'event_id'), ('ref_id', 'ref_id'), ('type', 'activity_type')))
+                    or digest(event) != row['sha256'] or digest(original) != row['sha256'] or row['frame'] != frame):
+                raise FeedError('Retained activity differs from its source delivery')
+    except (ValueError, TypeError, KeyError):
+        issues.append('activity_evidence_integrity_error')
+    return events, coverage, issues
+
+
 def publish_projection(store, batch, mapping, *, now=None):
     now = now or utcnow()
     mapping = load_mapping(mapping)
     with store.transaction():
         source = ledger_source(store)
         binding = source['state']['account_binding']
-        rows = store.rows("SELECT * FROM activity_batches WHERE id=? AND phase='outcome' AND account=?", (batch, binding))
-        if not rows:
-            raise FeedError('Completed acquisition required')
-        coverage = json.loads(rows[0]['payload'])
-        events = [json.loads(r['payload']) for r in store.rows('SELECT payload FROM activity_events WHERE batch=? ORDER BY ordinal', (batch,))]
+        events, coverage, integrity_issues = batch_events(store, batch)
         result = project(source, events, mapping, coverage, knowledge_cutoff=now)
+        result['issues'].extend(integrity_issues)
         if not coverage.get('historical_import'):
             try:
                 after = {'account': coverage['after'], 'positions': coverage['after_positions']}
@@ -275,8 +315,8 @@ def publish_projection(store, batch, mapping, *, now=None):
         # Any omission from previously retained covered history blocks the scan.
         refs = {activity_identifier(e.get('ref_id')) for e in events}
         refs.discard(None)
-        for prior in store.rows("SELECT DISTINCT ref_id,json_extract(payload,'$.at') AS at FROM activity_events WHERE account=? AND batch<>?", (binding, batch)):
-            try: covered = instant(coverage['since']) <= instant(prior['at']) <= instant(coverage['until'])
+        for prior in store.rows("SELECT DISTINCT ref_id,payload FROM activity_events WHERE account=? AND batch<>?", (binding, batch)):
+            try: covered = instant(coverage['since']) <= instant(json.loads(prior['payload'])['at']) <= instant(coverage['until'])
             except (ValueError, KeyError): covered = True
             if covered and prior['ref_id'] not in refs:
                 result['issues'].append('activity_disappeared_from_replay')
@@ -290,7 +330,7 @@ def publish_projection(store, batch, mapping, *, now=None):
         store.db.execute('INSERT OR IGNORE INTO activity_associations VALUES(?,?,?,?)', (sha, binding, now, canonical(mapping)))
         result.update(batch=batch, published_at=now, coverage={k: coverage.get(k) for k in ('since', 'until', 'received_at', 'complete')})
         store.db.execute('INSERT INTO activity_projections VALUES(?,?,?,?,?)',
-                         (uuid.uuid4().hex, binding, now, result['input_sha256'], canonical(result)))
+                         (uuid.uuid4().hex, binding, now, result['input_sha256'], pack_text(canonical(result))))
         return result
 
 
@@ -304,6 +344,14 @@ def read_projection(store, *, cutoff=None):
     for row in rows:
         if instant(row['at']) <= instant(cutoff):
             result = json.loads(store.rows('SELECT payload FROM activity_projections WHERE rowid=?', (row['rowid'],))[0]['payload'])
+            # Decode and validate only the acquisition selected by the cutoff.
+            try:
+                retained, _, integrity_issues = batch_events(store, result['batch'])
+                if not integrity_issues and len({event['ref_id'] for event in retained}) != result.get('activity_count'):
+                    integrity_issues = ['activity_evidence_integrity_error']
+                result['issues'].extend(integrity_issues)
+            except (ValueError, TypeError, KeyError):
+                result['issues'].append('activity_evidence_integrity_error')
             # A retained attempt cannot disappear behind an older publication.
             attempts = store.rows('SELECT id,at FROM activity_batches WHERE account=? ORDER BY rowid DESC', (binding,))
             latest = next((a for a in attempts if instant(a['at']) <= instant(cutoff)), None)

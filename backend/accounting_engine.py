@@ -108,7 +108,9 @@ def source_snapshot(path, cutoff):
                     except ValueError:issues['invalid_state_'+key] += 1
         # Stay in the same read transaction as the retained rows above.
         class LedgerRead:
-            def rows(self, sql, args=()):return [dict(r) for r in db.execute(sql, args)]
+            def rows(self, sql, args=()):
+                from .evidence_codec import unpack_row
+                return [unpack_row(r, db) for r in db.execute(sql, args)]
             def get(self, key, default=None):
                 row = db.execute('SELECT value FROM state WHERE key=?', (key,)).fetchone()
                 return json.loads(row[0]) if row else default
@@ -354,7 +356,7 @@ def run(source, as_of, output, costs_file=None):
         (folder/name).chmod(0o600)
     contract = {'version': VERSION, 'source_ledger': str(Path(source).resolve()), 'as_of': cutoff.isoformat(),
                 'input_sha256': digest(data), 'cost_inputs_sha256': digest(costs),
-                'source_sha256': {name: hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ('backend/accounting_engine.py', 'backend/accounting_receipts.py', 'backend/fee_evidence.py', 'backend/custody.py', 'backend/risk.py', 'backend/activity_feed.py', 'backend/activity_projection.py', 'backend/activity_validation.py')},
+                'source_sha256': {name: hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ('backend/accounting_engine.py', 'backend/accounting_receipts.py', 'backend/fee_evidence.py', 'backend/custody.py', 'backend/risk.py', 'backend/activity_feed.py', 'backend/activity_projection.py', 'backend/activity_validation.py', 'backend/evidence_codec.py')},
                 'activity_projection_sha256': digest(data.get('activity_projection')),
                 'assumptions': 'Gross FIFO diagnostic per book, USD instruments only; no net P&L, synthetic adjustments or filing claims'}
     save('contract.json', json.dumps(contract, indent=2)+'\n')

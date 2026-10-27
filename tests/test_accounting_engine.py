@@ -226,6 +226,9 @@ def test_readonly_cutoff_contract_and_private_exports(tmp_path):
             db.execute('INSERT INTO orders VALUES(?,?,?,?,?,?,?,?)', (r['client_id'], r['request'], '{}', 'filled', 0, 0, KNOWN, KNOWN))
         r = data['fills'][0];db.execute('INSERT INTO fills VALUES(?,?,?,?)', (r['id'], r['client_id'], KNOWN, r['payload']))
         db.execute('INSERT INTO fills VALUES(?,?,?,?)', ('future', 'future', '2026-01-03T00:00:00+00:00', 'DO NOT PARSE'))
+    # End the owned writer before measuring read-only byte preservation; a
+    # transaction context alone leaves a connection and deferred WAL checkpoint.
+    db.close()
     before = path.read_bytes()
     with readonly(path) as db:
         with pytest.raises(sqlite3.OperationalError):db.execute('DELETE FROM fills')
@@ -233,6 +236,7 @@ def test_readonly_cutoff_contract_and_private_exports(tmp_path):
     a, r1 = run(path, KNOWN, tmp_path/'out');b, r2 = run(path, KNOWN, tmp_path/'out')
     assert a != b and r1 == r2 and path.read_bytes() == before
     contract = json.loads((a/'contract.json').read_text());assert r1['contract_sha256'] == digest(contract)
+    assert 'backend/evidence_codec.py' in contract['source_sha256']
     assert 'simulator' in (a/'fills.csv').read_text()
     assert 'DO NOT PARSE' not in (a/'fills.csv').read_text()
     assert all(p.stat().st_mode & 0o077 == 0 for p in a.iterdir())
