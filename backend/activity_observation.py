@@ -123,7 +123,13 @@ class Observation:
             return result
 
     async def run(self, engine):
-        self.prepared.validate_ledger()
+        try:
+            self.prepared.validate_ledger()
+        except Exception:
+            self.status, self.reason = 'failed', 'ledger_recheck_failed'
+            engine.store.event('activity_rollout_failed', {'run_id': self.run_id, 'reason': self.reason})
+            engine.worker('fees', 'disabled', 'Ledger recheck failed; accounting reader disabled')
+            return
         previous = engine.store.get('activity_rollout_observation')
         if previous:
             engine.store.event('activity_rollout_previous', previous)
@@ -148,16 +154,22 @@ class Observation:
                 except Exception:
                     self.issues['acquisition_or_publication_failed'] += 1
                     engine.worker('fees', 'error', 'Accounting acquisition failed; retained evidence blocks readiness')
+                self.persist(engine.store)
+                if not self.active:
+                    break
+                await asyncio.sleep(min(60, self.remaining))
+                if not self.active:
+                    break
                 self.coverage(engine.store)
                 self.persist(engine.store)
-                await asyncio.sleep(min(60, self.remaining))
         finally:
             self.stop(engine.store, 'observation_deadline' if not self.remaining else 'observation_interrupted')
             engine.worker('fees', 'disabled', 'Observation stopped; accounting reader disabled')
 
-    def coverage(self, store):
+    def coverage(self, store, *, record=True):
         """Sample current availability without treating it as collection success."""
         value = current_accounting(store, enabled=self.active)
-        self.availability[value['activity_coverage']['status']] += 1
+        if record:
+            self.availability[value['activity_coverage']['status']] += 1
         return {'activity_coverage': value['activity_coverage'],
                 'accounting_by_symbol': value['accounting_by_symbol']}

@@ -148,6 +148,37 @@ def test_pinned_mapping_and_covered_snapshot_reconcile_then_newer_snapshot_block
     asyncio.run(scenario())
 
 
+def test_availability_sample_observes_reconciliation_between_acquisitions(rollout, monkeypatch):
+    clock = [0]
+    engine, calls, _ = mock_engine(rollout, clock=lambda: clock[0])
+    observation = engine.activity_observation
+    checks = iter((True, True, False))
+    monkeypatch.setattr(observation, 'budget_ok', lambda: next(checks, False))
+    now = lambda: (datetime.fromisoformat(NOW)+timedelta(seconds=clock[0])).isoformat()
+    monkeypatch.setattr('backend.activity_feed.utcnow', now)
+
+    async def reconciled_during_interval(delay):
+        assert delay == 60
+        assert observation.summary()['matched_publications'] == 1
+        clock[0] += delay
+        snapshot = engine.store.get('account_snapshot')
+        snapshot['at'] = now()
+        engine.store.put('account_snapshot', snapshot)
+        current = current_accounting(engine.store, enabled=True)
+        assert 'accounting_snapshot_outside_coverage' in current['activity_coverage']['issues']
+
+    monkeypatch.setattr('backend.activity_observation.asyncio.sleep', reconciled_during_interval)
+    async def scenario():
+        try:
+            await observation.run(engine)
+            summary = engine.store.get('activity_rollout_observation')
+            assert len(calls) == 7
+            assert summary['complete_acquisitions'] == summary['matched_publications'] == 1
+            assert summary['availability_samples'] == {'incomplete': 1}
+        finally: await engine.broker.close()
+    asyncio.run(scenario())
+
+
 def test_reconciliation_cannot_replace_snapshot_during_rollout_publication(rollout):
     engine, _, _ = mock_engine(rollout)
     async def scenario():
@@ -249,13 +280,33 @@ def test_storage_limit_stops_collection_without_dropping_evidence(rollout, monke
     asyncio.run(scenario())
 
 
+def test_ledger_recheck_failure_retains_sanitized_receipt_and_disables_reader(rollout):
+    engine, calls, _ = mock_engine(rollout)
+    observation = engine.activity_observation
+    observation.started, observation.status = None, 'prepared'
+    engine.store.db.execute("UPDATE orders SET status='unknown'")
+    async def scenario():
+        try:
+            await observation.run(engine)
+            assert not calls and not engine.activity_enabled
+            summary = observation.summary()
+            assert summary['status'] == 'failed' and summary['reason'] == 'ledger_recheck_failed'
+            assert engine.workers['fees']['status'] == 'disabled'
+            receipts = engine.store.rows("SELECT payload FROM events WHERE type='activity_rollout_failed'")
+            assert [json.loads(row['payload']) for row in receipts] == [
+                {'run_id': observation.run_id, 'reason': 'ledger_recheck_failed'}]
+            assert not engine.store.rows("SELECT seq FROM events WHERE type='activity_rollout_started'")
+        finally: await engine.broker.close()
+    asyncio.run(scenario())
+
+
 def test_inflight_storage_limit_retains_scan_and_prevents_publication(rollout, monkeypatch):
     engine, calls, _ = mock_engine(rollout)
     checks = iter((True, False))
     monkeypatch.setattr(engine.activity_observation, 'budget_ok', lambda: next(checks, False))
     async def scenario():
         try:
-            await engine.activity_observation.run(engine)
+            await asyncio.wait_for(engine.activity_observation.run(engine), 5)
             assert len(calls) == 7 and not engine.activity_enabled
             assert len(engine.store.rows('SELECT ordinal FROM activity_events')) == 19
             assert not engine.store.rows('SELECT id FROM activity_projections')
@@ -297,13 +348,75 @@ def test_completed_collection_is_distinct_from_current_accounting_and_api_is_pri
             engine.store.put('account_snapshot', snapshot)
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://localhost') as client:
                 assert (await client.get('/api/state')).json()['orders_enabled'] is False
+                samples = engine.activity_observation.summary()['availability_samples']
                 response = await client.get('/api/accounting/observation')
                 view = response.json()
+                repeated = await client.get('/api/accounting/observation')
+                assert view['availability_samples'] == repeated.json()['availability_samples'] == samples
+                assert engine.activity_observation.summary()['availability_samples'] == samples
                 assert response.headers['cache-control'] == 'no-store'
                 assert view['complete_acquisitions'] == 1 and view['matched_publications'] == 1
                 assert 'accounting_snapshot_outside_coverage' in view['activity_coverage']['issues']
                 assert not view['accounting_by_symbol']['BTC']['passed']
                 assert view['latency']['state']['samples'] == 1
                 assert not any(k in response.text for k in ('account_id', 'api_key', 'secret_key', 'mapping_json'))
+        finally: await engine.broker.close()
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize('boundary', ['prepared', 'stopped', 'deadline', 'start-during-request',
+                                     'stop-during-request', 'deadline-during-request', 'replacement-during-request'])
+def test_state_latency_excludes_requests_outside_same_active_window(rollout, monkeypatch, boundary):
+    from backend.app import create_app
+    clock = [0]
+    engine, _, _ = mock_engine(rollout, clock=lambda: clock[0])
+    observation = engine.activity_observation
+    app = create_app(engine.settings, background=False, activity_observation=observation)
+    app.state.engine = engine
+    monkeypatch.setattr('backend.app.time', SimpleNamespace(monotonic=lambda: clock[0]))
+    action = [lambda: None]
+    duration = [2.5]
+    def state():
+        clock[0] += duration[0]
+        action[0]()
+        return {'orders_enabled': False}
+    monkeypatch.setattr(engine, 'state', state)
+
+    def start():
+        observation.started, observation.status = clock[0], 'observing'
+
+    def expire():
+        clock[0] = observation.started+DAY
+
+    def replace_observation():
+        replacement = Observation(observation.prepared, clock=lambda: clock[0])
+        replacement.started, replacement.status = clock[0], 'observing'
+        engine.activity_observation = replacement
+
+    async def scenario():
+        try:
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://localhost') as client:
+                if boundary in ('prepared', 'start-during-request'):
+                    observation.started, observation.status = None, 'prepared'
+                else:
+                    assert (await client.get('/api/state')).status_code == 200
+                    assert observation.summary()['latency']['state'] == {
+                        'samples': 1, 'p95_upper_ms': 5000, 'over_5000_ms': 0}
+                duration[0] = .001
+                if boundary == 'stopped': observation.stop(engine.store, 'owner_stopped')
+                if boundary == 'deadline': expire()
+                if boundary == 'start-during-request': action[0] = start
+                if boundary == 'stop-during-request': action[0] = lambda: observation.stop(engine.store, 'owner_stopped')
+                if boundary == 'deadline-during-request': action[0] = expire
+                if boundary == 'replacement-during-request': action[0] = replace_observation
+                before = observation.summary()['latency']['state']
+                response = await client.get('/api/state')
+                assert response.status_code == 200 and response.json()['orders_enabled'] is False
+                assert response.headers['cache-control'] == 'no-store'
+                assert observation.summary()['latency']['state'] == before
+                if observation.status == 'stopped':
+                    assert engine.store.get('activity_rollout_observation')['latency']['state'] == before
+                if boundary == 'replacement-during-request':
+                    assert engine.activity_observation.summary()['latency']['state']['samples'] == 0
         finally: await engine.broker.close()
     asyncio.run(scenario())

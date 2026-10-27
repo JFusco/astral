@@ -115,9 +115,11 @@ def create_app(settings=None, broker_factory=None, background=True, activity_obs
             if request.headers.get("x-astral-intent") != "paper-only" or (origin and origin != expected) or request.headers.get("sec-fetch-site") == "cross-site":
                 return JSONResponse({"detail": "Same-origin paper intent header required"}, status_code=403)
         started = time.monotonic()
-        response = await call_next(request)
         observation = request.app.state.engine.activity_observation
-        if observation and request.url.path == '/api/state':
+        record_latency = (request.method == 'GET' and request.url.path == '/api/state'
+                          and observation is not None and observation.active)
+        response = await call_next(request)
+        if record_latency and request.app.state.engine.activity_observation is observation and observation.active:
             observation.latencies['state'].add((time.monotonic()-started)*1000)
         if request.url.path.startswith("/api/"):
             response.headers["Cache-Control"] = "no-store"
@@ -151,7 +153,7 @@ def create_app(settings=None, broker_factory=None, background=True, activity_obs
         observation = engine.activity_observation
         if not observation:
             return {'status': 'disabled', 'reader_enabled': False, 'orders_enabled': cfg.enable_orders}
-        coverage = observation.coverage(engine.store)
+        coverage = observation.coverage(engine.store, record=False)
         return {**observation.summary(), **coverage}
 
     @app.get("/api/health-inputs")
