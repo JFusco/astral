@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "kind": "sanitized-fixture",
+  "derived_at": "2026-10-27T10:42:49.299517+00:00",
+  "original_sha256": {
+    "activity-sse.json": "3a9c6263090c09f1ab0311bd6a42c43cc2a35ae7f9e6048dee4a89210c1abf12",
+    "activity-sse.raw": "330f0c13dec46c49069da5085abe7dc729fd5e97752a64e23c92dde2d2f22136",
+    "ledger-selected-readonly.json": "74435d66dcd4111e50b3e73a77f32c979a3fa5efb1dfbbb769793d3d3c3ee9ae",
+    "associations.json": "d1c54f155b36b4807cc4b4f5923b8892a0ecfc107956c7012d7fd6ab69c8780a",
+    "report.md": "8885edd26879ede0f3c20ea473f9154332a17958b9d5a56b84774b810f9728b8"
+  },
+  "files": {
+    "report.md": "8885edd26879ede0f3c20ea473f9154332a17958b9d5a56b84774b810f9728b8",
+    "activity-sse.json": "4bc45f918046b8c7a6e60f4c1345082130e1dab1d221710be703952ccf5e7fb4",
+    "associations.json": "dd73fbfbcb139698dabbfdc9246072bab6b2156df369056068750ec07161ab47",
+    "mapping.json": "d1f6c408e67aa7888833214340624d4baaf9fde1898edb6111a463e59f5719cf",
+    "activity-sse.raw": "db83e1cf3105e80444b58e76ded42cf68dc6a09fc9308c3ce8a8578164904cc5",
+    "ledger-selected-readonly.json": "30a5277be3e22384765703aed08b6561ceba40e16e5365710e174794b8241275"
+  },
+  "redaction": "Consistent format-valid surrogate account/order/client/event/execution/asset identifiers; original values, clocks, omitted fields and relationships preserved."
+}

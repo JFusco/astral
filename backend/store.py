@@ -38,6 +38,8 @@ class Store:
           CREATE TABLE IF NOT EXISTS research(id INTEGER PRIMARY KEY,at TEXT NOT NULL,packet TEXT NOT NULL,result TEXT NOT NULL,usage TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS timing(id INTEGER PRIMARY KEY,at TEXT NOT NULL,symbol TEXT NOT NULL,strategy TEXT NOT NULL,result TEXT NOT NULL,context TEXT NOT NULL);
         """)
+        from .activity_feed import SCHEMA
+        self.db.executescript(SCHEMA)
         with self.transaction():
             existing = self.get("mode")
             if existing and existing != mode:

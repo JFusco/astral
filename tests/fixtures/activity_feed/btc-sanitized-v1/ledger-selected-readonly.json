@@ -1,0 +1,247 @@
+{
+  "rows": {
+    "orders": [
+      {
+        "client_id": "fixture-client-43",
+        "request": "{\"intent\":{\"client_order_id\":\"fixture-client-43\",\"symbol\":\"BTC\",\"side\":\"buy\",\"notional\":25.0,\"execution\":\"bounded\",\"ttl_seconds\":60,\"strategy_id\":\"lifecycle_test\"},\"payload\":{\"client_order_id\":\"fixture-client-43\",\"symbol\":\"BTC/USD\",\"qty\":\"0.000309121\",\"side\":\"buy\",\"type\":\"limit\",\"time_in_force\":\"ioc\",\"limit_price\":\"80874.285492\"}}",
+        "raw": "{\"id\":\"c0ac4d71-c736-5c1b-b7a0-52084274c1bb\",\"client_order_id\":\"fixture-client-43\",\"created_at\":\"2026-10-25T03:49:34.937688556Z\",\"updated_at\":\"2026-10-25T03:49:34.971688297Z\",\"submitted_at\":\"2026-10-25T03:49:34.937688556Z\",\"filled_at\":\"2026-10-25T03:49:34.939813106Z\",\"expired_at\":null,\"canceled_at\":null,\"failed_at\":null,\"replaced_at\":null,\"replaced_by\":null,\"replaces\":null,\"asset_id\":\"521f66c0-eccf-5254-a921-c6f627139e5b\",\"symbol\":\"BTC/USD\",\"asset_class\":\"crypto\",\"notional\":null,\"qty\":\"0.000309121\",\"filled_qty\":\"0.000309121\",\"filled_avg_price\":\"80789.055333025\",\"order_class\":\"\",\"order_type\":\"limit\",\"type\":\"limit\",\"side\":\"buy\",\"position_intent\":\"buy_to_open\",\"time_in_force\":\"ioc\",\"limit_price\":\"80874.285492\",\"stop_price\":null,\"status\":\"filled\",\"extended_hours\":false,\"legs\":null,\"trail_percent\":null,\"trail_price\":null,\"hwm\":null,\"subtag\":null,\"source\":null,\"expires_at\":\"2026-10-23T20:00:00Z\"}",
+        "status": "filled",
+        "external": 0,
+        "deadline": 1792900234.826209,
+        "created_at": "2026-10-25T03:49:34.826211+00:00",
+        "updated_at": "2026-10-25T03:49:35.021048+00:00"
+      },
+      {
+        "client_id": "fixture-client-42",
+        "request": "{\"intent\":{\"client_order_id\":\"fixture-client-42\",\"symbol\":\"BTC\",\"side\":\"sell\",\"notional\":100.0,\"execution\":\"bounded\",\"ttl_seconds\":60,\"strategy_id\":\"lifecycle_test\"},\"payload\":{\"client_order_id\":\"fixture-client-42\",\"symbol\":\"BTC/USD\",\"qty\":\"0.000308347\",\"side\":\"sell\",\"type\":\"limit\",\"time_in_force\":\"ioc\",\"limit_price\":\"80693.912313\"}}",
+        "raw": "{\"id\":\"de2d5349-bba1-518a-9f6c-8890ce27586f\",\"client_order_id\":\"fixture-client-42\",\"created_at\":\"2026-10-25T03:50:27.068948005Z\",\"updated_at\":\"2026-10-25T03:50:27.122271922Z\",\"submitted_at\":\"2026-10-25T03:50:27.068948005Z\",\"filled_at\":\"2026-10-25T03:50:27.071124003Z\",\"expired_at\":null,\"canceled_at\":null,\"failed_at\":null,\"replaced_at\":null,\"replaced_by\":null,\"replaces\":null,\"asset_id\":\"521f66c0-eccf-5254-a921-c6f627139e5b\",\"symbol\":\"BTC/USD\",\"asset_class\":\"crypto\",\"notional\":null,\"qty\":\"0.000308347\",\"filled_qty\":\"0.000308347\",\"filled_avg_price\":\"80785.24\",\"order_class\":\"\",\"order_type\":\"limit\",\"type\":\"limit\",\"side\":\"sell\",\"position_intent\":\"sell_to_close\",\"time_in_force\":\"ioc\",\"limit_price\":\"80693.912313\",\"stop_price\":null,\"status\":\"filled\",\"extended_hours\":false,\"legs\":null,\"trail_percent\":null,\"trail_price\":null,\"hwm\":null,\"subtag\":null,\"source\":null,\"expires_at\":\"2026-10-23T20:00:00Z\"}",
+        "status": "filled",
+        "external": 0,
+        "deadline": 1792900286.951309,
+        "created_at": "2026-10-25T03:50:26.951314+00:00",
+        "updated_at": "2026-10-25T03:50:32.036203+00:00"
+      },
+      {
+        "client_id": "fixture-client-44",
+        "request": "{\"intent\":{\"client_order_id\":\"fixture-client-44\",\"symbol\":\"BTC\",\"side\":\"buy\",\"notional\":25.0,\"execution\":\"bounded\",\"ttl_seconds\":20,\"strategy_id\":\"lifecycle_test\"},\"payload\":{\"client_order_id\":\"fixture-client-44\",\"symbol\":\"BTC/USD\",\"qty\":\"0.000311568\",\"side\":\"buy\",\"type\":\"limit\",\"time_in_force\":\"ioc\",\"limit_price\":\"80239.06891\"}}",
+        "raw": "{\"id\":\"6298b1a3-216b-5d86-aff9-6cb4993bed2b\",\"client_order_id\":\"fixture-client-44\",\"created_at\":\"2026-10-25T10:46:02.204686668Z\",\"updated_at\":\"2026-10-25T10:46:02.22161423Z\",\"submitted_at\":\"2026-10-25T10:46:02.204686668Z\",\"filled_at\":\"2026-10-25T10:46:02.206239504Z\",\"expired_at\":null,\"canceled_at\":null,\"failed_at\":null,\"replaced_at\":null,\"replaced_by\":null,\"replaces\":null,\"asset_id\":\"521f66c0-eccf-5254-a921-c6f627139e5b\",\"symbol\":\"BTC/USD\",\"asset_class\":\"crypto\",\"notional\":null,\"qty\":\"0.000311568\",\"filled_qty\":\"0.000311568\",\"filled_avg_price\":\"80195.191636946\",\"order_class\":\"\",\"order_type\":\"limit\",\"type\":\"limit\",\"side\":\"buy\",\"position_intent\":\"buy_to_open\",\"time_in_force\":\"ioc\",\"limit_price\":\"80239.06891\",\"stop_price\":null,\"status\":\"filled\",\"extended_hours\":false,\"legs\":null,\"trail_percent\":null,\"trail_price\":null,\"hwm\":null,\"subtag\":null,\"source\":null,\"expires_at\":\"2026-10-23T20:00:00Z\"}",
+        "status": "filled",
+        "external": 0,
+        "deadline": 1792925182.010263,
+        "created_at": "2026-10-25T10:46:02.010264+00:00",
+        "updated_at": "2026-10-25T10:46:02.431321+00:00"
+      },
+      {
+        "client_id": "fixture-client-45",
+        "request": "{\"intent\":{\"client_order_id\":\"fixture-client-45\",\"symbol\":\"BTC\",\"side\":\"sell\",\"notional\":26.0,\"execution\":\"bounded\",\"ttl_seconds\":20,\"strategy_id\":\"lifecycle_test\"},\"payload\":{\"client_order_id\":\"fixture-client-45\",\"symbol\":\"BTC/USD\",\"qty\":\"0.000310787\",\"side\":\"sell\",\"type\":\"limit\",\"time_in_force\":\"ioc\",\"limit_price\":\"80046.2736\"}}",
+        "raw": "{\"id\":\"20b70b6e-3ce7-5df0-96d3-53bb97013c74\",\"client_order_id\":\"fixture-client-45\",\"created_at\":\"2026-10-25T10:46:22.727521031Z\",\"updated_at\":\"2026-10-25T10:46:22.771263856Z\",\"submitted_at\":\"2026-10-25T10:46:22.727521031Z\",\"filled_at\":\"2026-10-25T10:46:22.729661176Z\",\"expired_at\":null,\"canceled_at\":null,\"failed_at\":null,\"replaced_at\":null,\"replaced_by\":null,\"replaces\":null,\"asset_id\":\"521f66c0-eccf-5254-a921-c6f627139e5b\",\"symbol\":\"BTC/USD\",\"asset_class\":\"crypto\",\"notional\":null,\"qty\":\"0.000310787\",\"filled_qty\":\"0.000310787\",\"filled_avg_price\":\"80073.58\",\"order_class\":\"\",\"order_type\":\"limit\",\"type\":\"limit\",\"side\":\"sell\",\"position_intent\":\"sell_to_close\",\"time_in_force\":\"ioc\",\"limit_price\":\"80046.2736\",\"stop_price\":null,\"status\":\"filled\",\"extended_hours\":false,\"legs\":null,\"trail_percent\":null,\"trail_price\":null,\"hwm\":null,\"subtag\":null,\"source\":null,\"expires_at\":\"2026-10-23T20:00:00Z\"}",
+        "status": "filled",
+        "external": 0,
+        "deadline": 1792925202.5348532,
+        "created_at": "2026-10-25T10:46:22.534854+00:00",
+        "updated_at": "2026-10-25T10:46:22.946692+00:00"
+      }
+    ],
+    "fills": [
+      {
+        "id": "fixture-client-43:0.000309121",
+        "client_id": "fixture-client-43",
+        "at": "2026-10-25T03:49:35.021133+00:00",
+        "payload": "{\"id\":\"fixture-client-43:0.000309121\",\"client_id\":\"fixture-client-43\",\"symbol\":\"BTC\",\"side\":\"buy\",\"quantity\":\"0.000309121\",\"price\":\"80789.055333025\",\"value\":\"24.973593573600021025\",\"fee\":null,\"at\":\"2026-10-25T03:49:34.939813106Z\",\"source\":\"alpaca-cumulative-order-readback\"}"
+      },
+      {
+        "id": "fixture-client-42:0.000308347",
+        "client_id": "fixture-client-42",
+        "at": "2026-10-25T03:50:32.036327+00:00",
+        "payload": "{\"id\":\"fixture-client-42:0.000308347\",\"client_id\":\"fixture-client-42\",\"symbol\":\"BTC\",\"side\":\"sell\",\"quantity\":\"0.000308347\",\"price\":\"80785.24\",\"value\":\"24.90988639828\",\"fee\":null,\"at\":\"2026-10-25T03:50:27.071124003Z\",\"source\":\"alpaca-cumulative-order-readback\"}"
+      },
+      {
+        "id": "fixture-client-44:0.000311568",
+        "client_id": "fixture-client-44",
+        "at": "2026-10-25T10:46:02.431342+00:00",
+        "payload": "{\"id\":\"fixture-client-44:0.000311568\",\"client_id\":\"fixture-client-44\",\"symbol\":\"BTC\",\"side\":\"buy\",\"quantity\":\"0.000311568\",\"price\":\"80195.191636946\",\"value\":\"24.986255467939991328\",\"fee\":null,\"at\":\"2026-10-25T10:46:02.206239504Z\",\"source\":\"alpaca-cumulative-order-readback\"}"
+      },
+      {
+        "id": "fixture-client-45:0.000310787",
+        "client_id": "fixture-client-45",
+        "at": "2026-10-25T10:46:22.946715+00:00",
+        "payload": "{\"id\":\"fixture-client-45:0.000310787\",\"client_id\":\"fixture-client-45\",\"symbol\":\"BTC\",\"side\":\"sell\",\"quantity\":\"0.000310787\",\"price\":\"80073.58\",\"value\":\"24.88582770746\",\"fee\":null,\"at\":\"2026-10-25T10:46:22.729661176Z\",\"source\":\"alpaca-cumulative-order-readback\"}"
+      }
+    ],
+    "activities": [],
+    "observations": [
+      {
+        "id": 1,
+        "at": "2026-10-25T03:49:34.826436+00:00",
+        "request": "{\"client_order_id\":\"fixture-client-43\",\"symbol\":\"BTC\",\"side\":\"buy\",\"notional\":25.0,\"execution\":\"bounded\",\"ttl_seconds\":60,\"strategy_id\":\"lifecycle_test\"}",
+        "outcome": "approved",
+        "context": "{\"snapshot\":{\"account\":{\"id\":\"594a5ce6-9ae9-5be2-8a53-2bff75679ede\",\"admin_configurations\":{},\"user_configurations\":null,\"account_number\":\"PA00000001\",\"status\":\"ACTIVE\",\"crypto_status\":\"ACTIVE\",\"options_approved_level\":3,\"options_trading_level\":3,\"currency\":\"USD\",\"buying_power\":\"400000\",\"regt_buying_power\":\"200000\",\"effective_buying_power\":\"400000\",\"non_marginable_buying_power\":\"100000\",\"options_buying_power\":\"100000\",\"cash\":\"100000\",\"accrued_fees\":\"0\",\"portfolio_value\":\"100000\",\"trading_blocked\":false,\"transfers_blocked\":false,\"account_blocked\":false,\"created_at\":\"2026-10-25T03:15:57.833492Z\",\"trade_suspended_by_user\":false,\"multiplier\":\"4\",\"shorting_enabled\":true,\"equity\":\"100000\",\"last_equity\":\"100000\",\"long_market_value\":\"0\",\"short_market_value\":\"0\",\"position_market_value\":\"0\",\"initial_margin\":\"0\",\"maintenance_margin\":\"0\",\"last_maintenance_margin\":\"0\",\"sma\":\"0\",\"balance_asof\":\"2026-10-23\",\"crypto_tier\":0,\"intraday_adjustments\":\"0\",\"pending_reg_taf_fees\":\"0\"},\"positions\":[],\"clock\":{\"is_open\":false,\"next_close\":\"2026-10-26T16:00:00-04:00\",\"next_open\":\"2026-10-26T09:30:00-04:00\",\"timestamp\":\"2026-10-24T23:49:28.323004087-04:00\"},\"at\":\"2026-10-25T03:49:28.321187+00:00\"},\"quotes\":{\"GLD\":{\"bid\":\"353.97\",\"ask\":\"376.15\",\"at\":\"2026-10-23T20:00:02.858795372Z\",\"received_at\":\"2026-10-25T03:49:33.433917+00:00\",\"source\":\"alpaca-iex\"},\"QQQ\":{\"bid\":\"705.39\",\"ask\":\"705.49\",\"at\":\"2026-10-23T20:54:54.998961483Z\",\"received_at\":\"2026-10-25T03:49:33.433920+00:00\",\"source\":\"alpaca-iex\"},\"SPY\":{\"bid\":\"759.92\",\"ask\":\"760.03\",\"at\":\"2026-10-23T20:03:13.194416477Z\",\"received_at\":\"2026-10-25T03:49:33.433923+00:00\",\"source\":\"alpaca-iex\"},\"IWM\":{\"bid\":\"275.95\",\"ask\":\"276.01\",\"at\":\"2026-10-23T20:20:30.864459976Z\",\"received_at\":\"2026-10-25T03:49:33.433905+00:00\",\"source\":\"alpaca-iex\"},\"TLT\":{\"bid\":\"81.2\",\"ask\":\"81.41\",\"at\":\"2026-10-23T20:26:19.989074538Z\",\"received_at\":\"2026-10-25T03:49:33.433914+00:00\",\"source\":\"alpaca-iex\"},\"BTC\":{\"bid\":\"80771.1\",\"ask\":\"80793.492\",\"at\":\"2026-10-25T03:49:29.885486929Z\",\"received_at\":\"2026-10-25T03:49:33.474266+00:00\",\"source\":\"alpaca-us\"},\"SOL\":{\"bid\":\"102.24\",\"ask\":\"102.3\",\"at\":\"2026-10-25T03:49:25.493982173Z\",\"received_at\":\"2026-10-25T03:49:33.474269+00:00\",\"source\":\"alpaca-us\"},\"ETH\":{\"bid\":\"2359.9\",\"ask\":\"2360.3\",\"at\":\"2026-10-25T03:49:33.017888535Z\",\"received_at\":\"2026-10-25T03:49:33.474256+00:00\",\"source\":\"alpaca-us\"}},\"assets\":{\"BTC\":{\"symbol\":\"BTC\",\"broker_symbol\":\"BTC/USD\",\"type\":\"crypto\",\"tradable\":true,\"increment\":\"0.000000001\",\"minimum\":\"0.000012377\",\"price_increment\":\"0.000000001\",\"source\":\"alpaca\",\"at\":\"2026-10-25T03:48:41.674263+00:00\"},\"ETH\":{\"symbol\":\"ETH\",\"broker_symbol\":\"ETH/USD\",\"type\":\"crypto\",\"tradable\":true,\"increment\":\"0.000000001\",\"minimum\":\"0.000424859\",\"price_increment\":\"0.000000001\",\"source\":\"alpaca\",\"at\":\"2026-10-25T03:48:41.674300+00:00\"},\"SOL\":{\"symbol\":\"SOL\",\"broker_symbol\":\"SOL/USD\",\"type\":\"crypto\",\"tradable\":true,\"increment\":\"0.000000001\",\"minimum\":\"0.009775744\",\"price_increment\":\"0.000000001\",\"source\":\"alpaca\",\"at\":\"2026-10-25T03:48:41.674308+00:00\"},\"SPY\":{\"symbol\":\"SPY\",\"broker_symbol\":\"SPY\",\"type\":\"etf\",\"tradable\":true,\"increment\":\"1\",\"minimum\":\"1\",\"price_increment\":\"0.01\",\"source\":\"alpaca\",\"at\":\"2026-10-25T03:48:41.711818+00:00\"},\"QQQ\":{\"symbol\":\"QQQ\",\"broker_symbol\":\"QQQ\",\"type\":\"etf\",\"tradable\":true,\"increment\":\"1\",\"minimum\":\"1\",\"price_increment\":\"0.01\",\"source\":\"alpaca\",\"at\":\"2026-10-25T03:48:41.747104+00:00\"},\"GLD\":{\"symbol\":\"GLD\",\"broker_symbol\":\"GLD\",\"type\":\"etf\",\"tradable\":true,\"increment\":\"1\",\"minimum\":\"1\",\"price_increment\":\"0.01\",\"source\":\"alpaca\",\"at\":\"2026-10-25T03:48:41.783078+00:00\"},\"TLT\":{\"symbol\":\"TLT\",\"broker_symbol\":\"TLT\",\"type\":\"etf\",\"tradable\":true,\"increment\":\"1\",\"minimum\":\"1\",\"price_increment\":\"0.01\",\"source\":\"alpaca\",\"at\":\"2026-10-25T03:48:41.816709+00:00\"},\"IWM\":{\"symbol\":\"IWM\",\"broker_symbol\":\"IWM\",\"type\":\"etf\",\"tradable\":true,\"increment\":\"1\",\"minimum\":\"1\",\"price_increment\":\"0.01\",\"source\":\"alpaca\",\"at\":\"2026-10-25T03:48:41.857443+00:00\"}},\"risk_marks\":{\"day\":\"2026-10-25\",\"day_equity\":\"100000\",\"highwater\":\"100000\"},\"risk_latch\":null,\"halted\":false,\"working_orders\":[],\"config_version\":\"deterministic-risk-v2\",\"policy\":{\"version\":\"deterministic-risk-v2\",\"max_order_usd\":\"1000\",\"max_market_order_usd\":\"100\",\"max_gross_fraction\":\"0.50\",\"max_group_fraction\":\"0.25\",\"etf_fraction\":\"0.10\",\"crypto_fraction\":\"0.05\",\"daily_loss_fraction\":\"0.01\",\"highwater_loss_fraction\":\"0.05\",\"quote_max_age_seconds\":15,\"snapshot_max_age_seconds\":30,\"latched\":null,\"automatic_stops\":false,\"automatic_entries\":false,\"planner\":\"ATR14 Wilder + trend/breakout; research only\"}}"
+      },
+      {
+        "id": 2,
+        "at": "2026-10-25T03:50:26.951403+00:00",
+        "request": "{\"client_order_id\":\"fixture-client-42\",\"symbol\":\"BTC\",\"side\":\"sell\",\"notional\":100.0,\"execution\":\"bounded\",\"ttl_seconds\":60,\"strategy_id\":\"lifecycle_test\"}",
+        "outcome": "approved",
+        "context": "{\"snapshot\":{\"account\":{\"id\":\"594a5ce6-9ae9-5be2-8a53-2bff75679ede\",\"admin_configurations\":{},\"user_configurations\":null,\"account_number\":\"PA00000001\",\"status\":\"ACTIVE\",\"crypto_status\":\"ACTIVE\",\"options_approved_level\":3,\"options_trading_level\":3,\"currency\":\"USD\",\"buying_power\":\"399900.12\",\"regt_buying_power\":\"199950.06\",\"effective_buying_power\":\"399900.12\",\"non_marginable_buying_power\":\"99975.03\",\"options_buying_power\":\"99975.03\",\"cash\":\"99975.03\",\"accrued_fees\":\"0\",\"portfolio_value\":\"99999.94\",\"trading_blocked\":false,\"transfers_blocked\":false,\"account_blocked\":false,\"created_at\":\"2026-10-25T03:15:57.833492Z\",\"trade_suspended_by_user\":false,\"multiplier\":\"4\",\"shorting_enabled\":true,\"equity\":\"99999.94\",\"last_equity\":\"100000\",\"long_market_value\":\"24.91\",\"short_market_value\":\"0\",\"position_market_value\":\"24.91\",\"initial_margin\":\"0\",\"maintenance_margin\":\"0\",\"last_maintenance_margin\":\"0\",\"sma\":\"0\",\"balance_asof\":\"2026-10-23\",\"crypto_tier\":0,\"intraday_adjustments\":\"0\",\"pending_reg_taf_fees\":\"0\"},\"positions\":[{\"asset_id\":\"a3592c1e-0a04-55b5-84d2-9c42cd5add50\",\"symbol\":\"BTCUSD\",\"exchange\":\"CRYPTO\",\"asset_class\":\"crypto\",\"asset_marginable\":false,\"qty\":\"0.000308347\",\"qty_available\":\"0.000308347\",\"avg_entry_price\":\"80789.055333115\",\"side\":\"long\",\"market_value\":\"24.91406\",\"cost_basis\":\"24.911063\",\"unrealized_pl\":\"0.002997\",\"unrealized_plpc\":\"0.00012\",\"unrealized_intraday_pl\":\"0.002997\",\"unrealized_intraday_plpc\":\"0.00012\",\"current_price\":\"80798.777\",\"lastday_price\":\"80789.835\",\"change_today\":\"0.00011\"}],\"clock\":{\"is_open\":false,\"next_close\":\"2026-10-26T16:00:00-04:00\",\"next_open\":\"2026-10-26T09:30:00-04:00\",\"timestamp\":\"2026-10-24T23:50:21.55866829-04:00\"},\"at\":\"2026-10-25T03:50:21.929384+00:00\"},\"quotes\":{\"GLD\":{\"bid\":\"353.97\",\"ask\":\"376.15\",\"at\":\"2026-10-23T20:00:02.858795372Z\",\"received_at\":\"2026-10-25T03:50:22.243828+00:00\",\"source\":\"alpaca-iex\"},\"QQQ\":{\"bid\":\"705.39\",\"ask\":\"705.49\",\"at\":\"2026-10-23T20:54:54.998961483Z\",\"received_at\":\"2026-10-25T03:50:22.243832+00:00\",\"source\":\"alpaca-iex\"},\"SPY\":{\"bid\":\"759.92\",\"ask\":\"760.03\",\"at\":\"2026-10-23T20:03:13.194416477Z\",\"received_at\":\"2026-10-25T03:50:22.241799+00:00\",\"source\":\"alpaca-iex\"},\"IWM\":{\"bid\":\"275.95\",\"ask\":\"276.01\",\"at\":\"2026-10-23T20:20:30.864459976Z\",\"received_at\":\"2026-10-25T03:50:22.243808+00:00\",\"source\":\"alpaca-iex\"},\"TLT\":{\"bid\":\"81.2\",\"ask\":\"81.41\",\"at\":\"2026-10-23T20:26:19.989074538Z\",\"received_at\":\"2026-10-25T03:50:22.243817+00:00\",\"source\":\"alpaca-iex\"},\"BTC\":{\"bid\":\"80774.687\",\"ask\":\"80793.44\",\"at\":\"2026-10-25T03:50:21.394902933Z\",\"received_at\":\"2026-10-25T03:50:22.320369+00:00\",\"source\":\"alpaca-us\"},\"SOL\":{\"bid\":\"102.3\",\"ask\":\"102.345\",\"at\":\"2026-10-25T03:50:20.507957491Z\",\"received_at\":\"2026-10-25T03:50:22.320353+00:00\",\"source\":\"alpaca-us\"},\"ETH\":{\"bid\":\"2359.7\",\"ask\":\"2360.5\",\"at\":\"2026-10-25T03:50:21.633747462Z\",\"received_at\":\"2026-10-25T03:50:22.320366+00:00\",\"source\":\"alpaca-us\"}},\"assets\":{\"BTC\":{\"symbol\":\"BTC\",\"broker_symbol\":\"BTC/USD\",\"type\":\"crypto\",\"tradable\":true,\"increment\":\"0.000000001\",\"minimum\":\"0.000012377\",\"price_increment\":\"0.000000001\",\"source\":\"alpaca\",\"at\":\"2026-10-25T03:48:41.674263+00:00\"},\"ETH\":{\"symbol\":\"ETH\",\"broker_symbol\":\"ETH/USD\",\"type\":\"crypto\",\"tradable\":true,\"increment\":\"0.000000001\",\"minimum\":\"0.000424859\",\"price_increment\":\"0.000000001\",\"source\":\"alpaca\",\"at\":\"2026-10-25T03:48:41.674300+00:00\"},\"SOL\":{\"symbol\":\"SOL\",\"broker_symbol\":\"SOL/USD\",\"type\":\"crypto\",\"tradable\":true,\"increment\":\"0.000000001\",\"minimum\":\"0.009775744\",\"price_increment\":\"0.000000001\",\"source\":\"alpaca\",\"at\":\"2026-10-25T03:48:41.674308+00:00\"},\"SPY\":{\"symbol\":\"SPY\",\"broker_symbol\":\"SPY\",\"type\":\"etf\",\"tradable\":true,\"increment\":\"1\",\"minimum\":\"1\",\"price_increment\":\"0.01\",\"source\":\"alpaca\",\"at\":\"2026-10-25T03:48:41.711818+00:00\"},\"QQQ\":{\"symbol\":\"QQQ\",\"broker_symbol\":\"QQQ\",\"type\":\"etf\",\"tradable\":true,\"increment\":\"1\",\"minimum\":\"1\",\"price_increment\":\"0.01\",\"source\":\"alpaca\",\"at\":\"2026-10-25T03:48:41.747104+00:00\"},\"GLD\":{\"symbol\":\"GLD\",\"broker_symbol\":\"GLD\",\"type\":\"etf\",\"tradable\":true,\"increment\":\"1\",\"minimum\":\"1\",\"price_increment\":\"0.01\",\"source\":\"alpaca\",\"at\":\"2026-10-25T03:48:41.783078+00:00\"},\"TLT\":{\"symbol\":\"TLT\",\"broker_symbol\":\"TLT\",\"type\":\"etf\",\"tradable\":true,\"increment\":\"1\",\"minimum\":\"1\",\"price_increment\":\"0.01\",\"source\":\"alpaca\",\"at\":\"2026-10-25T03:48:41.816709+00:00\"},\"IWM\":{\"symbol\":\"IWM\",\"broker_symbol\":\"IWM\",\"type\":\"etf\",\"tradable\":true,\"increment\":\"1\",\"minimum\":\"1\",\"price_increment\":\"0.01\",\"source\":\"alpaca\",\"at\":\"2026-10-25T03:48:41.857443+00:00\"}},\"risk_marks\":{\"day\":\"2026-10-25\",\"day_equity\":\"100000\",\"highwater\":\"100000\"},\"risk_latch\":null,\"halted\":false,\"working_orders\":[],\"config_version\":\"deterministic-risk-v2\",\"policy\":{\"version\":\"deterministic-risk-v2\",\"max_order_usd\":\"1000\",\"max_market_order_usd\":\"100\",\"max_gross_fraction\":\"0.50\",\"max_group_fraction\":\"0.25\",\"etf_fraction\":\"0.10\",\"crypto_fraction\":\"0.05\",\"daily_loss_fraction\":\"0.01\",\"highwater_loss_fraction\":\"0.05\",\"quote_max_age_seconds\":15,\"snapshot_max_age_seconds\":30,\"latched\":null,\"automatic_stops\":false,\"automatic_entries\":false,\"planner\":\"ATR14 Wilder + trend/breakout; research only\"}}"
+      },
+      {
+        "id": 3,
+        "at": "2026-10-25T10:46:02.010281+00:00",
+        "request": "{\"client_order_id\":\"fixture-client-44\",\"symbol\":\"BTC\",\"side\":\"buy\",\"notional\":25.0,\"execution\":\"bounded\",\"ttl_seconds\":20,\"strategy_id\":\"lifecycle_test\"}",
+        "outcome": "approved",
+        "context": "{\"snapshot\":{\"account\":{\"id\":\"594a5ce6-9ae9-5be2-8a53-2bff75679ede\",\"admin_configurations\":{},\"user_configurations\":null,\"account_number\":\"PA00000001\",\"status\":\"ACTIVE\",\"crypto_status\":\"ACTIVE\",\"options_approved_level\":3,\"options_trading_level\":3,\"currency\":\"USD\",\"buying_power\":\"399999.48\",\"regt_buying_power\":\"199999.74\",\"effective_buying_power\":\"399999.48\",\"non_marginable_buying_power\":\"99999.87\",\"options_buying_power\":\"99999.87\",\"cash\":\"99999.87\",\"accrued_fees\":\"0\",\"portfolio_value\":\"99999.87\",\"trading_blocked\":false,\"transfers_blocked\":false,\"account_blocked\":false,\"created_at\":\"2026-10-25T03:15:57.833492Z\",\"trade_suspended_by_user\":false,\"multiplier\":\"4\",\"shorting_enabled\":true,\"equity\":\"99999.87\",\"last_equity\":\"100000\",\"long_market_value\":\"0\",\"short_market_value\":\"0\",\"position_market_value\":\"0\",\"initial_margin\":\"0\",\"maintenance_margin\":\"0\",\"last_maintenance_margin\":\"0\",\"sma\":\"0\",\"balance_asof\":\"2026-10-23\",\"crypto_tier\":1,\"intraday_adjustments\":\"0\",\"pending_reg_taf_fees\":\"0\"},\"positions\":[],\"clock\":{\"is_open\":false,\"next_close\":\"2026-10-26T16:00:00-04:00\",\"next_open\":\"2026-10-26T09:30:00-04:00\",\"timestamp\":\"2026-10-25T06:46:02.019608745-04:00\"},\"at\":\"2026-10-25T10:46:02.009587+00:00\"},\"quotes\":{\"GLD\":{\"bid\":\"353.97\",\"ask\":\"376.15\",\"at\":\"2026-10-23T20:00:02.858795372Z\",\"bid_size\":\"40\",\"ask_size\":\"40\",\"size_unit\":\"unverified\",\"received_at\":\"2026-10-25T10:46:01.823752+00:00\",\"source\":\"alpaca-iex\"},\"QQQ\":{\"bid\":\"705.39\",\"ask\":\"705.49\",\"at\":\"2026-10-23T20:54:54.998961483Z\",\"bid_size\":\"280\",\"ask_size\":\"280\",\"size_unit\":\"unverified\",\"received_at\":\"2026-10-25T10:46:01.823759+00:00\",\"source\":\"alpaca-iex\"},\"SPY\":{\"bid\":\"759.92\",\"ask\":\"760.03\",\"at\":\"2026-10-23T20:03:13.194416477Z\",\"bid_size\":\"1480\",\"ask_size\":\"1480\",\"size_unit\":\"unverified\",\"received_at\":\"2026-10-25T10:46:01.823763+00:00\",\"source\":\"alpaca-iex\"},\"IWM\":{\"bid\":\"275.95\",\"ask\":\"276.01\",\"at\":\"2026-10-23T20:20:30.864459976Z\",\"bid_size\":\"480\",\"ask_size\":\"480\",\"size_unit\":\"unverified\",\"received_at\":\"2026-10-25T10:46:01.823687+00:00\",\"source\":\"alpaca-iex\"},\"TLT\":{\"bid\":\"81.2\",\"ask\":\"81.41\",\"at\":\"2026-10-23T20:26:19.989074538Z\",\"bid_size\":\"1300\",\"ask_size\":\"1300\",\"size_unit\":\"unverified\",\"received_at\":\"2026-10-25T10:46:01.823697+00:00\",\"source\":\"alpaca-iex\"},\"BTC\":{\"bid\":\"80139.15\",\"ask\":\"80158.91\",\"at\":\"2026-10-25T10:46:01.390417882Z\",\"bid_size\":\"0.00100015\",\"ask_size\":\"0.00099275\",\"size_unit\":\"unverified\",\"received_at\":\"2026-10-25T10:46:01.859028+00:00\",\"source\":\"alpaca-us\"},\"SOL\":{\"bid\":\"100.51\",\"ask\":\"100.6\",\"at\":\"2026-10-25T10:46:00.811873482Z\",\"bid_size\":\"0.94926\",\"ask_size\":\"2.84416\",\"size_unit\":\"unverified\",\"received_at\":\"2026-10-25T10:46:01.859033+00:00\",\"source\":\"alpaca-us\"},\"ETH\":{\"bid\":\"2321.3\",\"ask\":\"2322.067\",\"at\":\"2026-10-25T10:46:00.673972304Z\",\"bid_size\":\"0.03338\",\"ask_size\":\"0.03323\",\"size_unit\":\"unverified\",\"received_at\":\"2026-10-25T10:46:01.859016+00:00\",\"source\":\"alpaca-us\"}},\"assets\":{\"BTC\":{\"symbol\":\"BTC\",\"broker_symbol\":\"BTC/USD\",\"type\":\"crypto\",\"tradable\":true,\"increment\":\"0.000000001\",\"minimum\":\"0.000012377\",\"price_increment\":\"0.000000001\",\"source\":\"alpaca\",\"at\":\"2026-10-25T10:28:04.637384+00:00\"},\"ETH\":{\"symbol\":\"ETH\",\"broker_symbol\":\"ETH/USD\",\"type\":\"crypto\",\"tradable\":true,\"increment\":\"0.000000001\",\"minimum\":\"0.000424859\",\"price_increment\":\"0.000000001\",\"source\":\"alpaca\",\"at\":\"2026-10-25T10:28:04.637392+00:00\"},\"SOL\":{\"symbol\":\"SOL\",\"broker_symbol\":\"SOL/USD\",\"type\":\"crypto\",\"tradable\":true,\"increment\":\"0.000000001\",\"minimum\":\"0.009775744\",\"price_increment\":\"0.000000001\",\"source\":\"alpaca\",\"at\":\"2026-10-25T10:28:04.637395+00:00\"},\"SPY\":{\"symbol\":\"SPY\",\"broker_symbol\":\"SPY\",\"type\":\"etf\",\"tradable\":true,\"increment\":\"1\",\"minimum\":\"1\",\"price_increment\":\"0.01\",\"source\":\"alpaca\",\"at\":\"2026-10-25T10:28:04.692967+00:00\"},\"QQQ\":{\"symbol\":\"QQQ\",\"broker_symbol\":\"QQQ\",\"type\":\"etf\",\"tradable\":true,\"increment\":\"1\",\"minimum\":\"1\",\"price_increment\":\"0.01\",\"source\":\"alpaca\",\"at\":\"2026-10-25T10:28:04.726836+00:00\"},\"GLD\":{\"symbol\":\"GLD\",\"broker_symbol\":\"GLD\",\"type\":\"etf\",\"tradable\":true,\"increment\":\"1\",\"minimum\":\"1\",\"price_increment\":\"0.01\",\"source\":\"alpaca\",\"at\":\"2026-10-25T10:28:04.765115+00:00\"},\"TLT\":{\"symbol\":\"TLT\",\"broker_symbol\":\"TLT\",\"type\":\"etf\",\"tradable\":true,\"increment\":\"1\",\"minimum\":\"1\",\"price_increment\":\"0.01\",\"source\":\"alpaca\",\"at\":\"2026-10-25T10:28:04.797239+00:00\"},\"IWM\":{\"symbol\":\"IWM\",\"broker_symbol\":\"IWM\",\"type\":\"etf\",\"tradable\":true,\"increment\":\"1\",\"minimum\":\"1\",\"price_increment\":\"0.01\",\"source\":\"alpaca\",\"at\":\"2026-10-25T10:28:04.830246+00:00\"}},\"policy\":{\"version\":\"deterministic-risk-v3\",\"max_order_usd\":\"1000\",\"max_market_order_usd\":\"100\",\"max_gross_fraction\":\"0.50\",\"max_group_fraction\":\"0.25\",\"etf_fraction\":\"0.10\",\"crypto_fraction\":\"0.05\",\"daily_loss_fraction\":\"0.01\",\"highwater_loss_fraction\":\"0.05\",\"quote_max_age_seconds\":15,\"snapshot_max_age_seconds\":30,\"latched\":null,\"automatic_stops\":false,\"unprotected_full_value_fraction\":\"0.005\",\"local_exit_monitor\":false,\"automatic_entries\":false,\"planner\":\"ATR14 Wilder + trend/breakout; research only\"},\"inventory\":{\"books\":{\"BTC\":{\"manual\":\"7.74E-7\",\"swing\":\"0\",\"intraday\":\"0\",\"external\":\"0\"}},\"entry_times\":{\"BTC\":{\"manual\":\"2026-10-25T03:49:34.939813106Z\",\"swing\":null,\"intraday\":null,\"external\":null}},\"differences\":[{\"symbol\":\"BTC\",\"broker_qty\":\"0\",\"ledger_qty\":\"7.74E-7\",\"difference\":\"-7.74E-7\",\"reason\":\"Unreconciled inventory; fees, external activity or missing history\"}],\"errors\":[],\"status\":\"needs-review\",\"fee_scope\":\"Recorded CFEE asset debits; ambiguous fees remain unassigned\"},\"working_orders\":[],\"risk_marks\":{\"day\":\"2026-10-25\",\"day_equity\":\"100000\",\"highwater\":\"100000\"},\"halted\":false,\"connected\":true,\"decision_at\":\"2026-10-25T10:46:02.010123+00:00\"}"
+      },
+      {
+        "id": 4,
+        "at": "2026-10-25T10:46:22.534863+00:00",
+        "request": "{\"client_order_id\":\"fixture-client-45\",\"symbol\":\"BTC\",\"side\":\"sell\",\"notional\":26.0,\"execution\":\"bounded\",\"ttl_seconds\":20,\"strategy_id\":\"lifecycle_test\"}",
+        "outcome": "approved",
+        "context": "{\"snapshot\":{\"account\":{\"id\":\"594a5ce6-9ae9-5be2-8a53-2bff75679ede\",\"admin_configurations\":{},\"user_configurations\":null,\"account_number\":\"PA00000001\",\"status\":\"ACTIVE\",\"crypto_status\":\"ACTIVE\",\"options_approved_level\":3,\"options_trading_level\":3,\"currency\":\"USD\",\"buying_power\":\"399899.52\",\"regt_buying_power\":\"199949.76\",\"effective_buying_power\":\"399899.52\",\"non_marginable_buying_power\":\"99974.88\",\"options_buying_power\":\"99974.88\",\"cash\":\"99974.88\",\"accrued_fees\":\"0\",\"portfolio_value\":\"99999.81\",\"trading_blocked\":false,\"transfers_blocked\":false,\"account_blocked\":false,\"created_at\":\"2026-10-25T03:15:57.833492Z\",\"trade_suspended_by_user\":false,\"multiplier\":\"4\",\"shorting_enabled\":true,\"equity\":\"99999.81\",\"last_equity\":\"100000\",\"long_market_value\":\"24.93\",\"short_market_value\":\"0\",\"position_market_value\":\"24.93\",\"initial_margin\":\"0\",\"maintenance_margin\":\"0\",\"last_maintenance_margin\":\"0\",\"sma\":\"0\",\"balance_asof\":\"2026-10-23\",\"crypto_tier\":1,\"intraday_adjustments\":\"0\",\"pending_reg_taf_fees\":\"0\"},\"positions\":[{\"asset_id\":\"a3592c1e-0a04-55b5-84d2-9c42cd5add50\",\"symbol\":\"BTCUSD\",\"exchange\":\"CRYPTO\",\"asset_class\":\"crypto\",\"asset_marginable\":false,\"qty\":\"0.000310787\",\"qty_available\":\"0.000310787\",\"avg_entry_price\":\"80195.191644245\",\"side\":\"long\",\"market_value\":\"24.928123\",\"cost_basis\":\"24.923623\",\"unrealized_pl\":\"0.0045\",\"unrealized_plpc\":\"0.00018\",\"unrealized_intraday_pl\":\"0.0045\",\"unrealized_intraday_plpc\":\"0.00018\",\"current_price\":\"80209.67\",\"lastday_price\":\"80789.835\",\"change_today\":\"-0.00718\"}],\"clock\":{\"is_open\":false,\"next_close\":\"2026-10-26T16:00:00-04:00\",\"next_open\":\"2026-10-26T09:30:00-04:00\",\"timestamp\":\"2026-10-25T06:46:22.544043176-04:00\"},\"at\":\"2026-10-25T10:46:22.533802+00:00\"},\"quotes\":{\"GLD\":{\"bid\":\"353.97\",\"ask\":\"376.15\",\"at\":\"2026-10-23T20:00:02.858795372Z\",\"bid_size\":\"40\",\"ask_size\":\"40\",\"size_unit\":\"unverified\",\"received_at\":\"2026-10-25T10:46:22.242314+00:00\",\"source\":\"alpaca-iex\"},\"QQQ\":{\"bid\":\"705.39\",\"ask\":\"705.49\",\"at\":\"2026-10-23T20:54:54.998961483Z\",\"bid_size\":\"280\",\"ask_size\":\"280\",\"size_unit\":\"unverified\",\"received_at\":\"2026-10-25T10:46:22.242317+00:00\",\"source\":\"alpaca-iex\"},\"SPY\":{\"bid\":\"759.92\",\"ask\":\"760.03\",\"at\":\"2026-10-23T20:03:13.194416477Z\",\"bid_size\":\"1480\",\"ask_size\":\"1480\",\"size_unit\":\"unverified\",\"received_at\":\"2026-10-25T10:46:22.242320+00:00\",\"source\":\"alpaca-iex\"},\"IWM\":{\"bid\":\"275.95\",\"ask\":\"276.01\",\"at\":\"2026-10-23T20:20:30.864459976Z\",\"bid_size\":\"480\",\"ask_size\":\"480\",\"size_unit\":\"unverified\",\"received_at\":\"2026-10-25T10:46:22.242305+00:00\",\"source\":\"alpaca-iex\"},\"TLT\":{\"bid\":\"81.2\",\"ask\":\"81.41\",\"at\":\"2026-10-23T20:26:19.989074538Z\",\"bid_size\":\"1300\",\"ask_size\":\"1300\",\"size_unit\":\"unverified\",\"received_at\":\"2026-10-25T10:46:22.242311+00:00\",\"source\":\"alpaca-iex\"},\"BTC\":{\"bid\":\"80126.4\",\"ask\":\"80139.15\",\"at\":\"2026-10-25T10:46:21.604939607Z\",\"bid_size\":\"0.00099694\",\"ask_size\":\"0.00100363\",\"size_unit\":\"unverified\",\"received_at\":\"2026-10-25T10:46:22.312060+00:00\",\"source\":\"alpaca-us\"},\"SOL\":{\"bid\":\"100.51\",\"ask\":\"100.585\",\"at\":\"2026-10-25T10:46:18.265022085Z\",\"bid_size\":\"0.948549\",\"ask_size\":\"0.9558\",\"size_unit\":\"unverified\",\"received_at\":\"2026-10-25T10:46:22.312070+00:00\",\"source\":\"alpaca-us\"},\"ETH\":{\"bid\":\"2321.238\",\"ask\":\"2322.09\",\"at\":\"2026-10-25T10:46:18.122489747Z\",\"bid_size\":\"0.0333614\",\"ask_size\":\"0.03361\",\"size_unit\":\"unverified\",\"received_at\":\"2026-10-25T10:46:22.312074+00:00\",\"source\":\"alpaca-us\"}},\"assets\":{\"BTC\":{\"symbol\":\"BTC\",\"broker_symbol\":\"BTC/USD\",\"type\":\"crypto\",\"tradable\":true,\"increment\":\"0.000000001\",\"minimum\":\"0.000012377\",\"price_increment\":\"0.000000001\",\"source\":\"alpaca\",\"at\":\"2026-10-25T10:28:04.637384+00:00\"},\"ETH\":{\"symbol\":\"ETH\",\"broker_symbol\":\"ETH/USD\",\"type\":\"crypto\",\"tradable\":true,\"increment\":\"0.000000001\",\"minimum\":\"0.000424859\",\"price_increment\":\"0.000000001\",\"source\":\"alpaca\",\"at\":\"2026-10-25T10:28:04.637392+00:00\"},\"SOL\":{\"symbol\":\"SOL\",\"broker_symbol\":\"SOL/USD\",\"type\":\"crypto\",\"tradable\":true,\"increment\":\"0.000000001\",\"minimum\":\"0.009775744\",\"price_increment\":\"0.000000001\",\"source\":\"alpaca\",\"at\":\"2026-10-25T10:28:04.637395+00:00\"},\"SPY\":{\"symbol\":\"SPY\",\"broker_symbol\":\"SPY\",\"type\":\"etf\",\"tradable\":true,\"increment\":\"1\",\"minimum\":\"1\",\"price_increment\":\"0.01\",\"source\":\"alpaca\",\"at\":\"2026-10-25T10:28:04.692967+00:00\"},\"QQQ\":{\"symbol\":\"QQQ\",\"broker_symbol\":\"QQQ\",\"type\":\"etf\",\"tradable\":true,\"increment\":\"1\",\"minimum\":\"1\",\"price_increment\":\"0.01\",\"source\":\"alpaca\",\"at\":\"2026-10-25T10:28:04.726836+00:00\"},\"GLD\":{\"symbol\":\"GLD\",\"broker_symbol\":\"GLD\",\"type\":\"etf\",\"tradable\":true,\"increment\":\"1\",\"minimum\":\"1\",\"price_increment\":\"0.01\",\"source\":\"alpaca\",\"at\":\"2026-10-25T10:28:04.765115+00:00\"},\"TLT\":{\"symbol\":\"TLT\",\"broker_symbol\":\"TLT\",\"type\":\"etf\",\"tradable\":true,\"increment\":\"1\",\"minimum\":\"1\",\"price_increment\":\"0.01\",\"source\":\"alpaca\",\"at\":\"2026-10-25T10:28:04.797239+00:00\"},\"IWM\":{\"symbol\":\"IWM\",\"broker_symbol\":\"IWM\",\"type\":\"etf\",\"tradable\":true,\"increment\":\"1\",\"minimum\":\"1\",\"price_increment\":\"0.01\",\"source\":\"alpaca\",\"at\":\"2026-10-25T10:28:04.830246+00:00\"}},\"policy\":{\"version\":\"deterministic-risk-v3\",\"max_order_usd\":\"1000\",\"max_market_order_usd\":\"100\",\"max_gross_fraction\":\"0.50\",\"max_group_fraction\":\"0.25\",\"etf_fraction\":\"0.10\",\"crypto_fraction\":\"0.05\",\"daily_loss_fraction\":\"0.01\",\"highwater_loss_fraction\":\"0.05\",\"quote_max_age_seconds\":15,\"snapshot_max_age_seconds\":30,\"latched\":null,\"automatic_stops\":false,\"unprotected_full_value_fraction\":\"0.005\",\"local_exit_monitor\":false,\"automatic_entries\":false,\"planner\":\"ATR14 Wilder + trend/breakout; research only\"},\"inventory\":{\"books\":{\"BTC\":{\"manual\":\"0.000312342\",\"swing\":\"0\",\"intraday\":\"0\",\"external\":\"0\"}},\"entry_times\":{\"BTC\":{\"manual\":\"2026-10-25T03:49:34.939813106Z\",\"swing\":null,\"intraday\":null,\"external\":null}},\"differences\":[{\"symbol\":\"BTC\",\"broker_qty\":\"0.000310787\",\"ledger_qty\":\"0.000312342\",\"difference\":\"-0.000001555\",\"reason\":\"Unreconciled inventory; fees, external activity or missing history\"}],\"errors\":[],\"status\":\"needs-review\",\"fee_scope\":\"Recorded CFEE asset debits; ambiguous fees remain unassigned\"},\"working_orders\":[],\"risk_marks\":{\"day\":\"2026-10-25\",\"day_equity\":\"100000\",\"highwater\":\"100000\"},\"halted\":false,\"connected\":true,\"decision_at\":\"2026-10-25T10:46:22.534591+00:00\"}"
+      }
+    ]
+  },
+  "state": {
+    "account_binding": "594a5ce6-9ae9-5be2-8a53-2bff75679ede",
+    "account_snapshot": {
+      "account": {
+        "id": "594a5ce6-9ae9-5be2-8a53-2bff75679ede",
+        "admin_configurations": {},
+        "user_configurations": null,
+        "account_number": "PA00000001",
+        "status": "ACTIVE",
+        "crypto_status": "ACTIVE",
+        "options_approved_level": 3,
+        "options_trading_level": 3,
+        "currency": "USD",
+        "buying_power": "399998.8",
+        "regt_buying_power": "199999.4",
+        "effective_buying_power": "399998.8",
+        "non_marginable_buying_power": "99999.7",
+        "options_buying_power": "99999.7",
+        "cash": "99999.7",
+        "accrued_fees": "0",
+        "portfolio_value": "99999.7",
+        "trading_blocked": false,
+        "transfers_blocked": false,
+        "account_blocked": false,
+        "created_at": "2026-10-25T03:15:57.833492Z",
+        "trade_suspended_by_user": false,
+        "multiplier": "4",
+        "shorting_enabled": true,
+        "equity": "99999.7",
+        "last_equity": "100000",
+        "long_market_value": "0",
+        "short_market_value": "0",
+        "position_market_value": "0",
+        "initial_margin": "0",
+        "maintenance_margin": "0",
+        "last_maintenance_margin": "0",
+        "sma": "0",
+        "balance_asof": "2026-10-23",
+        "crypto_tier": 1,
+        "intraday_adjustments": "0",
+        "pending_reg_taf_fees": "0"
+      },
+      "positions": [],
+      "clock": {
+        "is_open": false,
+        "next_close": "2026-10-27T16:00:00-04:00",
+        "next_open": "2026-10-27T09:30:00-04:00",
+        "timestamp": "2026-10-26T21:50:27.05874491-04:00"
+      },
+      "at": "2026-10-27T01:50:27.015336+00:00"
+    },
+    "assets": {
+      "BTC": {
+        "symbol": "BTC",
+        "broker_symbol": "BTC/USD",
+        "type": "crypto",
+        "tradable": true,
+        "increment": "0.000000001",
+        "minimum": "0.000012544",
+        "price_increment": "0.000000001",
+        "source": "alpaca",
+        "at": "2026-10-27T01:23:23.342182+00:00"
+      },
+      "ETH": {
+        "symbol": "ETH",
+        "broker_symbol": "ETH/USD",
+        "type": "crypto",
+        "tradable": true,
+        "increment": "0.000000001",
+        "minimum": "0.000432544",
+        "price_increment": "0.000000001",
+        "source": "alpaca",
+        "at": "2026-10-27T01:23:23.342199+00:00"
+      },
+      "SOL": {
+        "symbol": "SOL",
+        "broker_symbol": "SOL/USD",
+        "type": "crypto",
+        "tradable": true,
+        "increment": "0.000000001",
+        "minimum": "0.009940357",
+        "price_increment": "0.000000001",
+        "source": "alpaca",
+        "at": "2026-10-27T01:23:23.342205+00:00"
+      },
+      "SPY": {
+        "symbol": "SPY",
+        "broker_symbol": "SPY",
+        "type": "etf",
+        "tradable": true,
+        "increment": "1",
+        "minimum": "1",
+        "price_increment": "0.01",
+        "source": "alpaca",
+        "at": "2026-10-27T01:23:23.375242+00:00"
+      },
+      "QQQ": {
+        "symbol": "QQQ",
+        "broker_symbol": "QQQ",
+        "type": "etf",
+        "tradable": true,
+        "increment": "1",
+        "minimum": "1",
+        "price_increment": "0.01",
+        "source": "alpaca",
+        "at": "2026-10-27T01:23:23.408400+00:00"
+      },
+      "GLD": {
+        "symbol": "GLD",
+        "broker_symbol": "GLD",
+        "type": "etf",
+        "tradable": true,
+        "increment": "1",
+        "minimum": "1",
+        "price_increment": "0.01",
+        "source": "alpaca",
+        "at": "2026-10-27T01:23:23.444695+00:00"
+      },
+      "TLT": {
+        "symbol": "TLT",
+        "broker_symbol": "TLT",
+        "type": "etf",
+        "tradable": true,
+        "increment": "1",
+        "minimum": "1",
+        "price_increment": "0.01",
+        "source": "alpaca",
+        "at": "2026-10-27T01:23:23.479411+00:00"
+      },
+      "IWM": {
+        "symbol": "IWM",
+        "broker_symbol": "IWM",
+        "type": "etf",
+        "tradable": true,
+        "increment": "1",
+        "minimum": "1",
+        "price_increment": "0.01",
+        "source": "alpaca",
+        "at": "2026-10-27T01:23:23.517015+00:00"
+      }
+    },
+    "baseline_equity": "100000",
+    "mode": "alpaca"
+  }
+}

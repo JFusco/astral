@@ -44,6 +44,20 @@ def attribute(store, snapshot):
             if buckets[book] < 0:
                 errors.append({"symbol": symbol, "book": book, "reason": "Sell exceeds attributed inventory"})
     gross_books = {s: {b: str(q) for b,q in buckets.items()} for s,buckets in balances.items()}
+    effects = []
+    if paper:
+        from .activity_feed import read_projection
+        from .activity_projection import input_digest, ledger_source
+        projection = read_projection(store, cutoff=cutoff.isoformat())
+        if projection:
+            if projection['issues'] or projection['input_sha256'] != input_digest(ledger_source(store)):
+                errors.append({'reason': 'Activity evidence requires reconciliation review'})
+            else:
+                effects = projection['effects']
+                for effect in effects:
+                    if effect['treatment'] == 'asset-debit':
+                        buckets = balances.setdefault(effect['symbol'], {b: Decimal(0) for b in BOOKS})
+                        buckets[effect['book']] += D(effect['quantity'])
     # CFEE is a signed asset debit. A late fee without an order ID cannot be
     # assigned across multiple strategy owners. Keep that ambiguity visible.
     for row in store.rows("SELECT at,payload FROM activities WHERE type='CFEE'"):
@@ -62,7 +76,7 @@ def attribute(store, snapshot):
         else:
             errors.append({"symbol": symbol, "reason": "Fee cannot be assigned to a unique strategy"})
     custody = analyze(**retained(store), snapshot=snapshot, account_id=store.get('account_binding'),
-                      mode='alpaca', as_of=cutoff.isoformat()) if paper else {'issues': [], 'additional_debits': {}}
+                      mode='alpaca', as_of=cutoff.isoformat(), fee_effects=effects) if paper else {'issues': [], 'additional_debits': {}}
     errors.extend(custody['issues'])
     for symbol, books in custody['additional_debits'].items():
         for book, qty in books.items():
