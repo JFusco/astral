@@ -62,7 +62,7 @@ Fee readiness is separate for BTC, ETH, SOL, SPY, QQQ, GLD, TLT and IWM. Only th
 
 ## Preserve activation boundaries
 
-`Settings.enable_activity_feed` defaults to false and `activity_mapping_path` defaults to unset. `Settings.from_env()` does not read either field, even when candidate environment variables exist. Only direct disposable validation settings can enable the reader in this change. Environment wiring and activation against the existing ledger require a separate owner decision.
+`Settings.enable_activity_feed` defaults to false and `activity_mapping_path` defaults to unset. `Settings.from_env()` does not read either field, even when candidate environment variables exist. The explicit [orders-off rollout entry point](ACCOUNTING-ROLLOUT.md) adds read-only preparation and bounded observation. Runtime activation still requires a separate owner decision; ordinary startup cannot activate the reader.
 
 Before activation, require affected tests, `npm run verify:push`, the full `npm run verify:ci`, the private replay, a controls-off connected comparison and independent implementation review. A passing CI fixture is not private provider acceptance.
 

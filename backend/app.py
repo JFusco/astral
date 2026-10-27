@@ -66,8 +66,11 @@ class RiskCandidate(BaseModel):
     bars: list[ResearchBar] = Field(min_length=31, max_length=500)
 
 
-def create_app(settings=None, broker_factory=None, background=True):
+def create_app(settings=None, broker_factory=None, background=True, activity_observation=None):
     cfg = settings or Settings.from_env()
+    if activity_observation and (not cfg.enable_activity_feed
+                                or cfg.db_path.resolve() != activity_observation.prepared.ledger):
+        raise ValueError('Observation requires its prepared ledger and explicit reader settings')
 
     @asynccontextmanager
     async def lifespan(app):
@@ -78,8 +81,14 @@ def create_app(settings=None, broker_factory=None, background=True):
         except BlockingIOError:
             lock_file.close()
             raise RuntimeError("Another ASTRAL executor owns this database; use one worker")
+        if activity_observation:
+            try:
+                activity_observation.prepared.validate_ledger()
+            except BaseException:
+                lock_file.close()
+                raise
         store = Store(cfg.db_path, cfg.mode)
-        engine = Engine(cfg, store, broker_factory(cfg, store) if broker_factory else None)
+        engine = Engine(cfg, store, broker_factory(cfg, store) if broker_factory else None, activity_observation)
         app.state.engine = engine
         # One serialized SSE state frame per lifespan/engine; never persisted.
         app.state.state_frame = {"at": 0.0, "body": None}
@@ -105,7 +114,11 @@ def create_app(settings=None, broker_factory=None, background=True):
             expected = f"{request.url.scheme}://{request.headers.get('host')}"
             if request.headers.get("x-astral-intent") != "paper-only" or (origin and origin != expected) or request.headers.get("sec-fetch-site") == "cross-site":
                 return JSONResponse({"detail": "Same-origin paper intent header required"}, status_code=403)
+        started = time.monotonic()
         response = await call_next(request)
+        observation = request.app.state.engine.activity_observation
+        if observation and request.url.path == '/api/state':
+            observation.latencies['state'].add((time.monotonic()-started)*1000)
         if request.url.path.startswith("/api/"):
             response.headers["Cache-Control"] = "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -131,6 +144,15 @@ def create_app(settings=None, broker_factory=None, background=True):
     @app.get("/api/state")
     async def state(request: Request):
         return request.app.state.engine.state()
+
+    @app.get('/api/accounting/observation')
+    async def accounting_observation(request: Request):
+        engine = request.app.state.engine
+        observation = engine.activity_observation
+        if not observation:
+            return {'status': 'disabled', 'reader_enabled': False, 'orders_enabled': cfg.enable_orders}
+        coverage = observation.coverage(engine.store)
+        return {**observation.summary(), **coverage}
 
     @app.get("/api/health-inputs")
     async def health_inputs(request: Request):

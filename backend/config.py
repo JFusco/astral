@@ -54,6 +54,9 @@ class Settings:
             raise ValueError("Shadow sessions require paper orders disabled")
         if self.enable_exit_monitor and not self.enable_orders:
             raise ValueError("Exit monitoring requires explicitly enabled paper orders")
+        if self.enable_activity_feed and (self.mode != 'alpaca' or self.enable_orders or self.enable_shadow
+                                          or self.enable_exit_monitor or self.enable_codex_research):
+            raise ValueError('Activity accounting requires orders, shadow, exits and models disabled')
 
     @property
     def configured(self):
