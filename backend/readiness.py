@@ -36,11 +36,13 @@ def calendar_coverage(calendar, symbol, now, proofs=None):
     return {"passed":not missing,"required_categories":sorted(required),"missing_categories":missing}
 
 
-def view(store):
+def view(store, *, feed_enabled=False, max_snapshot_age=30):
     from .inventory import attribute
     now = timestamp(utcnow())
     snapshot = store.get("account_snapshot", {})
     inventory = attribute(store, snapshot)
+    from .activity_feed import current_accounting
+    accounting = current_accounting(store, enabled=feed_enabled, now=now.isoformat(), max_snapshot_age=max_snapshot_age)
     proofs={}; calendars=store.get("event_calendars",{})
     active_hashes={c.get("retained_evidence_sha256") for symbol in ("BTC","ETH","SOL")
                    for key,c in calendars.get(symbol,{}).get("categories",{}).items()
@@ -87,7 +89,8 @@ def view(store):
         except (ValueError,KeyError,TypeError):pass
         liquidity_ok=depth_ok and average is not None and average>=1000000 and size_fits
         caps={k:depth.get(k) for k in ("top_one_percent_cap_usd", "buy_one_percent_capacity_usd", "sell_one_percent_capacity_usd")}
-        fee_ok=inventory["status"]=="matched" and not store.get("fee_reconciliation_required")
+        fee_ok=(accounting['accounting_by_symbol'][symbol]['passed']
+                and inventory["status"]=="matched" and not store.get("fee_reconciliation_required"))
         source_ids=["fomc-calendar","bea-calendar","nyfed-bls","alpaca-maint-upcoming","alpaca-maint-active"]
         source_ids+= ["bitcoin-bips","bitcoin-lifecycle"] if symbol=="BTC" else ["ethereum-roadmap"] if symbol=="ETH" else []
         coverage={k:sources.get(k,{"fresh":False,"name":k}) for k in source_ids}
@@ -109,6 +112,7 @@ def view(store):
                                "not_applicable":["Corporate earnings and ETF distributions"] if symbol=="BTC" else []},
                      "signal":packet.get("facts",{}).get("signal","unknown"),"packet_eligible":packet.get("eligible",False),
                      "paper_trade_authorized":False})
-    return {"version":"readiness-evidence-v1","as_of":now.isoformat(),"symbols":rows,
+    return {"version":"readiness-evidence-v1","as_of":now.isoformat(),"symbols":rows, **accounting,
+            "broader_readiness_not_covered":["SPY", "QQQ", "GLD", "TLT", "IWM"],
             "execution_enabled":False,"policy_changed":False,
             "next_requirements":["All evidence gates and a fresh qualifying entry", "Separately validated research execution/exit supervision"]}

@@ -93,8 +93,8 @@ class Engine:
                       asyncio.create_task(self.loop("reconciliation", self.reconcile, self.settings.reconcile_interval))]
         if self.settings.enable_news and self.settings.mode == "alpaca":
             self.tasks.append(asyncio.create_task(self.loop("news", self.refresh_news, 60)))
-        if self.settings.mode == "alpaca":
-            self.tasks.append(asyncio.create_task(self.loop("fees", self.refresh_fees, 60)))
+        if self.settings.mode == "alpaca" and self.settings.enable_activity_feed:
+            self.tasks.append(asyncio.create_task(self.loop("fees", self.refresh_activity_feed, 60)))
         self.worker("shadow", "waiting" if self.settings.enable_shadow else "disabled", "Risk probes only; no strategy or broker orders")
         if self.settings.enable_shadow:
             self.tasks.append(asyncio.create_task(self.loop("shadow", self.shadow_cycle, self.settings.shadow_interval)))
@@ -499,6 +499,17 @@ class Engine:
             if cur.rowcount: self.store.event("news", safe)
         self.store.put("news_coverage", {"status": "available", "at": utcnow(), "scope": "Latest 20 metadata records; not exhaustive news coverage"})
 
+    async def refresh_activity_feed(self):
+        from .activity_feed import collect_batch, publish_projection, FeedError
+        if not self.settings.enable_activity_feed or not self.settings.activity_mapping_path:
+            raise FeedError('Activity reader and reviewed mapping are unavailable')
+        mapping = json.loads(self.settings.activity_mapping_path.read_text())
+        if mapping.get('kind') != 'reviewed-provider':
+            raise FeedError('Fixture mappings cannot activate a connected reader')
+        batch, _ = await collect_batch(self.broker, self.store)
+        async with self.lock:
+            return publish_projection(self.store, batch, mapping)
+
     async def refresh_fees(self):
         # Preserve unresolved fees from old fills even after the rolling window
         # passes. No missing fee is replaced by a calculated adjustment.
@@ -823,7 +834,8 @@ class Engine:
                 "experiment": experiment.state(self.store),
                 "portfolio_replay": self.replay_view(),
                 "liquidity_experiment": self.liquidity_view(),
-                "readiness": readiness_view(self.store) if self.settings.mode == "alpaca" and self.settings.configured else None,
+                "readiness": readiness_view(self.store, feed_enabled=self.settings.enable_activity_feed,
+                                            max_snapshot_age=self.settings.max_snapshot_age) if self.settings.mode == "alpaca" and self.settings.configured else None,
                 "execution_pilot": self.store.get("execution_pilot"),
                 "shadow": {"enabled": self.settings.enable_shadow, "counts": self.store.rows("SELECT json_extract(result,'$.decision') decision,COUNT(*) count FROM shadow GROUP BY decision"),
                            "recent": [{"at": r["at"], "intent": json.loads(r["intent"]), "result": json.loads(r["result"]), "input_hash": r["input_hash"]} for r in self.store.rows("SELECT * FROM shadow ORDER BY id DESC LIMIT 16")]},

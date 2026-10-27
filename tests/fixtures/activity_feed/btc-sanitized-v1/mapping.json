@@ -1,0 +1,215 @@
+{
+  "version": 1,
+  "kind": "sanitized-fixture",
+  "account_id": "594a5ce6-9ae9-5be2-8a53-2bff75679ede",
+  "known_at": "2026-10-27T10:42:49.296558+00:00",
+  "source_files": {
+    "activity-sse.json": "4bc45f918046b8c7a6e60f4c1345082130e1dab1d221710be703952ccf5e7fb4",
+    "activity-sse.raw": "db83e1cf3105e80444b58e76ded42cf68dc6a09fc9308c3ce8a8578164904cc5",
+    "ledger-selected-readonly.json": "30a5277be3e22384765703aed08b6561ceba40e16e5365710e174794b8241275",
+    "associations.json": "dd73fbfbcb139698dabbfdc9246072bab6b2156df369056068750ec07161ab47",
+    "report.md": "8885edd26879ede0f3c20ea473f9154332a17958b9d5a56b84774b810f9728b8"
+  },
+  "expected_events": {
+    "0cb82c63-7265-5e28-ae51-50b3664512c4": "ef9956400115b5f5e295e2f0f707fd2faab5b69bc071150f8cbd6af9f111874d",
+    "33623e5a-25db-5cbc-8ff1-b3ff230c402c": "82eb8188201de735715c4e647dba068fdb853fff7990f363bf8b090d14acf872",
+    "aaa63d53-cf86-56f2-a10f-508b75698385": "60bfa2940e54b9d59902a1f118c719dfbce0b7beaccebc08782392ad21ce0a0c",
+    "d01969fb-9551-567f-8f90-7e0a758611cb": "48f6ae47884ebb127e3375563b82d84422b42575bc650583e7d832fe6f8ab2ed",
+    "343e08d2-db68-5805-8639-a5cf202acecf": "fddd75de5dce29210f957a2690217d974e1de6ce5abe104468c7ffb571c53032",
+    "64e08795-e86e-5e6c-9170-fdd873dc5eea": "925cd5ed894871fac783f35c435abb6b1be8c34f6178a4a3e011ffc7168df551",
+    "216a995c-e17a-5153-8b00-4c29fcf31a34": "3f540b0cf62f28a1a252ca22c6c87e95d2fa2351bb998c81162099fa6eb1ac63",
+    "9ef79ed4-eb36-52c7-b679-f369f25d411d": "6d8adbc51bedf44c6feaa265ff0c9c7d192338e6089b7fdb4fd6505632b40fca",
+    "82d0577d-e291-568c-a869-b8c9c23041a4": "4dbdabcc97ed8100cab5141f97c515f7127b494216c96c94d75875cfe1cb9347",
+    "e3f60fb3-f5ce-53a9-8d52-9efa9437c40e": "f08985a97ac4fdcb312b1bdd9d67b55db1d4f229850c79babd47ae3a2bcb1a4b",
+    "7e4edf8a-3c92-5598-8d9c-93cf44412b74": "caeb1af9123150476d353773a058666eb067041a27d5ca619ac6fd22214a5f15",
+    "690281c2-58d4-5739-9d07-c6264f8e801f": "59690eeb784a3c75284cae5d2f68e60e24e25c5f992ca21a4eba08a2e71caae8",
+    "278d29e2-633e-55fb-a841-8b070df5ef0c": "2a07c384b7b366d833f37fd071374e1313273f3b9ea743c024fe86031922e1aa",
+    "ca26f725-5f0c-5507-b402-46fc3698a5aa": "9c9dcec784ab2fb40c2205918ccbd13659282053d74b3ea06f16cd21fe95049d",
+    "a75778fe-1e5d-593f-996a-4ca563d52dec": "dc901545b0c1128a138a04a4c24593072c5c430954d933bff020517df68bba5f",
+    "57229515-44a2-5e65-b4d2-2abe09bf29f0": "bf443d298b389b4dca5c29029063d328fd35dbc3fb9a42c6b8af98dd3f7a0da3",
+    "7da809c6-b97b-50d2-a0d3-d9ef95e91ddc": "a78d55054de38b3aabcdec6cfa4eb03bb354a0fefd2e869146a00e0d4646d161",
+    "d29af9e6-3f2a-56b6-93a3-82c0b4d3bed3": "e85abdef5c3ead8eddf48ae33405844f8f7933bb00259d055357cfd2bb7d3e65",
+    "0f6068f6-9019-528e-875a-835768980335": "37a9a962fbf8af087919038fa0efec4b3fdd9bc9f52dffa5e848eba74fafcd6a"
+  },
+  "fee_associations": [
+    {
+      "id": "reviewed-fee-1",
+      "fee_ref_id": "d01969fb-9551-567f-8f90-7e0a758611cb",
+      "fee_sha256": "48f6ae47884ebb127e3375563b82d84422b42575bc650583e7d832fe6f8ab2ed",
+      "trade_ref_id": "33623e5a-25db-5cbc-8ff1-b3ff230c402c",
+      "trade_sha256": "82eb8188201de735715c4e647dba068fdb853fff7990f363bf8b090d14acf872",
+      "order_id": "c0ac4d71-c736-5c1b-b7a0-52084274c1bb",
+      "client_id": "fixture-client-43",
+      "symbol": "BTC",
+      "book": "manual",
+      "treatment": "asset-debit",
+      "provider_parent_or_order_link_present": false
+    },
+    {
+      "id": "reviewed-fee-2",
+      "fee_ref_id": "343e08d2-db68-5805-8639-a5cf202acecf",
+      "fee_sha256": "fddd75de5dce29210f957a2690217d974e1de6ce5abe104468c7ffb571c53032",
+      "trade_ref_id": "aaa63d53-cf86-56f2-a10f-508b75698385",
+      "trade_sha256": "60bfa2940e54b9d59902a1f118c719dfbce0b7beaccebc08782392ad21ce0a0c",
+      "order_id": "c0ac4d71-c736-5c1b-b7a0-52084274c1bb",
+      "client_id": "fixture-client-43",
+      "symbol": "BTC",
+      "book": "manual",
+      "treatment": "asset-debit",
+      "provider_parent_or_order_link_present": false
+    },
+    {
+      "id": "reviewed-fee-3",
+      "fee_ref_id": "9ef79ed4-eb36-52c7-b679-f369f25d411d",
+      "fee_sha256": "6d8adbc51bedf44c6feaa265ff0c9c7d192338e6089b7fdb4fd6505632b40fca",
+      "trade_ref_id": "64e08795-e86e-5e6c-9170-fdd873dc5eea",
+      "trade_sha256": "925cd5ed894871fac783f35c435abb6b1be8c34f6178a4a3e011ffc7168df551",
+      "order_id": "de2d5349-bba1-518a-9f6c-8890ce27586f",
+      "client_id": "fixture-client-42",
+      "symbol": "BTC",
+      "book": "manual",
+      "treatment": "included-usd",
+      "provider_parent_or_order_link_present": false
+    },
+    {
+      "id": "reviewed-fee-4",
+      "fee_ref_id": "82d0577d-e291-568c-a869-b8c9c23041a4",
+      "fee_sha256": "4dbdabcc97ed8100cab5141f97c515f7127b494216c96c94d75875cfe1cb9347",
+      "trade_ref_id": "216a995c-e17a-5153-8b00-4c29fcf31a34",
+      "trade_sha256": "3f540b0cf62f28a1a252ca22c6c87e95d2fa2351bb998c81162099fa6eb1ac63",
+      "order_id": "de2d5349-bba1-518a-9f6c-8890ce27586f",
+      "client_id": "fixture-client-42",
+      "symbol": "BTC",
+      "book": "manual",
+      "treatment": "included-usd",
+      "provider_parent_or_order_link_present": false
+    },
+    {
+      "id": "reviewed-fee-5",
+      "fee_ref_id": "278d29e2-633e-55fb-a841-8b070df5ef0c",
+      "fee_sha256": "2a07c384b7b366d833f37fd071374e1313273f3b9ea743c024fe86031922e1aa",
+      "trade_ref_id": "690281c2-58d4-5739-9d07-c6264f8e801f",
+      "trade_sha256": "59690eeb784a3c75284cae5d2f68e60e24e25c5f992ca21a4eba08a2e71caae8",
+      "order_id": "6298b1a3-216b-5d86-aff9-6cb4993bed2b",
+      "client_id": "fixture-client-44",
+      "symbol": "BTC",
+      "book": "manual",
+      "treatment": "asset-debit",
+      "provider_parent_or_order_link_present": false
+    },
+    {
+      "id": "reviewed-fee-6",
+      "fee_ref_id": "ca26f725-5f0c-5507-b402-46fc3698a5aa",
+      "fee_sha256": "9c9dcec784ab2fb40c2205918ccbd13659282053d74b3ea06f16cd21fe95049d",
+      "trade_ref_id": "7e4edf8a-3c92-5598-8d9c-93cf44412b74",
+      "trade_sha256": "caeb1af9123150476d353773a058666eb067041a27d5ca619ac6fd22214a5f15",
+      "order_id": "6298b1a3-216b-5d86-aff9-6cb4993bed2b",
+      "client_id": "fixture-client-44",
+      "symbol": "BTC",
+      "book": "manual",
+      "treatment": "asset-debit",
+      "provider_parent_or_order_link_present": false
+    },
+    {
+      "id": "reviewed-fee-7",
+      "fee_ref_id": "a75778fe-1e5d-593f-996a-4ca563d52dec",
+      "fee_sha256": "dc901545b0c1128a138a04a4c24593072c5c430954d933bff020517df68bba5f",
+      "trade_ref_id": "e3f60fb3-f5ce-53a9-8d52-9efa9437c40e",
+      "trade_sha256": "f08985a97ac4fdcb312b1bdd9d67b55db1d4f229850c79babd47ae3a2bcb1a4b",
+      "order_id": "6298b1a3-216b-5d86-aff9-6cb4993bed2b",
+      "client_id": "fixture-client-44",
+      "symbol": "BTC",
+      "book": "manual",
+      "treatment": "asset-debit",
+      "provider_parent_or_order_link_present": false
+    },
+    {
+      "id": "reviewed-fee-8",
+      "fee_ref_id": "7da809c6-b97b-50d2-a0d3-d9ef95e91ddc",
+      "fee_sha256": "a78d55054de38b3aabcdec6cfa4eb03bb354a0fefd2e869146a00e0d4646d161",
+      "trade_ref_id": "57229515-44a2-5e65-b4d2-2abe09bf29f0",
+      "trade_sha256": "bf443d298b389b4dca5c29029063d328fd35dbc3fb9a42c6b8af98dd3f7a0da3",
+      "order_id": "20b70b6e-3ce7-5df0-96d3-53bb97013c74",
+      "client_id": "fixture-client-45",
+      "symbol": "BTC",
+      "book": "manual",
+      "treatment": "included-usd",
+      "provider_parent_or_order_link_present": false
+    }
+  ],
+  "trade_contracts": {
+    "33623e5a-25db-5cbc-8ff1-b3ff230c402c": {
+      "sha256": "82eb8188201de735715c4e647dba068fdb853fff7990f363bf8b090d14acf872",
+      "symbol": "BTC",
+      "book": "manual",
+      "currency": "USD",
+      "cash_treatment": "provider-net"
+    },
+    "aaa63d53-cf86-56f2-a10f-508b75698385": {
+      "sha256": "60bfa2940e54b9d59902a1f118c719dfbce0b7beaccebc08782392ad21ce0a0c",
+      "symbol": "BTC",
+      "book": "manual",
+      "currency": "USD",
+      "cash_treatment": "provider-net"
+    },
+    "64e08795-e86e-5e6c-9170-fdd873dc5eea": {
+      "sha256": "925cd5ed894871fac783f35c435abb6b1be8c34f6178a4a3e011ffc7168df551",
+      "symbol": "BTC",
+      "book": "manual",
+      "currency": "USD",
+      "cash_treatment": "provider-net"
+    },
+    "216a995c-e17a-5153-8b00-4c29fcf31a34": {
+      "sha256": "3f540b0cf62f28a1a252ca22c6c87e95d2fa2351bb998c81162099fa6eb1ac63",
+      "symbol": "BTC",
+      "book": "manual",
+      "currency": "USD",
+      "cash_treatment": "provider-net"
+    },
+    "e3f60fb3-f5ce-53a9-8d52-9efa9437c40e": {
+      "sha256": "f08985a97ac4fdcb312b1bdd9d67b55db1d4f229850c79babd47ae3a2bcb1a4b",
+      "symbol": "BTC",
+      "book": "manual",
+      "currency": "USD",
+      "cash_treatment": "provider-net"
+    },
+    "7e4edf8a-3c92-5598-8d9c-93cf44412b74": {
+      "sha256": "caeb1af9123150476d353773a058666eb067041a27d5ca619ac6fd22214a5f15",
+      "symbol": "BTC",
+      "book": "manual",
+      "currency": "USD",
+      "cash_treatment": "provider-net"
+    },
+    "690281c2-58d4-5739-9d07-c6264f8e801f": {
+      "sha256": "59690eeb784a3c75284cae5d2f68e60e24e25c5f992ca21a4eba08a2e71caae8",
+      "symbol": "BTC",
+      "book": "manual",
+      "currency": "USD",
+      "cash_treatment": "provider-net"
+    },
+    "57229515-44a2-5e65-b4d2-2abe09bf29f0": {
+      "sha256": "bf443d298b389b4dca5c29029063d328fd35dbc3fb9a42c6b8af98dd3f7a0da3",
+      "symbol": "BTC",
+      "book": "manual",
+      "currency": "USD",
+      "cash_treatment": "provider-net"
+    }
+  },
+  "journal_contracts": {
+    "0cb82c63-7265-5e28-ae51-50b3664512c4": {
+      "sha256": "ef9956400115b5f5e295e2f0f707fd2faab5b69bc071150f8cbd6af9f111874d",
+      "currency": "USD",
+      "cash_treatment": "standalone"
+    },
+    "d29af9e6-3f2a-56b6-93a3-82c0b4d3bed3": {
+      "sha256": "e85abdef5c3ead8eddf48ae33405844f8f7933bb00259d055357cfd2bb7d3e65",
+      "currency": "USD",
+      "cash_treatment": "standalone"
+    },
+    "0f6068f6-9019-528e-875a-835768980335": {
+      "sha256": "37a9a962fbf8af087919038fa0efec4b3fdd9bc9f52dffa5e848eba74fafcd6a",
+      "currency": "USD",
+      "cash_treatment": "standalone"
+    }
+  }
+}

@@ -22,7 +22,7 @@ from .accounting_receipts import receipt_url
 from .custody import analyze as analyze_custody, fee_moment
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = 'accounting-proof-v2'
+VERSION = 'accounting-proof-v3'
 USD_SYMBOLS = {'BTC', 'ETH', 'SOL', 'SPY', 'QQQ', 'GLD', 'TLT', 'IWM'}
 
 
@@ -106,6 +106,14 @@ def source_snapshot(path, cutoff):
                 if row:
                     try:selected['state'][key] = json.loads(row[0])
                     except ValueError:issues['invalid_state_'+key] += 1
+        # Stay in the same read transaction as the retained rows above.
+        class LedgerRead:
+            def rows(self, sql, args=()):return [dict(r) for r in db.execute(sql, args)]
+            def get(self, key, default=None):
+                row = db.execute('SELECT value FROM state WHERE key=?', (key,)).fetchone()
+                return json.loads(row[0]) if row else default
+        from .activity_feed import read_projection
+        selected['activity_projection'] = read_projection(LedgerRead(), cutoff=cutoff.isoformat())
     selected['issues'] = dict(issues)
     return selected
 
@@ -279,10 +287,28 @@ def evaluate(source, costs, cutoff):
                 if currency != 'USD':issues.append('fee_currency_unverified');continue
                 cash_fees[currency] += -number(p['net_amount'])
         except (ValueError, KeyError, TypeError, ArithmeticError, AttributeError):issues.append('invalid_fee_record')
+    projection = source.get('activity_projection')
+    effects = []
+    projection_valid = False
+    if projection:
+        from .activity_projection import input_digest, instant
+        if (projection['issues'] or projection['input_sha256'] != input_digest(source)
+                or instant(projection['published_at']) > instant(cutoff.isoformat())):
+            issues.append('activity_evidence_requires_review')
+        else:
+            projection_valid = True
+            effects = projection['effects']
+            for effect in effects:
+                if effect['treatment'] == 'asset-debit':balances[effect['symbol']] += number(effect['quantity'])
+                fees.append({'id': effect['ref_id'], 'type': 'reviewed-activity', 'known_at': projection['published_at'],
+                             'time_precision': 'timestamp', 'status': 'reviewed-evidence', 'symbol': effect['symbol'],
+                             'quantity': effect['quantity'], 'net_amount': None, 'currency': None,
+                             'association_id': effect['association_id'], 'source_sha256': effect['source_sha256'],
+                             'treatment': effect['treatment']})
     if source['state'].get('fee_reconciliation_required'):issues.append('disputed_fee_revision')
     custody = analyze_custody(orders=source['orders'], fills=source['fills'], activities=source['activities'],
         observations=source.get('observations', []), checkpoints=source.get('checkpoints', []), snapshot=snapshot,
-        account_id=source['state'].get('account_binding'), mode=source['state'].get('mode'), as_of=cutoff.isoformat())
+        account_id=source['state'].get('account_binding'), mode=source['state'].get('mode'), as_of=cutoff.isoformat(), fee_effects=effects)
     if custody['issues']:issues.append('custody_debit_requires_review')
     for s, books in custody['additional_debits'].items():balances[s] -= sum((number(q) for q in books.values()), Decimal(0))
     differences = [{'symbol': s, 'recorded_net_quantity': str(balances[s]), 'broker_quantity': str(actual[s]),
@@ -303,7 +329,10 @@ def evaluate(source, costs, cutoff):
                                       'status': 'incomplete' if any(i in issues for i in ('invalid_fill_record', 'unknown_fill_owner', 'unverified_fill_source', 'sell_exceeds_same_book_lots', 'invalid_order_metadata', 'missing_fills', 'missing_orders', 'invalid_timestamp_fills', 'invalid_timestamp_orders')) else 'retained_gross_records_only',
                                       'matches': matched, 'basis': 'Unadjusted retained fill values; cumulative order deltas are not individual execution activities or certified tax lots'},
             'fees': {'recorded_rows': len(fees), 'known_cash_fee_debits_by_currency': {k: str(v) for k,v in cash_fees.items()},
-                     'coverage': 'unverified; absence of fee rows is not zero fees'},
+                     'coverage': 'unverified; absence of fee rows is not zero fees',
+                     **({'activity_coverage': projection['coverage'], 'association_count': projection.get('association_count', 0),
+                         'cash_reconciliation': projection['cash_reconciliation'] if projection_valid else {'status': 'unknown', 'cash': None}, 'fixture': projection['fixture'],
+                         'mapping_sha256': projection['mapping_sha256'], 'input_sha256': projection['input_sha256']} if projection else {})},
             'money_results': {'realized_net_pnl_usd': None, 'unrealized_pnl_usd': None, 'cash_flow_adjusted_pnl_usd': None,
                               'observed_equity_change_usd': str(equity[-1][1]-equity[0][1]) if len(equity) > 1 else None,
                               'equity_window': [equity[0][0].isoformat(), equity[-1][0].isoformat()] if equity else None,
@@ -325,13 +354,15 @@ def run(source, as_of, output, costs_file=None):
         (folder/name).chmod(0o600)
     contract = {'version': VERSION, 'source_ledger': str(Path(source).resolve()), 'as_of': cutoff.isoformat(),
                 'input_sha256': digest(data), 'cost_inputs_sha256': digest(costs),
-                'source_sha256': {name: hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ('backend/accounting_engine.py', 'backend/accounting_receipts.py', 'backend/fee_evidence.py', 'backend/custody.py', 'backend/risk.py')},
+                'source_sha256': {name: hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ('backend/accounting_engine.py', 'backend/accounting_receipts.py', 'backend/fee_evidence.py', 'backend/custody.py', 'backend/risk.py', 'backend/activity_feed.py', 'backend/activity_projection.py', 'backend/activity_validation.py')},
+                'activity_projection_sha256': digest(data.get('activity_projection')),
                 'assumptions': 'Gross FIFO diagnostic per book, USD instruments only; no net P&L, synthetic adjustments or filing claims'}
     save('contract.json', json.dumps(contract, indent=2)+'\n')
     report = evaluate(data, costs, cutoff)
     for filename, rows in (('fills.csv', report.pop('_fill_export')), ('fees.csv', report.pop('_fee_export')), ('gross-lot-matches.csv', report['gross_fifo_diagnostics']['matches'])):
         import io
-        text = io.StringIO(newline='');fields = list(rows[0]) if rows else ['no_records']
+        text = io.StringIO(newline='');fields = (['id','type','known_at','time_precision','status','symbol','quantity','net_amount','currency','association_id','source_sha256','treatment']
+                                                if filename == 'fees.csv' else list(rows[0]) if rows else ['no_records'])
         writer = csv.DictWriter(text, fieldnames=fields);writer.writeheader();writer.writerows(rows);save(filename, text.getvalue())
     report['contract_sha256'] = digest(contract);report['report_sha256'] = digest(report)
     save('report.json', json.dumps(report, indent=2)+'\n')

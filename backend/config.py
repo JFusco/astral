@@ -24,6 +24,9 @@ class Settings:
     enable_exit_monitor: bool = False
     enable_research: bool = False
     enable_codex_research: bool = False
+    # Validation-only inputs. from_env deliberately cannot activate this feed.
+    enable_activity_feed: bool = False
+    activity_mapping_path: Path | None = None
     equity_feed: str = "iex"
     crypto_location: str = "us"
     max_order: Decimal = Decimal("1000")

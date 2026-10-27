@@ -1,0 +1,398 @@
+{
+  "request": {
+    "method": "GET",
+    "host": "https://paper-api.alpaca.markets",
+    "path": "/v2beta1/events/activities",
+    "params": {
+      "since": "2026-10-25T00:00:00Z",
+      "until": "2026-10-27T01:50:27.898061Z"
+    },
+    "status": 200,
+    "content_type": "text/event-stream",
+    "received_at": "2026-10-27T01:50:28.373287+00:00"
+  },
+  "stream_closed": true,
+  "limit_or_error": null,
+  "parse_errors": [],
+  "events": [
+    {
+      "at": "2026-10-25T03:24:55.744726Z",
+      "event_id": "01AAAAAAAAAAAAAAAAAAAA0000",
+      "qty": "0",
+      "price": "0",
+      "ref_id": "0cb82c63-7265-5e28-ae51-50b3664512c4",
+      "status": "executed",
+      "details": {
+        "system_date": "2026-10-26"
+      },
+      "currency": "USD",
+      "net_amount": "100000",
+      "executed_at": "2026-10-25T03:24:49.522163Z",
+      "settle_date": "2026-10-26",
+      "activity_type": "JNLC"
+    },
+    {
+      "at": "2026-10-25T03:49:34.97211Z",
+      "event_id": "01AAAAAAAAAAAAAAAAAAAA0001",
+      "qty": "0.0001238",
+      "price": "80788.24",
+      "ref_id": "33623e5a-25db-5cbc-8ff1-b3ff230c402c",
+      "status": "executed",
+      "details": {
+        "side": "buy",
+        "symbol": "BTC/USD",
+        "cum_qty": "0.0001238",
+        "asset_id": "521f66c0-eccf-5254-a921-c6f627139e5b",
+        "order_id": "c0ac4d71-c736-5c1b-b7a0-52084274c1bb",
+        "leaves_qty": "0.000185321",
+        "order_status": "partially_filled",
+        "execution_type": "partial_fill",
+        "client_order_id": "fixture-client-43"
+      },
+      "currency": "",
+      "swap_rate": "1",
+      "net_amount": "-10",
+      "executed_at": "2026-10-25T03:49:34.939799496Z",
+      "settle_date": "2026-10-24",
+      "activity_type": "TRD"
+    },
+    {
+      "at": "2026-10-25T03:49:34.972122Z",
+      "event_id": "01AAAAAAAAAAAAAAAAAAAA0002",
+      "qty": "0.000185321",
+      "price": "80789.6",
+      "ref_id": "aaa63d53-cf86-56f2-a10f-508b75698385",
+      "status": "executed",
+      "details": {
+        "side": "buy",
+        "symbol": "BTC/USD",
+        "cum_qty": "0.000309121",
+        "asset_id": "521f66c0-eccf-5254-a921-c6f627139e5b",
+        "order_id": "c0ac4d71-c736-5c1b-b7a0-52084274c1bb",
+        "leaves_qty": "0",
+        "order_status": "filled",
+        "execution_type": "fill",
+        "client_order_id": "fixture-client-43"
+      },
+      "currency": "",
+      "swap_rate": "1",
+      "net_amount": "-14.97",
+      "executed_at": "2026-10-25T03:49:34.939813106Z",
+      "settle_date": "2026-10-24",
+      "activity_type": "TRD"
+    },
+    {
+      "at": "2026-10-25T03:49:43.117399Z",
+      "event_id": "01AAAAAAAAAAAAAAAAAAAA0003",
+      "qty": "-0.00000031",
+      "price": "80788.24",
+      "ref_id": "d01969fb-9551-567f-8f90-7e0a758611cb",
+      "status": "executed",
+      "details": {
+        "system_date": "2026-10-26"
+      },
+      "currency": "USD",
+      "net_amount": "0",
+      "executed_at": "2026-10-25T03:49:34.939799Z",
+      "settle_date": "2026-10-26",
+      "activity_type": "CFEE"
+    },
+    {
+      "at": "2026-10-25T03:49:43.117399Z",
+      "event_id": "01AAAAAAAAAAAAAAAAAAAA0004",
+      "qty": "-0.000000464",
+      "price": "80789.6",
+      "ref_id": "343e08d2-db68-5805-8639-a5cf202acecf",
+      "status": "executed",
+      "details": {
+        "system_date": "2026-10-26"
+      },
+      "currency": "USD",
+      "net_amount": "0",
+      "executed_at": "2026-10-25T03:49:34.939813Z",
+      "settle_date": "2026-10-26",
+      "activity_type": "CFEE"
+    },
+    {
+      "at": "2026-10-25T03:50:27.122748Z",
+      "event_id": "01AAAAAAAAAAAAAAAAAAAA0005",
+      "qty": "0.00012379",
+      "price": "80785.24",
+      "ref_id": "64e08795-e86e-5e6c-9170-fdd873dc5eea",
+      "status": "executed",
+      "details": {
+        "side": "sell",
+        "symbol": "BTC/USD",
+        "cum_qty": "0.00012379",
+        "asset_id": "521f66c0-eccf-5254-a921-c6f627139e5b",
+        "order_id": "de2d5349-bba1-518a-9f6c-8890ce27586f",
+        "leaves_qty": "0.000184557",
+        "order_status": "partially_filled",
+        "execution_type": "partial_fill",
+        "client_order_id": "fixture-client-42"
+      },
+      "currency": "",
+      "swap_rate": "1",
+      "net_amount": "9.97",
+      "executed_at": "2026-10-25T03:50:27.071098383Z",
+      "settle_date": "2026-10-24",
+      "activity_type": "TRD"
+    },
+    {
+      "at": "2026-10-25T03:50:27.122766Z",
+      "event_id": "01AAAAAAAAAAAAAAAAAAAA0006",
+      "qty": "0.000184557",
+      "price": "80785.24",
+      "ref_id": "216a995c-e17a-5153-8b00-4c29fcf31a34",
+      "status": "executed",
+      "details": {
+        "side": "sell",
+        "symbol": "BTC/USD",
+        "cum_qty": "0.000308347",
+        "asset_id": "521f66c0-eccf-5254-a921-c6f627139e5b",
+        "order_id": "de2d5349-bba1-518a-9f6c-8890ce27586f",
+        "leaves_qty": "0",
+        "order_status": "filled",
+        "execution_type": "fill",
+        "client_order_id": "fixture-client-42"
+      },
+      "currency": "",
+      "swap_rate": "1",
+      "net_amount": "14.87",
+      "executed_at": "2026-10-25T03:50:27.071124003Z",
+      "settle_date": "2026-10-24",
+      "activity_type": "TRD"
+    },
+    {
+      "at": "2026-10-25T03:50:37.14517Z",
+      "event_id": "01AAAAAAAAAAAAAAAAAAAA0007",
+      "qty": "0",
+      "price": "0",
+      "ref_id": "9ef79ed4-eb36-52c7-b679-f369f25d411d",
+      "status": "executed",
+      "details": {
+        "system_date": "2026-10-26"
+      },
+      "currency": "USD",
+      "net_amount": "-0.03",
+      "executed_at": "2026-10-25T03:50:27.071098Z",
+      "settle_date": "2026-10-26",
+      "activity_type": "CFEE"
+    },
+    {
+      "at": "2026-10-25T03:50:37.14517Z",
+      "event_id": "01AAAAAAAAAAAAAAAAAAAA0008",
+      "qty": "0",
+      "price": "0",
+      "ref_id": "82d0577d-e291-568c-a869-b8c9c23041a4",
+      "status": "executed",
+      "details": {
+        "system_date": "2026-10-26"
+      },
+      "currency": "USD",
+      "net_amount": "-0.04",
+      "executed_at": "2026-10-25T03:50:27.071124Z",
+      "settle_date": "2026-10-26",
+      "activity_type": "CFEE"
+    },
+    {
+      "at": "2026-10-25T10:46:02.222113Z",
+      "event_id": "01AAAAAAAAAAAAAAAAAAAA0009",
+      "qty": "0.00000001",
+      "price": "80192.64",
+      "ref_id": "e3f60fb3-f5ce-53a9-8d52-9efa9437c40e",
+      "status": "executed",
+      "details": {
+        "side": "buy",
+        "symbol": "BTC/USD",
+        "cum_qty": "0.00000001",
+        "asset_id": "521f66c0-eccf-5254-a921-c6f627139e5b",
+        "order_id": "6298b1a3-216b-5d86-aff9-6cb4993bed2b",
+        "leaves_qty": "0.000311558",
+        "order_status": "partially_filled",
+        "execution_type": "partial_fill",
+        "client_order_id": "fixture-client-44"
+      },
+      "currency": "",
+      "swap_rate": "1",
+      "net_amount": "0",
+      "executed_at": "2026-10-25T10:46:02.206222524Z",
+      "settle_date": "2026-10-25",
+      "activity_type": "TRD"
+    },
+    {
+      "at": "2026-10-25T10:46:02.222129Z",
+      "event_id": "01AAAAAAAAAAAAAAAAAAAA0010",
+      "qty": "0.00024939",
+      "price": "80195.07",
+      "ref_id": "7e4edf8a-3c92-5598-8d9c-93cf44412b74",
+      "status": "executed",
+      "details": {
+        "side": "buy",
+        "symbol": "BTC/USD",
+        "cum_qty": "0.0002494",
+        "asset_id": "521f66c0-eccf-5254-a921-c6f627139e5b",
+        "order_id": "6298b1a3-216b-5d86-aff9-6cb4993bed2b",
+        "leaves_qty": "0.000062168",
+        "order_status": "partially_filled",
+        "execution_type": "partial_fill",
+        "client_order_id": "fixture-client-44"
+      },
+      "currency": "",
+      "swap_rate": "1",
+      "net_amount": "-20",
+      "executed_at": "2026-10-25T10:46:02.206234344Z",
+      "settle_date": "2026-10-25",
+      "activity_type": "TRD"
+    },
+    {
+      "at": "2026-10-25T10:46:02.222137Z",
+      "event_id": "01AAAAAAAAAAAAAAAAAAAA0011",
+      "qty": "0.000062168",
+      "price": "80195.68",
+      "ref_id": "690281c2-58d4-5739-9d07-c6264f8e801f",
+      "status": "executed",
+      "details": {
+        "side": "buy",
+        "symbol": "BTC/USD",
+        "cum_qty": "0.000311568",
+        "asset_id": "521f66c0-eccf-5254-a921-c6f627139e5b",
+        "order_id": "6298b1a3-216b-5d86-aff9-6cb4993bed2b",
+        "leaves_qty": "0",
+        "order_status": "filled",
+        "execution_type": "fill",
+        "client_order_id": "fixture-client-44"
+      },
+      "currency": "",
+      "swap_rate": "1",
+      "net_amount": "-4.99",
+      "executed_at": "2026-10-25T10:46:02.206239504Z",
+      "settle_date": "2026-10-25",
+      "activity_type": "TRD"
+    },
+    {
+      "at": "2026-10-25T10:46:11.17312Z",
+      "event_id": "01AAAAAAAAAAAAAAAAAAAA0012",
+      "qty": "-0.000000156",
+      "price": "80195.68",
+      "ref_id": "278d29e2-633e-55fb-a841-8b070df5ef0c",
+      "status": "executed",
+      "details": {
+        "system_date": "2026-10-26"
+      },
+      "currency": "USD",
+      "net_amount": "0",
+      "executed_at": "2026-10-25T10:46:02.206239Z",
+      "settle_date": "2026-10-26",
+      "activity_type": "CFEE"
+    },
+    {
+      "at": "2026-10-25T10:46:11.17312Z",
+      "event_id": "01AAAAAAAAAAAAAAAAAAAA0013",
+      "qty": "-0.000000624",
+      "price": "80195.07",
+      "ref_id": "ca26f725-5f0c-5507-b402-46fc3698a5aa",
+      "status": "executed",
+      "details": {
+        "system_date": "2026-10-26"
+      },
+      "currency": "USD",
+      "net_amount": "0",
+      "executed_at": "2026-10-25T10:46:02.206234Z",
+      "settle_date": "2026-10-26",
+      "activity_type": "CFEE"
+    },
+    {
+      "at": "2026-10-25T10:46:11.17312Z",
+      "event_id": "01AAAAAAAAAAAAAAAAAAAA0014",
+      "qty": "-0.000000001",
+      "price": "80192.64",
+      "ref_id": "a75778fe-1e5d-593f-996a-4ca563d52dec",
+      "status": "executed",
+      "details": {
+        "system_date": "2026-10-26"
+      },
+      "currency": "USD",
+      "net_amount": "0",
+      "executed_at": "2026-10-25T10:46:02.206222Z",
+      "settle_date": "2026-10-26",
+      "activity_type": "CFEE"
+    },
+    {
+      "at": "2026-10-25T10:46:22.771712Z",
+      "event_id": "01AAAAAAAAAAAAAAAAAAAA0015",
+      "qty": "0.000310787",
+      "price": "80073.58",
+      "ref_id": "57229515-44a2-5e65-b4d2-2abe09bf29f0",
+      "status": "executed",
+      "details": {
+        "side": "sell",
+        "symbol": "BTC/USD",
+        "cum_qty": "0.000310787",
+        "asset_id": "521f66c0-eccf-5254-a921-c6f627139e5b",
+        "order_id": "20b70b6e-3ce7-5df0-96d3-53bb97013c74",
+        "leaves_qty": "0",
+        "order_status": "filled",
+        "execution_type": "fill",
+        "client_order_id": "fixture-client-45"
+      },
+      "currency": "",
+      "swap_rate": "1",
+      "net_amount": "24.82",
+      "executed_at": "2026-10-25T10:46:22.729661176Z",
+      "settle_date": "2026-10-25",
+      "activity_type": "TRD"
+    },
+    {
+      "at": "2026-10-25T10:46:32.169016Z",
+      "event_id": "01AAAAAAAAAAAAAAAAAAAA0016",
+      "qty": "0",
+      "price": "0",
+      "ref_id": "7da809c6-b97b-50d2-a0d3-d9ef95e91ddc",
+      "status": "executed",
+      "details": {
+        "system_date": "2026-10-26"
+      },
+      "currency": "USD",
+      "net_amount": "-0.07",
+      "executed_at": "2026-10-25T10:46:22.729661Z",
+      "settle_date": "2026-10-26",
+      "activity_type": "CFEE"
+    },
+    {
+      "at": "2026-10-26T16:15:33.028162Z",
+      "event_id": "01AAAAAAAAAAAAAAAAAAAA0017",
+      "qty": "0",
+      "price": "0",
+      "ref_id": "d29af9e6-3f2a-56b6-93a3-82c0b4d3bed3",
+      "status": "executed",
+      "details": {
+        "journal_id": "f3a1674c-1b83-56f9-b369-f7fb9e966064",
+        "system_date": "2026-10-26"
+      },
+      "currency": "USD",
+      "net_amount": "-0.3",
+      "executed_at": "2026-10-26T04:00:00Z",
+      "settle_date": "2026-10-26",
+      "activity_type": "JNLC"
+    },
+    {
+      "at": "2026-10-26T16:15:42.803876Z",
+      "event_id": "01AAAAAAAAAAAAAAAAAAAA0018",
+      "qty": "0",
+      "price": "0",
+      "ref_id": "0f6068f6-9019-528e-875a-835768980335",
+      "status": "executed",
+      "details": {
+        "journal_id": "f3a1674c-1b83-56f9-b369-f7fb9e966064",
+        "system_date": "2026-10-26"
+      },
+      "currency": "USD",
+      "net_amount": "0.3",
+      "executed_at": "2026-10-26T04:00:00Z",
+      "settle_date": "2026-10-26",
+      "activity_type": "JNLC"
+    }
+  ],
+  "fee_classification_not_inferred": true
+}

@@ -207,6 +207,10 @@ class AlpacaPaper:
         return await self.request("GET", "/v1beta1/news", data=True,
                                   params={"symbols": ",".join(b.replace("/", "") for b, _ in SYMBOLS.values()), "limit": 20, "include_content": "false", "sort": "desc"})
 
+    async def stream_activities(self, since, until):
+        from .activity_feed import stream_activities
+        return await stream_activities(self, since, until)
+
     async def fee_activities(self, after):
         result, token = [], None
         for _ in range(5):

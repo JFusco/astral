@@ -61,7 +61,7 @@ def retain_checkpoint(store, snapshot):
 
 
 def analyze(*, orders, fills, activities, observations=(), checkpoints=(), snapshot,
-            account_id=None, mode=None, as_of=None):
+            account_id=None, mode=None, as_of=None, fee_effects=()):
     """Explain reductions across fresh, single-owner, single-buy intervals.
 
     Observed reductions remain unclassified and vetoed. Only explicitly linked
@@ -75,12 +75,12 @@ def analyze(*, orders, fills, activities, observations=(), checkpoints=(), snaps
         if snapshot['account']['id'] != account_id:raise ValueError()
         with localcontext() as ctx:
             ctx.prec = 50
-            return _analyze(orders, fills, activities, observations, checkpoints, snapshot, account_id, end)
+            return _analyze(orders, fills, activities, observations, checkpoints, snapshot, account_id, end, fee_effects)
     except (ValueError, KeyError, TypeError, AttributeError, ArithmeticError):
         return {**empty, 'issues': [{'symbol': None, 'reason': 'Invalid custody evidence; review required'}]}
 
 
-def _analyze(orders, fills, activities, observations, checkpoints, snapshot, account_id, end):
+def _analyze(orders, fills, activities, observations, checkpoints, snapshot, account_id, end, fee_effects):
     issues, order_map, owners, broker_ids = [], {}, defaultdict(set), set()
     for row in orders:
         raw = json.loads(row['raw']);request = json.loads(row['request'])
@@ -173,6 +173,16 @@ def _analyze(orders, fills, activities, observations, checkpoints, snapshot, acc
             'before_quantity': str(before['quantities'].get(symbol, 0)), 'gross_buy_quantity': str(gross),
             'after_quantity': str(after['quantities'].get(symbol, 0)), 'reduction_quantity': str(debit)}]}
     linked, unlinked, seen, fee_windows = defaultdict(Decimal), set(), {}, []
+    for effect in fee_effects:
+        if effect['treatment'] != 'asset-debit':continue
+        cid = effect['client_id'];order = order_map[cid]
+        if (effect['order_id'] != order['broker']['id'] or effect['symbol'] != asset(order['broker']['symbol'])
+                or effect['book'] != order['book'] or quantity(effect['quantity']) >= 0):
+            raise ValueError('Conflicting reviewed fee effect')
+        start = moment(effect['executed_at'])
+        if start > end:raise ValueError('Future reviewed fee')
+        linked[cid] -= quantity(effect['quantity'])
+        fee_windows.append((cid, effect['symbol'], start, start))
     for row in activities:
         fee = json.loads(row['payload'])
         if fee_moment(row['at']) > end or fee.get('activity_type') != 'CFEE' or fee.get('status') != 'executed':continue
