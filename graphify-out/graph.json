@@ -278,7 +278,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_app",
-      "community": 46,
+      "community": 44,
       "community_name": "RuleViolation",
       "norm_label": "app.py"
     },
@@ -291,7 +291,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "backend_app_intent",
-      "community": 46,
+      "community": 44,
       "community_name": "RuleViolation",
       "norm_label": "intent"
     },
@@ -302,7 +302,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "basemodel",
-      "community": 46,
+      "community": 44,
       "community_name": "RuleViolation",
       "norm_label": "basemodel"
     },
@@ -315,7 +315,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "backend_app_exitplan",
-      "community": 46,
+      "community": 44,
       "community_name": "RuleViolation",
       "norm_label": "exitplan"
     },
@@ -328,7 +328,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "backend_app_halt",
-      "community": 46,
+      "community": 44,
       "community_name": "RuleViolation",
       "norm_label": "halt"
     },
@@ -341,7 +341,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "backend_app_researchbar",
-      "community": 46,
+      "community": 44,
       "community_name": "RuleViolation",
       "norm_label": "researchbar"
     },
@@ -354,7 +354,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "backend_app_riskcandidate",
-      "community": 46,
+      "community": 44,
       "community_name": "RuleViolation",
       "norm_label": "riskcandidate"
     },
@@ -483,7 +483,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_broker",
-      "community": 1,
+      "community": 30,
       "community_name": "broker.py",
       "norm_label": "broker.py"
     },
@@ -531,7 +531,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_broker_brokerfailure_init",
-      "community": 4,
+      "community": 23,
       "community_name": "utcnow",
       "norm_label": ".__init__()"
     },
@@ -544,7 +544,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "backend_broker_limiter",
-      "community": 1,
+      "community": 30,
       "community_name": "broker.py",
       "norm_label": "limiter"
     },
@@ -556,7 +556,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_broker_limiter_init",
-      "community": 1,
+      "community": 30,
       "community_name": "broker.py",
       "norm_label": ".__init__()"
     },
@@ -593,7 +593,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_broker_alpacapaper_init",
-      "community": 1,
+      "community": 30,
       "community_name": "broker.py",
       "norm_label": ".__init__()"
     },
@@ -749,7 +749,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_broker_alpacapaper_close",
-      "community": 4,
+      "community": 23,
       "community_name": "utcnow",
       "norm_label": ".close()"
     },
@@ -762,7 +762,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "backend_broker_simulator",
-      "community": 4,
+      "community": 23,
       "community_name": "utcnow",
       "norm_label": "simulator"
     },
@@ -774,7 +774,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_broker_simulator_init",
-      "community": 4,
+      "community": 23,
       "community_name": "utcnow",
       "norm_label": ".__init__()"
     },
@@ -786,7 +786,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_broker_simulator_load_assets",
-      "community": 4,
+      "community": 23,
       "community_name": "utcnow",
       "norm_label": ".load_assets()"
     },
@@ -798,7 +798,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_broker_simulator_quotes",
-      "community": 4,
+      "community": 23,
       "community_name": "utcnow",
       "norm_label": ".quotes()"
     },
@@ -810,7 +810,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_broker_simulator_match",
-      "community": 4,
+      "community": 23,
       "community_name": "utcnow",
       "norm_label": ".match()"
     },
@@ -822,7 +822,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_broker_simulator_snapshot",
-      "community": 4,
+      "community": 23,
       "community_name": "utcnow",
       "norm_label": ".snapshot()"
     },
@@ -834,7 +834,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_broker_simulator_open_orders",
-      "community": 4,
+      "community": 23,
       "community_name": "utcnow",
       "norm_label": ".open_orders()"
     },
@@ -846,7 +846,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_broker_simulator_get_order",
-      "community": 4,
+      "community": 23,
       "community_name": "utcnow",
       "norm_label": ".get_order()"
     },
@@ -858,7 +858,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_broker_simulator_submit",
-      "community": 4,
+      "community": 23,
       "community_name": "utcnow",
       "norm_label": ".submit()"
     },
@@ -870,7 +870,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_broker_simulator_cancel",
-      "community": 4,
+      "community": 23,
       "community_name": "utcnow",
       "norm_label": ".cancel()"
     },
@@ -882,7 +882,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_broker_simulator_close",
-      "community": 4,
+      "community": 23,
       "community_name": "utcnow",
       "norm_label": ".close()"
     },
@@ -893,7 +893,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_broker_rationale_1",
-      "community": 1,
+      "community": 30,
       "community_name": "broker.py",
       "norm_label": "fixed-host alpaca paper adapter and a separately labelled durable simulator."
     },
@@ -904,7 +904,7 @@
       "source_location": "L313",
       "_origin": "ast",
       "id": "backend_broker_rationale_313",
-      "community": 4,
+      "community": 23,
       "community_name": "utcnow",
       "norm_label": "no remote api. fills are synthetic and do not model queueing/market impact."
     },
@@ -1384,7 +1384,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "backend_engine_ruleviolation",
-      "community": 46,
+      "community": 44,
       "community_name": "RuleViolation",
       "norm_label": "ruleviolation"
     },
@@ -1395,7 +1395,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "backend_engine_py_exception",
-      "community": 46,
+      "community": 44,
       "community_name": "RuleViolation",
       "norm_label": "exception"
     },
@@ -1407,7 +1407,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_age",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": "age()"
     },
@@ -1419,7 +1419,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_symbol_for",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": "symbol_for()"
     },
@@ -1432,7 +1432,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "backend_engine_engine",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": "engine"
     },
@@ -1444,7 +1444,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_init",
-      "community": 4,
+      "community": 23,
       "community_name": "utcnow",
       "norm_label": ".__init__()"
     },
@@ -1456,7 +1456,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_adapter_source_hashes",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".adapter_source_hashes()"
     },
@@ -1468,7 +1468,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_worker",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".worker()"
     },
@@ -1480,7 +1480,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_start",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".start()"
     },
@@ -1492,7 +1492,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_refresh_event_context",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".refresh_event_context()"
     },
@@ -1504,7 +1504,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_liquidity_cycle",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".liquidity_cycle()"
     },
@@ -1516,7 +1516,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_liquidity_view",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".liquidity_view()"
     },
@@ -1528,7 +1528,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_replay_view",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".replay_view()"
     },
@@ -1540,7 +1540,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_replay_cycle",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".replay_cycle()"
     },
@@ -1552,7 +1552,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_stop",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".stop()"
     },
@@ -1564,7 +1564,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_loop",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".loop()"
     },
@@ -1576,7 +1576,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_refresh_quotes",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".refresh_quotes()"
     },
@@ -1588,7 +1588,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_reconcile",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".reconcile()"
     },
@@ -1600,7 +1600,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_ingest",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".ingest()"
     },
@@ -1612,7 +1612,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_loss_breach",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".loss_breach()"
     },
@@ -1624,7 +1624,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_risk_payload",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".risk_payload()"
     },
@@ -1636,7 +1636,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_place",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".place()"
     },
@@ -1648,7 +1648,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_cancel",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".cancel()"
     },
@@ -1660,7 +1660,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_refresh_news",
-      "community": 4,
+      "community": 23,
       "community_name": "utcnow",
       "norm_label": ".refresh_news()"
     },
@@ -1672,7 +1672,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_refresh_fees",
-      "community": 4,
+      "community": 23,
       "community_name": "utcnow",
       "norm_label": ".refresh_fees()"
     },
@@ -1684,7 +1684,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_inventory",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".inventory()"
     },
@@ -1696,7 +1696,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_decision_context",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".decision_context()"
     },
@@ -1708,7 +1708,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_shadow",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".shadow()"
     },
@@ -1720,7 +1720,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_shadow_cycle",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".shadow_cycle()"
     },
@@ -1732,7 +1732,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_timing_cycle",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".timing_cycle()"
     },
@@ -1744,7 +1744,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_research_cycle",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".research_cycle()"
     },
@@ -1756,7 +1756,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_research_tick",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".research_tick()"
     },
@@ -1768,7 +1768,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_start_research",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".start_research()"
     },
@@ -1780,7 +1780,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_arm_exit",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".arm_exit()"
     },
@@ -1792,7 +1792,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_exit_cycle",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".exit_cycle()"
     },
@@ -1804,7 +1804,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_order_view",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".order_view()"
     },
@@ -1816,7 +1816,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_risk_policy",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".risk_policy()"
     },
@@ -1828,7 +1828,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_plan",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".plan()"
     },
@@ -1840,7 +1840,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_broker_ready",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".broker_ready()"
     },
@@ -1852,7 +1852,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_engine_engine_state",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": ".state()"
     },
@@ -2062,7 +2062,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_executor_ownership",
-      "community": 1,
+      "community": 30,
       "community_name": "broker.py",
       "norm_label": "executor_ownership.py"
     },
@@ -2075,7 +2075,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "backend_executor_ownership_ownershiperror",
-      "community": 1,
+      "community": 30,
       "community_name": "broker.py",
       "norm_label": "ownershiperror"
     },
@@ -2086,7 +2086,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "backend_executor_ownership_py_exception",
-      "community": 1,
+      "community": 30,
       "community_name": "broker.py",
       "norm_label": "exception"
     },
@@ -2098,7 +2098,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_executor_ownership_account_identity",
-      "community": 1,
+      "community": 30,
       "community_name": "broker.py",
       "norm_label": "account_identity()"
     },
@@ -2110,7 +2110,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_executor_ownership_private_owned",
-      "community": 1,
+      "community": 30,
       "community_name": "broker.py",
       "norm_label": "private_owned()"
     },
@@ -2123,7 +2123,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "backend_executor_ownership_accountlease",
-      "community": 1,
+      "community": 30,
       "community_name": "broker.py",
       "norm_label": "accountlease"
     },
@@ -2135,7 +2135,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_executor_ownership_accountlease_init",
-      "community": 1,
+      "community": 30,
       "community_name": "broker.py",
       "norm_label": ".__init__()"
     },
@@ -2147,7 +2147,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_executor_ownership_accountlease_check_process",
-      "community": 1,
+      "community": 30,
       "community_name": "broker.py",
       "norm_label": ".check_process()"
     },
@@ -2159,7 +2159,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_executor_ownership_accountlease_acquire",
-      "community": 1,
+      "community": 30,
       "community_name": "broker.py",
       "norm_label": ".acquire()"
     },
@@ -2171,7 +2171,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_executor_ownership_accountlease_check_storage",
-      "community": 1,
+      "community": 30,
       "community_name": "broker.py",
       "norm_label": ".check_storage()"
     },
@@ -2183,7 +2183,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_executor_ownership_accountlease_close",
-      "community": 1,
+      "community": 30,
       "community_name": "broker.py",
       "norm_label": ".close()"
     },
@@ -2194,7 +2194,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_executor_ownership_rationale_1",
-      "community": 1,
+      "community": 30,
       "community_name": "broker.py",
       "norm_label": "cooperative paper-account ownership for one os user on one host."
     },
@@ -2414,7 +2414,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_health_engine",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": "health_engine.py"
     },
@@ -2522,7 +2522,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_health_engine_rationale_1",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": "independent assessments from telemetry observations; no trading authority."
     },
@@ -2807,7 +2807,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_inventory_book_for",
-      "community": 30,
+      "community": 1,
       "community_name": "Engine",
       "norm_label": "book_for()"
     },
@@ -3670,7 +3670,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_public_context_read_context",
-      "community": 4,
+      "community": 23,
       "community_name": "utcnow",
       "norm_label": "read_context()"
     },
@@ -4042,7 +4042,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_risk_price_signal",
-      "community": 44,
+      "community": 38,
       "community_name": "price_signal",
       "norm_label": "price_signal()"
     },
@@ -4075,7 +4075,7 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "backend_risk_rationale_51",
-      "community": 44,
+      "community": 38,
       "community_name": "price_signal",
       "norm_label": "pure ohlc hypothesis; caller validates provenance and time separately."
     },
@@ -4086,7 +4086,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_service_health",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": "service_health.py"
     },
@@ -4098,7 +4098,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_service_health_moment",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": "moment()"
     },
@@ -4111,7 +4111,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "backend_service_health_statusheading",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": "statusheading"
     },
@@ -4122,7 +4122,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "backend_service_health_py_htmlparser",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": "htmlparser"
     },
@@ -4134,7 +4134,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_service_health_statusheading_init",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": ".__init__()"
     },
@@ -4146,7 +4146,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_service_health_statusheading_handle_starttag",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": ".handle_starttag()"
     },
@@ -4158,7 +4158,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_service_health_statusheading_handle_endtag",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": ".handle_endtag()"
     },
@@ -4170,7 +4170,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_service_health_statusheading_handle_data",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": ".handle_data()"
     },
@@ -4182,7 +4182,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_service_health_parse_report",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": "parse_report()"
     },
@@ -4194,7 +4194,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_service_health_effective",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": "effective()"
     },
@@ -4207,7 +4207,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "backend_service_health_healthmonitor",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": "healthmonitor"
     },
@@ -4219,7 +4219,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_service_health_healthmonitor_init",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": ".__init__()"
     },
@@ -4231,7 +4231,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_service_health_healthmonitor_close",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": ".close()"
     },
@@ -4243,7 +4243,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_service_health_healthmonitor_record",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": ".record()"
     },
@@ -4255,7 +4255,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_service_health_healthmonitor_save",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": ".save()"
     },
@@ -4267,7 +4267,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_service_health_healthmonitor_poll",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": ".poll()"
     },
@@ -4279,7 +4279,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_service_health_healthmonitor_run",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": ".run()"
     },
@@ -4291,7 +4291,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_service_health_healthmonitor_state",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": ".state()"
     },
@@ -4303,7 +4303,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_service_health_healthmonitor_alpaca_state",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": ".alpaca_state()"
     },
@@ -4314,7 +4314,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_service_health_rationale_1",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": "public provider reports, separate from account/model connectivity and risk. no..."
     },
@@ -4337,7 +4337,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_store_utcnow",
-      "community": 4,
+      "community": 23,
       "community_name": "utcnow",
       "norm_label": "utcnow()"
     },
@@ -4550,7 +4550,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "backend_trade_history_aggregate_daily",
-      "community": 39,
+      "community": 51,
       "community_name": "test_trade_history.py",
       "norm_label": "aggregate_daily()"
     },
@@ -5695,7 +5695,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_components_overview_intelligence_feed",
-      "community": 51,
+      "community": 46,
       "community_name": "intelligence-feed.tsx",
       "norm_label": "intelligence-feed.tsx"
     },
@@ -5707,7 +5707,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_components_overview_intelligence_feed_intelligencefeed",
-      "community": 51,
+      "community": 46,
       "community_name": "intelligence-feed.tsx",
       "norm_label": "intelligencefeed()"
     },
@@ -5903,7 +5903,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_components_overview_source_dialog",
-      "community": 51,
+      "community": 46,
       "community_name": "intelligence-feed.tsx",
       "norm_label": "source-dialog.tsx"
     },
@@ -5915,7 +5915,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_components_overview_source_dialog_sourcedialog",
-      "community": 51,
+      "community": 46,
       "community_name": "intelligence-feed.tsx",
       "norm_label": "sourcedialog()"
     },
@@ -5972,7 +5972,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_components_overview_views_intelligence_view",
-      "community": 51,
+      "community": 46,
       "community_name": "intelligence-feed.tsx",
       "norm_label": "intelligence-view.tsx"
     },
@@ -5984,7 +5984,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_components_overview_views_intelligence_view_intelligenceview",
-      "community": 51,
+      "community": 46,
       "community_name": "intelligence-feed.tsx",
       "norm_label": "intelligenceview()"
     },
@@ -6018,7 +6018,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_components_overview_views_strategies_view",
-      "community": 23,
+      "community": 64,
       "community_name": "strategies-view.tsx",
       "norm_label": "strategies-view.tsx"
     },
@@ -6030,7 +6030,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_components_overview_views_strategies_view_strategiesview",
-      "community": 23,
+      "community": 64,
       "community_name": "strategies-view.tsx",
       "norm_label": "strategiesview()"
     },
@@ -6041,7 +6041,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_components_overview_views_strategy_counts",
-      "community": 23,
+      "community": 64,
       "community_name": "strategies-view.tsx",
       "norm_label": "strategy-counts.tsx"
     },
@@ -6053,7 +6053,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_components_overview_views_strategy_counts_strategycounts",
-      "community": 23,
+      "community": 64,
       "community_name": "strategies-view.tsx",
       "norm_label": "strategycounts()"
     },
@@ -6964,7 +6964,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_components_ui_empty",
-      "community": 51,
+      "community": 46,
       "community_name": "intelligence-feed.tsx",
       "norm_label": "empty.tsx"
     },
@@ -6976,7 +6976,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_components_ui_empty_empty",
-      "community": 51,
+      "community": 46,
       "community_name": "intelligence-feed.tsx",
       "norm_label": "empty()"
     },
@@ -7056,7 +7056,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_components_ui_source_link",
-      "community": 51,
+      "community": 46,
       "community_name": "intelligence-feed.tsx",
       "norm_label": "source-link.tsx"
     },
@@ -7068,7 +7068,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_components_ui_source_link_sourcelink",
-      "community": 51,
+      "community": 46,
       "community_name": "intelligence-feed.tsx",
       "norm_label": "sourcelink()"
     },
@@ -7651,7 +7651,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "frontend_lib_contracts_news",
-      "community": 51,
+      "community": 46,
       "community_name": "intelligence-feed.tsx",
       "norm_label": "news"
     },
@@ -10195,7 +10195,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "scripts_dogfood_session",
-      "community": 64,
+      "community": 57,
       "community_name": "dogfood_session.py",
       "norm_label": "dogfood_session.py"
     },
@@ -10207,7 +10207,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "scripts_dogfood_session_lab_path",
-      "community": 64,
+      "community": 57,
       "community_name": "dogfood_session.py",
       "norm_label": "lab_path()"
     },
@@ -10219,7 +10219,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "scripts_dogfood_session_isolate_experiment_workers",
-      "community": 64,
+      "community": 57,
       "community_name": "dogfood_session.py",
       "norm_label": "isolate_experiment_workers()"
     },
@@ -10231,7 +10231,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "scripts_dogfood_session_main",
-      "community": 64,
+      "community": 57,
       "community_name": "dogfood_session.py",
       "norm_label": "main()"
     },
@@ -10242,7 +10242,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "scripts_dogfood_session_rationale_1",
-      "community": 64,
+      "community": 57,
       "community_name": "dogfood_session.py",
       "norm_label": "bounded, get-only alpaca dogfood session using a private copied ledger."
     },
@@ -10492,7 +10492,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "scripts_quantconnect_algorithm",
-      "community": 44,
+      "community": 38,
       "community_name": "price_signal",
       "norm_label": "algorithm.py"
     },
@@ -10504,7 +10504,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "scripts_quantconnect_algorithm_as_utc",
-      "community": 44,
+      "community": 38,
       "community_name": "price_signal",
       "norm_label": "as_utc()"
     },
@@ -10517,7 +10517,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "scripts_quantconnect_algorithm_astralbtcsignalparity",
-      "community": 44,
+      "community": 38,
       "community_name": "price_signal",
       "norm_label": "astralbtcsignalparity"
     },
@@ -10528,7 +10528,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "qcalgorithm",
-      "community": 44,
+      "community": 38,
       "community_name": "price_signal",
       "norm_label": "qcalgorithm"
     },
@@ -10540,7 +10540,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "scripts_quantconnect_algorithm_astralbtcsignalparity_initialize",
-      "community": 44,
+      "community": 38,
       "community_name": "price_signal",
       "norm_label": ".initialize()"
     },
@@ -10552,7 +10552,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "scripts_quantconnect_algorithm_astralbtcsignalparity_on_data",
-      "community": 44,
+      "community": 38,
       "community_name": "price_signal",
       "norm_label": ".on_data()"
     },
@@ -10564,7 +10564,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "scripts_quantconnect_algorithm_astralbtcsignalparity_on_end_of_algorithm",
-      "community": 44,
+      "community": 38,
       "community_name": "price_signal",
       "norm_label": ".on_end_of_algorithm()"
     },
@@ -10575,7 +10575,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "scripts_quantconnect_algorithm_rationale_1",
-      "community": 44,
+      "community": 38,
       "community_name": "price_signal",
       "norm_label": "compare both implementations in cloud memory; export aggregate diagnostics only."
     },
@@ -10680,7 +10680,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "scripts_quantconnect_model",
-      "community": 44,
+      "community": 38,
       "community_name": "price_signal",
       "norm_label": "model.py"
     },
@@ -10692,7 +10692,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "scripts_quantconnect_model_validate_bar",
-      "community": 44,
+      "community": 38,
       "community_name": "price_signal",
       "norm_label": "validate_bar()"
     },
@@ -10715,7 +10715,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "scripts_quantconnect_model_rationale_1",
-      "community": 44,
+      "community": 38,
       "community_name": "price_signal",
       "norm_label": "independent port of the registered btc price hypothesis, for comparison only."
     },
@@ -13047,7 +13047,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_health_engine_test_local_revalidation_time_is_distinct_from_provider_update_time",
-      "community": 57,
+      "community": 4,
       "community_name": "HealthMonitor",
       "norm_label": "test_local_revalidation_time_is_distinct_from_provider_update_time()"
     },
@@ -14672,7 +14672,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "tests_test_review_repairs_py_fixture",
-      "community": 4,
+      "community": 23,
       "community_name": "utcnow",
       "norm_label": "fixture"
     },
@@ -14684,7 +14684,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_review_repairs_research_engine",
-      "community": 4,
+      "community": 23,
       "community_name": "utcnow",
       "norm_label": "research_engine()"
     },
@@ -14887,7 +14887,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_review_repairs_test_valid_context_shape_remains_available",
-      "community": 4,
+      "community": 23,
       "community_name": "utcnow",
       "norm_label": "test_valid_context_shape_remains_available()"
     },
@@ -14945,7 +14945,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_risk",
-      "community": 38,
+      "community": 39,
       "community_name": "test_risk.py",
       "norm_label": "test_risk.py"
     },
@@ -14957,7 +14957,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_risk_inputs",
-      "community": 38,
+      "community": 39,
       "community_name": "test_risk.py",
       "norm_label": "inputs()"
     },
@@ -14969,7 +14969,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_risk_test_exact_wilder_atr_and_repeatable_sizing",
-      "community": 38,
+      "community": 39,
       "community_name": "test_risk.py",
       "norm_label": "test_exact_wilder_atr_and_repeatable_sizing()"
     },
@@ -14980,7 +14980,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "tests_test_risk_py_parametrize",
-      "community": 38,
+      "community": 39,
       "community_name": "test_risk.py",
       "norm_label": "parametrize"
     },
@@ -14992,7 +14992,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_risk_test_bad_bars_abstain",
-      "community": 38,
+      "community": 39,
       "community_name": "test_risk.py",
       "norm_label": "test_bad_bars_abstain()"
     },
@@ -15004,7 +15004,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_risk_test_intraday_budget_costs_minimum_and_cash",
-      "community": 38,
+      "community": 39,
       "community_name": "test_risk.py",
       "norm_label": "test_intraday_budget_costs_minimum_and_cash()"
     },
@@ -15016,7 +15016,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_risk_test_missing_crypto_bar_rejected",
-      "community": 38,
+      "community": 39,
       "community_name": "test_risk.py",
       "norm_label": "test_missing_crypto_bar_rejected()"
     },
@@ -15028,7 +15028,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_risk_test_cost_hurdle_prevents_an_uneconomic_candidate",
-      "community": 38,
+      "community": 39,
       "community_name": "test_risk.py",
       "norm_label": "test_cost_hurdle_prevents_an_uneconomic_candidate()"
     },
@@ -15064,7 +15064,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_risk_test_account_restrictions_block",
-      "community": 38,
+      "community": 39,
       "community_name": "test_risk.py",
       "norm_label": "test_account_restrictions_block()"
     },
@@ -15088,7 +15088,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_risk_test_planner_records_but_cannot_submit",
-      "community": 38,
+      "community": 39,
       "community_name": "test_risk.py",
       "norm_label": "test_planner_records_but_cannot_submit()"
     },
@@ -15134,7 +15134,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "tests_test_service_py_fixture",
-      "community": 38,
+      "community": 39,
       "community_name": "test_risk.py",
       "norm_label": "fixture"
     },
@@ -15146,7 +15146,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_service_engine",
-      "community": 38,
+      "community": 39,
       "community_name": "test_risk.py",
       "norm_label": "engine()"
     },
@@ -15610,7 +15610,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "tests_test_state_contract_fixeddatetime",
-      "community": 46,
+      "community": 44,
       "community_name": "RuleViolation",
       "norm_label": "fixeddatetime"
     },
@@ -15633,7 +15633,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_state_contract_fixeddatetime_now",
-      "community": 46,
+      "community": 44,
       "community_name": "RuleViolation",
       "norm_label": ".now()"
     },
@@ -16060,7 +16060,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_trade_history",
-      "community": 39,
+      "community": 51,
       "community_name": "test_trade_history.py",
       "norm_label": "test_trade_history.py"
     },
@@ -16072,7 +16072,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_trade_history_batch",
-      "community": 39,
+      "community": 51,
       "community_name": "test_trade_history.py",
       "norm_label": "batch()"
     },
@@ -16084,7 +16084,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_trade_history_aggregate",
-      "community": 39,
+      "community": 51,
       "community_name": "test_trade_history.py",
       "norm_label": "aggregate()"
     },
@@ -16096,7 +16096,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_trade_history_test_trade_only_bars_deduplicate_and_exclude_incomplete_day",
-      "community": 39,
+      "community": 51,
       "community_name": "test_trade_history.py",
       "norm_label": "test_trade_only_bars_deduplicate_and_exclude_incomplete_day()"
     },
@@ -16107,7 +16107,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "tests_test_trade_history_py_parametrize",
-      "community": 39,
+      "community": 51,
       "community_name": "test_trade_history.py",
       "norm_label": "parametrize"
     },
@@ -16119,7 +16119,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_trade_history_test_bad_trade_records_fail_closed",
-      "community": 39,
+      "community": 51,
       "community_name": "test_trade_history.py",
       "norm_label": "test_bad_trade_records_fail_closed()"
     },
@@ -16131,7 +16131,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_trade_history_test_missing_trade_day_is_not_filled_from_quotes",
-      "community": 39,
+      "community": 51,
       "community_name": "test_trade_history.py",
       "norm_label": "test_missing_trade_day_is_not_filled_from_quotes()"
     },
@@ -16143,7 +16143,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_trade_history_test_provider_pagination_must_finish_before_history_is_accepted",
-      "community": 39,
+      "community": 51,
       "community_name": "test_trade_history.py",
       "norm_label": "test_provider_pagination_must_finish_before_history_is_accepted()"
     },
@@ -16155,7 +16155,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "tests_test_trade_history_test_history_shares_completed_days_and_reconstructs_each_immutable_batch",
-      "community": 39,
+      "community": 51,
       "community_name": "test_trade_history.py",
       "norm_label": "test_history_shares_completed_days_and_reconstructs_each_immutable_batch()"
     },
@@ -65988,5 +65988,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "e8f4365a8ab10a3012f60116045f4ae3f2b0742e"
+  "built_at_commit": "cdda088a50f1102bdce4ddfa7c03a62f40523edc"
 }

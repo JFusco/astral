@@ -10,16 +10,16 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e8f4365a`
+- Built from commit: `cdda088a`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - test_event_sources.py
-- broker.py
+- Engine
 - run
 - dumps
-- utcnow
+- HealthMonitor
 - D
 - ui.ts
 - test_learning_engine.py
@@ -38,14 +38,14 @@
 - liquidity_runner.py
 - relay.ts
 - BrokerFailure
-- strategies-view.tsx
+- utcnow
 - test_experiment.py
 - datetime
 - quantconnect/__init__.py
 - experiment.py
 - devDependencies
 - Store
-- Engine
+- broker.py
 - overview-page.tsx
 - test_review_repairs.py
 - intelligence.py
@@ -53,30 +53,30 @@
 - connection.test.ts
 - read.ts
 - validate_pr_body.cjs
+- price_signal
 - test_risk.py
-- test_trade_history.py
 - overnight_watch.py
 - test_executor_ownership.py
 - test_health_engine.py
 - test_stage2_validation.py
-- price_signal
-- Connection
 - RuleViolation
+- Connection
+- intelligence-feed.tsx
 - boundaries.test.ts
 - seed.ts
 - check-skills.cjs
 - HealthEngine
-- intelligence-feed.tsx
+- test_trade_history.py
 - commitlint.config.cjs
 - app.spec.ts
 - intelligence_app.py
 - proxy.ts
 - next.config.ts
-- HealthMonitor
+- dogfood_session.py
 - test_quantconnect_validation.py
 - prepare-standalone.mjs
 - navigation.tsx
-- dogfood_session.py
+- strategies-view.tsx
 - read.test.ts
 
 ## God Nodes (most connected - your core abstractions)
@@ -112,9 +112,9 @@
 Cohesion: 0.12
 Nodes (25): catalog(), Cells, event(), maintenance(), nyfed(), parse_events(), protocol(), HTMLParser (+17 more)
 
-### Community 1 - "broker.py"
-Cohesion: 0.24
-Nodes (8): Limiter, Fixed-host Alpaca paper adapter and a separately labelled durable simulator., account_identity(), AccountLease, OwnershipError, private_owned(), Exception, Cooperative paper-account ownership for one OS user on one host.
+### Community 1 - "Engine"
+Cohesion: 0.16
+Nodes (4): age(), Engine, symbol_for(), book_for()
 
 ### Community 2 - "run"
 Cohesion: 0.11
@@ -124,9 +124,9 @@ Nodes (43): Failure scenarios and adversarial selection cases; all trades are sy
 Cohesion: 0.07
 Nodes (102): at(), canonical(), cost_report(), digest(), evaluate(), main(), number(), precise() (+94 more)
 
-### Community 4 - "utcnow"
-Cohesion: 0.12
-Nodes (7): No remote API. Fills are synthetic and do not model queueing/market impact., Simulator, read_context(), utcnow(), fixture, research_engine(), test_valid_context_shape_remains_available()
+### Community 4 - "HealthMonitor"
+Cohesion: 0.15
+Nodes (9): Independent assessments from telemetry observations; no trading authority., effective(), HealthMonitor, moment(), parse_report(), HTMLParser, Public provider reports, separate from account/model connectivity and risk. No…, StatusHeading (+1 more)
 
 ### Community 5 - "D"
 Cohesion: 0.15
@@ -207,6 +207,10 @@ Nodes (12): Context, dynamic, GET(), POST(), runtime, acceptsGzip(), compress, g
 Cohesion: 0.26
 Nodes (4): AlpacaPaper, BrokerFailure, Exception, quote()
 
+### Community 23 - "utcnow"
+Cohesion: 0.12
+Nodes (7): No remote API. Fills are synthetic and do not model queueing/market impact., Simulator, read_context(), utcnow(), fixture, research_engine(), test_valid_context_shape_remains_available()
+
 ### Community 24 - "test_experiment.py"
 Cohesion: 0.16
 Nodes (13): Meetings, parse_fomc(), HTMLParser, Official FOMC meeting dates, scoped context only; no complete macro calendar., context(), fomc_html(), history(), parametrize (+5 more)
@@ -227,9 +231,9 @@ Nodes (48): eslint, eslint-config-next, @fontsource-variable/dm-sans, @fontsourc
 Cohesion: 0.23
 Nodes (3): Store, main(), test_maintenance_empty_snapshot_304_extends_inspection_not_publication()
 
-### Community 30 - "Engine"
-Cohesion: 0.16
-Nodes (4): age(), Engine, symbol_for(), book_for()
+### Community 30 - "broker.py"
+Cohesion: 0.24
+Nodes (8): Limiter, Fixed-host Alpaca paper adapter and a separately labelled durable simulator., account_identity(), AccountLease, OwnershipError, private_owned(), Exception, Cooperative paper-account ownership for one OS user on one host.
 
 ### Community 31 - "overview-page.tsx"
 Cohesion: 0.16
@@ -259,13 +263,13 @@ Nodes (19): dynamic, metadata, Page(), dynamic, metadata, Page(), AccountingCont
 Cohesion: 0.23
 Nodes (11): fs, main(), readableText(), REQUIRED_CHECKS, REQUIRED_SECTIONS, sections(), validatePullRequestBody(), withoutComments() (+3 more)
 
-### Community 38 - "test_risk.py"
+### Community 38 - "price_signal"
+Cohesion: 0.21
+Nodes (8): price_signal(), Pure OHLC hypothesis; caller validates provenance and time separately., QCAlgorithm, as_utc(), AstralBtcSignalParity, Compare both implementations in cloud memory; export aggregate diagnostics only., Independent port of the registered BTC price hypothesis, for comparison only., validate_bar()
+
+### Community 39 - "test_risk.py"
 Cohesion: 0.27
 Nodes (11): inputs(), parametrize, test_account_restrictions_block(), test_bad_bars_abstain(), test_cost_hurdle_prevents_an_uneconomic_candidate(), test_exact_wilder_atr_and_repeatable_sizing(), test_intraday_budget_costs_minimum_and_cash(), test_missing_crypto_bar_rejected() (+3 more)
-
-### Community 39 - "test_trade_history.py"
-Cohesion: 0.38
-Nodes (9): aggregate_daily(), aggregate(), batch(), parametrize, test_bad_trade_records_fail_closed(), test_history_shares_completed_days_and_reconstructs_each_immutable_batch(), test_missing_trade_day_is_not_filled_from_quotes(), test_provider_pagination_must_finish_before_history_is_accepted() (+1 more)
 
 ### Community 40 - "overnight_watch.py"
 Cohesion: 0.25
@@ -283,13 +287,13 @@ Nodes (13): observations(), Providers, parametrize, Health contracts: temporary 
 Cohesion: 0.27
 Nodes (10): audit_crypto(), Read-only reconciliation analysis. Hypotheses cannot become ledger entries., Compare authoritative gross executions and positions; explain, never waive. Fee…, parametrize, Synthetic decision-path and fault tests; none are broker-paper executions., reconciliation_fixture(), test_confirmed_fee_matches_and_duplicate_activity_is_not_counted_twice(), test_duplicate_and_out_of_order_partial_readbacks_preserve_quantity() (+2 more)
 
-### Community 44 - "price_signal"
-Cohesion: 0.21
-Nodes (8): price_signal(), Pure OHLC hypothesis; caller validates provenance and time separately., QCAlgorithm, as_utc(), AstralBtcSignalParity, Compare both implementations in cloud memory; export aggregate diagnostics only., Independent port of the registered BTC price hypothesis, for comparison only., validate_bar()
-
-### Community 46 - "RuleViolation"
+### Community 44 - "RuleViolation"
 Cohesion: 0.35
 Nodes (9): ExitPlan, Halt, Intent, ResearchBar, RiskCandidate, Exception, RuleViolation, BaseModel (+1 more)
+
+### Community 46 - "intelligence-feed.tsx"
+Cohesion: 0.27
+Nodes (6): IntelligenceFeed(), SourceDialog(), IntelligenceView(), Empty(), SourceLink(), News
 
 ### Community 47 - "boundaries.test.ts"
 Cohesion: 0.32
@@ -307,9 +311,9 @@ Nodes (6): checkSkills(), crypto, fs, hashSkillFolder(), path, ROOT
 Cohesion: 0.23
 Nodes (6): lifespan(), Standalone health service, separate process and ledger from telemetry/trading., state(), fresh(), HealthEngine, test_adapter_hashes_are_cached_local_and_covered_by_packet_hash()
 
-### Community 51 - "intelligence-feed.tsx"
-Cohesion: 0.27
-Nodes (6): IntelligenceFeed(), SourceDialog(), IntelligenceView(), Empty(), SourceLink(), News
+### Community 51 - "test_trade_history.py"
+Cohesion: 0.38
+Nodes (9): aggregate_daily(), aggregate(), batch(), parametrize, test_bad_trade_records_fail_closed(), test_history_shares_completed_days_and_reconstructs_each_immutable_batch(), test_missing_trade_day_is_not_filled_from_quotes(), test_provider_pagination_must_finish_before_history_is_accepted() (+1 more)
 
 ### Community 52 - "commitlint.config.cjs"
 Cohesion: 0.83
@@ -323,9 +327,9 @@ Nodes (3): Dashboard, OrderIntent, diagnostics
 Cohesion: 0.33
 Nodes (6): collect(), health_inputs(), intelligence(), lifespan(), Local-only companion: independent DB and lifecycle preserve the shadow pilot., test_collection_loop_delays_after_failure_continues_and_propagates_cancel()
 
-### Community 57 - "HealthMonitor"
-Cohesion: 0.15
-Nodes (9): Independent assessments from telemetry observations; no trading authority., effective(), HealthMonitor, moment(), parse_report(), HTMLParser, Public provider reports, separate from account/model connectivity and risk. No…, StatusHeading (+1 more)
+### Community 57 - "dogfood_session.py"
+Cohesion: 0.60
+Nodes (4): isolate_experiment_workers(), lab_path(), main(), Bounded, GET-only Alpaca dogfood session using a private copied ledger.
 
 ### Community 58 - "test_quantconnect_validation.py"
 Cohesion: 0.17
@@ -335,10 +339,6 @@ Nodes (27): bundle(), compare(), main(), new_output(), pinned_sources(), Package
 Cohesion: 0.40
 Nodes (3): NavLink(), Navigation(), pages
 
-### Community 64 - "dogfood_session.py"
-Cohesion: 0.60
-Nodes (4): isolate_experiment_workers(), lab_path(), main(), Bounded, GET-only Alpaca dogfood session using a private copied ledger.
-
 ## Knowledge Gaps
 - **154 isolated node(s):** `Source`, `metadata`, `dynamic`, `runtime`, `dynamic` (+149 more)
   These have ≤1 connection - possible missing edges or undocumented components.
@@ -347,11 +347,11 @@ Nodes (4): isolate_experiment_workers(), lab_path(), main(), Bounded, GET-only A
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Store` connect `Store` to `test_event_sources.py`, `run`, `dumps`, `utcnow`, `D`, `test_learning_engine.py`, `Settings`, `test_execution_pilot.py`, `screen`, `test_readiness_gates.py`, `liquidity_runner.py`, `test_experiment.py`, `datetime`, `experiment.py`, `test_review_repairs.py`, `intelligence.py`, `test_risk.py`, `test_trade_history.py`, `test_executor_ownership.py`, `test_health_engine.py`, `RuleViolation`, `HealthEngine`, `intelligence_app.py`, `dogfood_session.py`?**
+- **Why does `Store` connect `Store` to `test_event_sources.py`, `run`, `dumps`, `D`, `test_learning_engine.py`, `Settings`, `test_execution_pilot.py`, `screen`, `test_readiness_gates.py`, `liquidity_runner.py`, `utcnow`, `test_experiment.py`, `datetime`, `experiment.py`, `test_review_repairs.py`, `intelligence.py`, `test_risk.py`, `test_executor_ownership.py`, `test_health_engine.py`, `RuleViolation`, `HealthEngine`, `test_trade_history.py`, `intelligence_app.py`, `dogfood_session.py`?**
   _High betweenness centrality (0.050) - this node is a cross-community bridge._
-- **Why does `utcnow()` connect `utcnow` to `test_event_sources.py`, `broker.py`, `run`, `dumps`, `Settings`, `test_execution_pilot.py`, `timestamp`, `screen`, `test_readiness_gates.py`, `BrokerFailure`, `datetime`, `experiment.py`, `Store`, `Engine`, `test_review_repairs.py`, `intelligence.py`, `test_health_engine.py`, `RuleViolation`, `HealthEngine`, `HealthMonitor`, `dogfood_session.py`?**
+- **Why does `utcnow()` connect `utcnow` to `test_event_sources.py`, `Engine`, `run`, `dumps`, `HealthMonitor`, `Settings`, `test_execution_pilot.py`, `timestamp`, `screen`, `test_readiness_gates.py`, `BrokerFailure`, `datetime`, `experiment.py`, `Store`, `broker.py`, `test_review_repairs.py`, `intelligence.py`, `test_health_engine.py`, `RuleViolation`, `HealthEngine`, `dogfood_session.py`?**
   _High betweenness centrality (0.040) - this node is a cross-community bridge._
-- **Why does `Engine` connect `Engine` to `dogfood_session.py`, `test_review_repairs.py`, `run`, `dumps`, `utcnow`, `D`, `test_risk.py`, `Settings`, `test_execution_pilot.py`, `test_stage2_validation.py`, `RuleViolation`, `screen`, `HealthEngine`, `BrokerFailure`, `test_experiment.py`, `datetime`, `experiment.py`?**
+- **Why does `Engine` connect `Engine` to `test_review_repairs.py`, `run`, `dumps`, `D`, `test_risk.py`, `Settings`, `test_execution_pilot.py`, `test_stage2_validation.py`, `RuleViolation`, `screen`, `HealthEngine`, `BrokerFailure`, `utcnow`, `test_experiment.py`, `datetime`, `experiment.py`, `dogfood_session.py`?**
   _High betweenness centrality (0.023) - this node is a cross-community bridge._
 - **Are the 8 inferred relationships involving `Store` (e.g. with `ExitPlan` and `Halt`) actually correct?**
   _`Store` has 8 INFERRED edges - model-reasoned connections that need verification._
