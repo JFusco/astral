@@ -178,7 +178,7 @@ def retain_batch(store, batch, account, result):
             delivery, kind, ref = (activity_identifier(event.get(k)) for k in ('event_id', 'activity_type', 'ref_id'))
             if None in (delivery, kind, ref):
                 result.update(complete=False, error='invalid_activity_identity')
-            prior = store.rows('SELECT sha256 FROM activity_events WHERE account=? AND (event_id=? OR (type=? AND ref_id=?))',
+            prior = store.rows('SELECT DISTINCT sha256 FROM activity_events WHERE account=? AND (event_id=? OR (type=? AND ref_id=?))',
                                (account, delivery, kind, ref))
             for old in prior:
                 if old['sha256'] != sha:
@@ -232,7 +232,7 @@ async def collect_batch(broker, store):
         result.update(getattr(broker, '_last_activity_stream', None) or {}, complete=False, error='activity_acquisition_cancelled')
         raise
     except Exception:
-        result['complete'], result['error'] = False, 'activity_acquisition_incomplete'
+        result.update(getattr(broker, '_last_activity_stream', None) or {}, complete=False, error='activity_acquisition_incomplete')
     finally:
         result['received_at'] = utcnow()
         retain_batch(store, batch, binding, result)
@@ -261,11 +261,10 @@ def publish_projection(store, batch, mapping, *, now=None):
         # Any omission from previously retained covered history blocks the scan.
         refs = {activity_identifier(e.get('ref_id')) for e in events}
         refs.discard(None)
-        for prior in store.rows('SELECT payload FROM activity_events WHERE account=? AND batch<>?', (binding, batch)):
-            event = json.loads(prior['payload'])
-            try: covered = instant(coverage['since']) <= instant(event['at']) <= instant(coverage['until'])
+        for prior in store.rows("SELECT DISTINCT ref_id,json_extract(payload,'$.at') AS at FROM activity_events WHERE account=? AND batch<>?", (binding, batch)):
+            try: covered = instant(coverage['since']) <= instant(prior['at']) <= instant(coverage['until'])
             except (ValueError, KeyError): covered = True
-            if covered and activity_identifier(event.get('ref_id')) not in refs:
+            if covered and prior['ref_id'] not in refs:
                 result['issues'].append('activity_disappeared_from_replay')
         if store.rows('SELECT id FROM activity_conflicts WHERE account=?', (binding,)):
             result['issues'].append('persistent_activity_conflict')
@@ -287,10 +286,10 @@ def read_projection(store, *, cutoff=None):
     if not store.rows("SELECT name FROM sqlite_master WHERE name='activity_projections'"):
         return None
     binding = store.get('account_binding')
-    rows = store.rows('SELECT at,payload FROM activity_projections WHERE account=? ORDER BY rowid DESC', (binding,))
+    rows = store.rows('SELECT rowid,at FROM activity_projections WHERE account=? ORDER BY rowid DESC', (binding,))
     for row in rows:
         if instant(row['at']) <= instant(cutoff):
-            result = json.loads(row['payload'])
+            result = json.loads(store.rows('SELECT payload FROM activity_projections WHERE rowid=?', (row['rowid'],))[0]['payload'])
             # A retained attempt cannot disappear behind an older publication.
             attempts = store.rows('SELECT id,at FROM activity_batches WHERE account=? ORDER BY rowid DESC', (binding,))
             latest = next((a for a in attempts if instant(a['at']) <= instant(cutoff)), None)

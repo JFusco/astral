@@ -83,6 +83,67 @@ def test_duplicates_reordering_and_database_restart_do_not_charge_again(setup):
     finally:other.close()
 
 
+def test_projection_reads_fetch_one_payload_after_500_publications(setup, monkeypatch):
+    store, _, mapping = setup
+    first = replay(setup)
+    expected = [first]
+    for index in range(1, 500):
+        expected.append(publish_projection(store, first['batch'], mapping,
+            now=f'2030-01-01T00:00:00.{index:09d}Z'))
+    rows = store.rows
+    fetched = []
+    def observe_rows(sql, args=()):
+        result = rows(sql, args)
+        fetched.extend(r['payload'] for r in result if 'payload' in r)
+        return result
+    monkeypatch.setattr(store, 'rows', observe_rows)
+    for index in (499, 498):
+        fetched.clear()
+        assert read_projection(store, cutoff=expected[index]['published_at']) == expected[index]
+        assert len(fetched) == 1
+
+
+def test_repeated_batches_bound_prior_comparisons_without_changing_accounting(setup, monkeypatch):
+    store, capture, mapping = setup
+    first = replay(setup)
+    coverage = {'complete': True, 'account_id': store.get('account_binding'),
+        'events': capture['events'], 'raw': (FIXTURE/'activity-sse.raw').read_bytes(),
+        'received_at': KNOWN, 'historical_import': True, **capture['request']['params']}
+    for _ in range(199):
+        batch = start_batch(store, coverage['account_id'], coverage['since'], coverage['until'])
+        retain_batch(store, batch, coverage['account_id'], dict(coverage))
+    rows, prior_hashes, prior_events = store.rows, [], []
+    def observe_rows(sql, args=()):
+        result = rows(sql, args)
+        if 'FROM activity_events' in sql:
+            if any('sha256' in r for r in result):prior_hashes.append(len(result))
+            if 'batch<>?' in sql:prior_events.append(len(result))
+        return result
+    monkeypatch.setattr(store, 'rows', observe_rows)
+    batch = start_batch(store, coverage['account_id'], coverage['since'], coverage['until'])
+    retain_batch(store, batch, coverage['account_id'], dict(coverage))
+    result = publish_projection(store, batch, mapping, now=KNOWN)
+    assert prior_hashes == [1]*len(capture['events'])
+    assert prior_events == [len(capture['events'])]
+    assert result['issues'] == []
+    assert result['effects'] == first['effects']
+    assert result['cash_reconciliation'] == first['cash_reconciliation']
+    assert len(rows('SELECT batch FROM activity_events')) == 201*len(capture['events'])
+
+
+@pytest.mark.parametrize('timestamp', [{}, {'at': None}, {'at': 'invalid'}, {'at': []}],
+                         ids=['missing', 'null', 'invalid', 'list'])
+def test_prior_unknown_identifiers_and_timestamps_still_block_omitted_evidence(setup, timestamp):
+    store, capture, _ = setup
+    binding = store.get('account_binding')
+    batch = start_batch(store, binding, capture['request']['params']['since'], KNOWN)
+    retain_batch(store, batch, binding, {'complete': False, 'events': [timestamp],
+        'raw': b'', 'received_at': KNOWN})
+    result = replay(setup)
+    assert 'activity_disappeared_from_replay' in result['issues']
+    assert not result['effects'] and result['cash_reconciliation']['cash'] is None
+
+
 @pytest.mark.parametrize('kind', ['TRD', 'CFEE', 'JNLC'])
 def test_missing_provider_records_block_reconciliation(setup, kind):
     capture = deepcopy(setup[1]);index = next(i for i,e in enumerate(capture['events']) if e['activity_type'] == kind)
@@ -513,6 +574,65 @@ def test_identity_change_after_complete_stream_retains_quarantined_raw_evidence(
         row=store.rows("SELECT payload FROM activity_batches WHERE id=? AND phase='outcome'",(batch,))[0]
         assert json.loads(row['payload'])['raw_sha256']
         assert store.get('account_binding')==identity
+    finally:asyncio.run(broker.close())
+
+
+def test_acquisition_deadline_retains_partial_revision_and_actual_stream_interval(setup, monkeypatch):
+    store, capture, _ = setup
+    replay(setup)
+    identity = store.get('account_binding')
+    fee = deepcopy(next(e for e in capture['events'] if e['activity_type'] == 'CFEE'))
+    fee.update(event_id='timed-out-revision', qty='-0.000001')
+    raw = ('data: '+json.dumps(fee)+'\n\ndata: {"unfinished":').encode()
+    elapsed, calls, intervals = [0], [], []
+    class Partial(httpx.AsyncByteStream):
+        closed = False
+        async def __aiter__(self):
+            yield raw
+            elapsed[0] = 61
+            await asyncio.sleep(0)
+            await asyncio.Event().wait()
+        async def aclose(self):self.closed = True
+    partial = Partial()
+    account = {'id': identity, 'created_at': '2020-01-01T00:00:00Z'}
+    async def handler(request):
+        calls.append((request.method, request.url.path))
+        if request.url.path == '/v2/account':
+            elapsed[0] = 40
+            await asyncio.sleep(0)
+            return httpx.Response(200, json=account)
+        assert request.url.path == '/v2beta1/events/activities'
+        intervals.append(dict(request.url.params))
+        return httpx.Response(200, headers={'content-type': 'text/event-stream'}, stream=partial)
+    broker = AlpacaPaper(Settings(api_key='fixture', secret_key='fixture'), store, httpx.MockTransport(handler))
+    def now():return (datetime.fromisoformat(KNOWN)+timedelta(seconds=elapsed[0])).isoformat()
+    async def acquire():
+        loop = asyncio.get_running_loop()
+        origin = loop.time()
+        with monkeypatch.context() as clock:
+            clock.setattr(loop, 'time', lambda: origin+elapsed[0])
+            clock.setattr('backend.activity_feed.utcnow', now)
+            return await collect_batch(broker, store)
+    try:
+        batch, result = asyncio.run(acquire())
+        assert elapsed[0] == 61 and partial.closed
+        assert not result['complete'] and result['error'] == 'activity_acquisition_incomplete'
+        assert result['events'] == [fee] and result['raw'] == raw
+        assert result['before'] == account and result['account_id'] == identity
+        assert {k: result[k] for k in ('since', 'until')} == intervals[0]
+        assert result['until'] == '2030-01-01T00:00:40+00:00'
+        assert calls == [('GET', '/v2/account'), ('GET', '/v2beta1/events/activities')]
+        receipt = json.loads(store.rows("SELECT payload FROM activity_batches WHERE id=? AND phase='outcome'", (batch,))[0]['payload'])
+        assert not receipt['complete'] and bytes.fromhex(receipt['raw_hex']) == raw
+        assert receipt['before'] == account
+        assert {k: receipt[k] for k in ('since', 'until')} == intervals[0]
+        retained = store.rows('SELECT payload,frame FROM activity_events WHERE batch=?', (batch,))
+        assert [json.loads(r['payload']) for r in retained] == [fee]
+        assert parse_sse(retained[0]['frame']) == [fee]
+        assert store.get('account_binding') == identity
+        recovered = replay(setup, now='2030-01-01T00:01:02+00:00')
+        assert 'persistent_activity_conflict' in recovered['issues']
+        assert not recovered['effects'] and recovered['cash_reconciliation']['cash'] is None
     finally:asyncio.run(broker.close())
 
 
