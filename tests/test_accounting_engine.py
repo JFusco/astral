@@ -236,6 +236,7 @@ def test_readonly_cutoff_contract_and_private_exports(tmp_path):
     a, r1 = run(path, KNOWN, tmp_path/'out');b, r2 = run(path, KNOWN, tmp_path/'out')
     assert a != b and r1 == r2 and path.read_bytes() == before
     contract = json.loads((a/'contract.json').read_text());assert r1['contract_sha256'] == digest(contract)
+    assert 'backend/evidence_codec.py' in contract['source_sha256']
     assert 'simulator' in (a/'fills.csv').read_text()
     assert 'DO NOT PARSE' not in (a/'fills.csv').read_text()
     assert all(p.stat().st_mode & 0o077 == 0 for p in a.iterdir())

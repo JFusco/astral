@@ -13,7 +13,7 @@ from .activity_projection import balances_match, canonical, digest, instant, inp
 from .config import SYMBOLS
 from .executor_ownership import account_identity
 from .store import utcnow
-from .evidence_codec import pack_text, reference_text, reference_bytes
+from .evidence_codec import pack_bytes, pack_text, reference_text, reference_bytes
 
 ATTEMPT_SECONDS, STREAM_SECONDS, IDLE_SECONDS = 60, 30, 8
 MAX_EVENTS, MAX_BYTES, MAX_FRAME = 10000, 8*1024*1024, 64*1024
@@ -190,9 +190,14 @@ def retain_batch(store, batch, account, result):
                     store.db.execute('INSERT OR IGNORE INTO activity_conflicts VALUES(?,?,?,?)',
                                      (digest(conflict), account, at, canonical(conflict)))
             frame = frames[index][1] if index < len(frames) else payload.encode()
+            try:
+                body, retained_frame = reference_text(store.db, payload), reference_bytes(store.db, frame)
+            except ValueError:
+                # Preserve this delivery without replacing corrupt shared history.
+                result.update(complete=False, error='activity_evidence_integrity_error')
+                body, retained_frame = pack_text(payload), pack_bytes(frame)
             store.db.execute('INSERT INTO activity_events VALUES(?,?,?,?,?,?,?,?,?,?)',
-                             (batch, index, account, delivery, ref, kind, at, sha,
-                              reference_text(store.db, payload), reference_bytes(store.db, frame)))
+                             (batch, index, account, delivery, ref, kind, at, sha, body, retained_frame))
         receipt = {key: value for key, value in result.items() if key not in ('events', 'raw')}
         receipt['raw_hex'] = result.get('raw', b'').hex()
         receipt['raw_sha256'] = hashlib.sha256(result.get('raw', b'')).hexdigest()
@@ -258,6 +263,22 @@ async def collect_batch(broker, store, *, critical=True, refresh_snapshot=False)
     return batch, result
 
 
+def batch_events(store, batch):
+    """Validate the selected acquisition, including legacy frame semantics."""
+    rows = store.rows('SELECT payload,frame,sha256 FROM activity_events WHERE batch=? ORDER BY ordinal', (batch,))
+    events = [json.loads(row['payload']) for row in rows]
+    issues = []
+    for row, event in zip(rows, events):
+        try:
+            frame = parse_sse(row['frame'])
+            if (digest(event) != row['sha256'] or len(frame) != 1
+                    or digest(frame[0]) != row['sha256']):
+                raise FeedError('Retained activity differs from its source hash')
+        except (ValueError, TypeError, KeyError):
+            issues = ['activity_evidence_integrity_error']
+    return events, issues
+
+
 def publish_projection(store, batch, mapping, *, now=None):
     now = now or utcnow()
     mapping = load_mapping(mapping)
@@ -268,8 +289,9 @@ def publish_projection(store, batch, mapping, *, now=None):
         if not rows:
             raise FeedError('Completed acquisition required')
         coverage = json.loads(rows[0]['payload'])
-        events = [json.loads(r['payload']) for r in store.rows('SELECT payload FROM activity_events WHERE batch=? ORDER BY ordinal', (batch,))]
+        events, integrity_issues = batch_events(store, batch)
         result = project(source, events, mapping, coverage, knowledge_cutoff=now)
+        result['issues'].extend(integrity_issues)
         if not coverage.get('historical_import'):
             try:
                 after = {'account': coverage['after'], 'positions': coverage['after_positions']}
@@ -309,6 +331,14 @@ def read_projection(store, *, cutoff=None):
     for row in rows:
         if instant(row['at']) <= instant(cutoff):
             result = json.loads(store.rows('SELECT payload FROM activity_projections WHERE rowid=?', (row['rowid'],))[0]['payload'])
+            # Validate bodies and frames after cutoff selection, including legacy bytes.
+            try:
+                retained, integrity_issues = batch_events(store, result['batch'])
+                if not integrity_issues and len({event['ref_id'] for event in retained}) != result.get('activity_count'):
+                    integrity_issues = ['activity_evidence_integrity_error']
+                result['issues'].extend(integrity_issues)
+            except (ValueError, TypeError, KeyError):
+                result['issues'].append('activity_evidence_integrity_error')
             # A retained attempt cannot disappear behind an older publication.
             attempts = store.rows('SELECT id,at FROM activity_batches WHERE account=? ORDER BY rowid DESC', (binding,))
             latest = next((a for a in attempts if instant(a['at']) <= instant(cutoff)), None)

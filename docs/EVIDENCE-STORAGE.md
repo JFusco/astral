@@ -19,6 +19,8 @@ Repeated activity payloads and frames share immutable content in the additive `e
 
 `unpack_row(row, db)` resolves these references within the caller's existing SQLite transaction. Keep the body table with the ledger when backing up or exporting data. A plain SQLite inspection exposes encoded values; use the codec for an evidence export. Do not decode by guessing a format or accepting a partial stream.
 
+Publication and cached reads validate the selected batch's decoded event and frame against each delivery's retained hash. Cached reads also check the number of distinct activities. Damaged markers, mismatched references and missing deliveries block accounting. If existing shared content is corrupt, retain the new rejected delivery inline with its outcome and full raw stream; leave the corrupt historical body unchanged.
+
 ## Preserve frozen contracts and rollback evidence
 
 The owner approved storage-only changes to the replay and liquidity readers for issue #48. Their source hashes change, and their hash sets now include the codec. Existing frozen manifests remain unchanged and report code drift. This change neither rebaselines an experiment nor certifies its results.

@@ -356,7 +356,7 @@ def run(source, as_of, output, costs_file=None):
         (folder/name).chmod(0o600)
     contract = {'version': VERSION, 'source_ledger': str(Path(source).resolve()), 'as_of': cutoff.isoformat(),
                 'input_sha256': digest(data), 'cost_inputs_sha256': digest(costs),
-                'source_sha256': {name: hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ('backend/accounting_engine.py', 'backend/accounting_receipts.py', 'backend/fee_evidence.py', 'backend/custody.py', 'backend/risk.py', 'backend/activity_feed.py', 'backend/activity_projection.py', 'backend/activity_validation.py')},
+                'source_sha256': {name: hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ('backend/accounting_engine.py', 'backend/accounting_receipts.py', 'backend/fee_evidence.py', 'backend/custody.py', 'backend/risk.py', 'backend/activity_feed.py', 'backend/activity_projection.py', 'backend/activity_validation.py', 'backend/evidence_codec.py')},
                 'activity_projection_sha256': digest(data.get('activity_projection')),
                 'assumptions': 'Gross FIFO diagnostic per book, USD instruments only; no net P&L, synthetic adjustments or filing claims'}
     save('contract.json', json.dumps(contract, indent=2)+'\n')

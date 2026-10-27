@@ -1,4 +1,5 @@
 """Lossless mixed-ledger reads and fail-closed evidence decoding."""
+import hashlib
 import json
 from pathlib import Path
 import struct
@@ -6,10 +7,12 @@ import zlib
 
 import pytest
 
-from backend.evidence_codec import (MAGIC, NAMESPACE, MAX_BYTES, pack_bytes, pack_text,
+from backend.evidence_codec import (MAGIC, NAMESPACE, REFERENCE, MAX_BYTES, pack_bytes, pack_text,
                                     unpack_bytes, unpack_text, reference_bytes)
 from backend.store import Store
 from backend.activity_projection import digest
+from backend.activity_feed import (SSEParser, current_accounting, parse_sse, publish_projection,
+                                   read_projection, retain_batch, start_batch)
 from backend.activity_validation import import_ledger, import_capture, acceptance
 from backend.accounting_engine import source_snapshot, at
 from backend.liquidity_runner import readonly, snapshot
@@ -74,10 +77,20 @@ def test_mixed_accounting_rows_keep_raw_streams_and_exact_cash_after_restart(tmp
     mapping = json.loads((FIXTURE/'mapping.json').read_text())
     raw = (FIXTURE/'activity-sse.raw').read_bytes()
     import_ledger(store, ledger)
-    first = import_capture(store, capture, raw, mapping, now=NOW)
-    # An existing text projection remains valid beside new encoded evidence.
+    earlier = '2029-12-31T23:59:00+00:00'
+    first = import_capture(store, capture, raw, mapping, now=earlier)
+    # Recreate pre-codec activity bodies, frames and the cached projection.
+    legacy = store.rows('SELECT ordinal,payload,frame FROM activity_events WHERE batch=? ORDER BY ordinal', (first['batch'],))
+    for row in legacy:
+        store.db.execute('UPDATE activity_events SET payload=?,frame=? WHERE batch=? AND ordinal=?',
+                         (row['payload'], row['frame'], first['batch'], row['ordinal']))
     store.db.execute('UPDATE activity_projections SET payload=? WHERE id=(SELECT id FROM activity_projections LIMIT 1)',
                      (json.dumps(first),))
+    assert store.rows('SELECT payload,frame FROM activity_events WHERE batch=? ORDER BY ordinal', (first['batch'],)) == [
+        {'payload': row['payload'], 'frame': row['frame']} for row in legacy]
+    old = source_snapshot(path, at(earlier))['activity_projection']
+    assert old['batch'] == first['batch'] and not old['issues']
+    assert old['cash_reconciliation']['cash'] == '99999.70'
     store.close()
     reopened = Store(path, 'alpaca')
     try:
@@ -86,10 +99,137 @@ def test_mixed_accounting_rows_keep_raw_streams_and_exact_cash_after_restart(tmp
         batch = reopened.rows("SELECT payload FROM activity_batches WHERE phase='outcome' ORDER BY rowid DESC LIMIT 1")[0]
         assert bytes.fromhex(json.loads(batch['payload'])['raw_hex']) == raw
         frames = reopened.rows('SELECT frame FROM activity_events WHERE batch=? ORDER BY ordinal', (repeated['batch'],))
-        from backend.activity_feed import parse_sse
         assert [event for row in frames for event in parse_sse(row['frame'])] == capture['events']
         accounting = source_snapshot(path, at(NOW))
         assert accounting['activity_projection']['cash_reconciliation']['cash'] == '99999.70'
+    finally: reopened.close()
+
+
+@pytest.fixture
+def retained_accounting(tmp_path, monkeypatch):
+    """Synthetic current/reviewed conditions exercise the gate, not private acceptance."""
+    monkeypatch.setattr('backend.activity_feed.utcnow', lambda: NOW)
+    path = tmp_path/'retained.sqlite'
+    store = Store(path, 'alpaca')
+    capture = json.loads((FIXTURE/'activity-sse.json').read_text())
+    mapping = json.loads((FIXTURE/'mapping.json').read_text())
+    raw = (FIXTURE/'activity-sse.raw').read_bytes()
+    import_ledger(store, json.loads((FIXTURE/'ledger-selected-readonly.json').read_text()))
+    snapshot = store.get('account_snapshot');snapshot['at'] = NOW;store.put('account_snapshot', snapshot)
+    capture['request']['params']['until'] = capture['request']['received_at'] = NOW
+    mapping['kind'] = 'reviewed-provider'
+    result = import_capture(store, capture, raw, mapping, now=NOW)
+    try:
+        assert not result['issues'] and len(result['effects']) == 8
+        assert current_accounting(store, enabled=True, now=NOW)['accounting_by_symbol']['BTC']['passed']
+        yield path, store, capture, raw, mapping, result
+    finally: store.close()
+
+
+@pytest.mark.parametrize('column', ['payload', 'frame'])
+@pytest.mark.parametrize('attack', ['missing', 'changed'])
+def test_corrupt_selected_acquisition_blocks_publication_and_cached_accounting(retained_accounting, column, attack):
+    path, store, _, _, mapping, first = retained_accounting
+    reference = store.db.execute('SELECT '+column+' FROM activity_events WHERE batch=? ORDER BY ordinal LIMIT 1',
+                                 (first['batch'],)).fetchone()[0]
+    assert reference.startswith(REFERENCE)
+    key = reference[len(REFERENCE):]
+    if attack == 'missing': store.db.execute('DELETE FROM evidence_blobs WHERE sha256=?', (key,))
+    else: store.db.execute('UPDATE evidence_blobs SET payload=? WHERE sha256=?', (b'changed', key))
+    with pytest.raises(ValueError, match='Referenced evidence'):
+        publish_projection(store, first['batch'], mapping, now=NOW)
+    for result in (read_projection(store, cutoff=NOW), source_snapshot(path, at(NOW))['activity_projection']):
+        assert result['issues'] and not result['effects']
+        assert result['cash_reconciliation']['cash'] is None
+        assert not any(entry['passed'] for entry in result['by_symbol'].values())
+    current = current_accounting(store, enabled=True, now=NOW)
+    assert current['activity_coverage']['issues']
+    assert not any(entry['passed'] for entry in current['accounting_by_symbol'].values())
+    assert current['cash_reconciliation']['cash'] is None
+
+
+@pytest.mark.parametrize('column', ['payload', 'frame'])
+@pytest.mark.parametrize('attack', ['marker', 'other_reference'])
+def test_damaged_or_misbound_reference_cannot_be_accepted_as_legacy_evidence(retained_accounting, column, attack):
+    path, store, _, _, mapping, first = retained_accounting
+    rows = store.db.execute('SELECT ordinal,'+column+' FROM activity_events WHERE batch=? ORDER BY ordinal LIMIT 2',
+                            (first['batch'],)).fetchall()
+    original = rows[0][1]
+    changed = bytes([original[0]^0x80])+original[1:] if attack == 'marker' else rows[1][1]
+    store.db.execute('UPDATE activity_events SET '+column+'=? WHERE batch=? AND ordinal=?',
+                     (changed, first['batch'], rows[0][0]))
+    for result in (read_projection(store, cutoff=NOW), source_snapshot(path, at(NOW))['activity_projection']):
+        assert result['issues'] and not result['effects']
+        assert result['cash_reconciliation']['cash'] is None
+    current = current_accounting(store, enabled=True, now=NOW)
+    assert not any(entry['passed'] for entry in current['accounting_by_symbol'].values())
+    try: publication = publish_projection(store, first['batch'], mapping, now=NOW)
+    except ValueError: pass
+    else: assert publication['issues'] and not publication['effects']
+
+
+@pytest.mark.parametrize('loss', ['one_delivery', 'whole_batch'])
+def test_missing_selected_delivery_blocks_cached_accounting(retained_accounting, loss):
+    path, store, _, _, _, first = retained_accounting
+    query = 'DELETE FROM activity_events WHERE batch=?'
+    if loss == 'one_delivery': query += ' AND ordinal=0'
+    store.db.execute(query, (first['batch'],))
+    for result in (read_projection(store, cutoff=NOW), source_snapshot(path, at(NOW))['activity_projection']):
+        assert result['issues'] and not result['effects']
+        assert result['cash_reconciliation']['cash'] is None
+    current = current_accounting(store, enabled=True, now=NOW)
+    assert not any(entry['passed'] for entry in current['accounting_by_symbol'].values())
+
+
+def test_accounting_cutoff_excludes_corrupt_later_acquisition(retained_accounting, monkeypatch):
+    path, store, capture, _, mapping, first = retained_accounting
+    later = '2030-01-01T00:01:00+00:00'
+    monkeypatch.setattr('backend.activity_feed.utcnow', lambda: later)
+    # A distinct later frame must not be decoded while reading the earlier batch.
+    raw = b''.join(('id: later\ndata: '+json.dumps(event)+'\n\n').encode() for event in capture['events'])
+    second = import_capture(store, capture, raw, mapping, now=later)
+    frame = store.db.execute('SELECT frame FROM activity_events WHERE batch=? LIMIT 1', (second['batch'],)).fetchone()[0]
+    store.db.execute('DELETE FROM evidence_blobs WHERE sha256=?', (frame[len(REFERENCE):],))
+    for result in (read_projection(store, cutoff=NOW), source_snapshot(path, at(NOW))['activity_projection']):
+        assert result['batch'] == first['batch'] and not result['issues']
+        assert len(result['effects']) == 8 and result['cash_reconciliation']['cash'] == '99999.70'
+    assert read_projection(store, cutoff=later)['issues']
+
+
+@pytest.mark.parametrize('column', ['payload', 'frame'])
+def test_shared_blob_corruption_retains_rejected_deliveries_and_raw_stream_after_restart(retained_accounting, column):
+    path, store, capture, raw, mapping, first = retained_accounting
+    reference = store.db.execute('SELECT '+column+' FROM activity_events WHERE batch=? ORDER BY ordinal LIMIT 1',
+                                 (first['batch'],)).fetchone()[0]
+    key = reference[len(REFERENCE):]
+    store.db.execute('UPDATE evidence_blobs SET payload=? WHERE sha256=?', (b'changed', key))
+    binding = store.get('account_binding')
+    batch = start_batch(store, binding, capture['request']['params']['since'], NOW)
+    result = {'complete': True, 'account_id': binding, 'events': capture['events'], 'raw': raw,
+              'received_at': NOW, 'historical_import': True, **capture['request']['params']}
+    retain_batch(store, batch, binding, result)
+    assert result['complete'] is False and result['error']
+    store.close()
+    reopened = Store(path, 'alpaca')
+    try:
+        rows = reopened.rows('SELECT * FROM activity_events WHERE batch=? ORDER BY ordinal', (batch,))
+        parser = SSEParser();parser.feed(raw, final=True)
+        assert [row['ordinal'] for row in rows] == list(range(len(capture['events'])))
+        assert [json.loads(row['payload']) for row in rows] == capture['events']
+        assert [row['frame'] for row in rows] == [frame for _, frame in parser.frames]
+        assert all(row['account'] == binding and row['at'] == NOW for row in rows)
+        assert [row['sha256'] for row in rows] == [digest(event) for event in capture['events']]
+        receipt = json.loads(reopened.rows("SELECT payload FROM activity_batches WHERE id=? AND phase='outcome'", (batch,))[0]['payload'])
+        assert receipt['complete'] is False and receipt['error'] == result['error']
+        assert bytes.fromhex(receipt['raw_hex']) == raw
+        assert receipt['raw_sha256'] == hashlib.sha256(raw).hexdigest()
+        assert reopened.db.execute('SELECT payload FROM evidence_blobs WHERE sha256=?', (key,)).fetchone()[0] == b'changed'
+        assert not current_accounting(reopened, enabled=True, now=NOW)['accounting_by_symbol']['BTC']['passed']
+        try: publication = publish_projection(reopened, batch, mapping, now=NOW)
+        except ValueError: pass  # Corrupt prior payloads also veto a new publication.
+        else:
+            assert publication['issues'] and not publication['effects']
+            assert publication['cash_reconciliation']['cash'] is None
     finally: reopened.close()
 
 
