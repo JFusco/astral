@@ -108,7 +108,9 @@ def source_snapshot(path, cutoff):
                     except ValueError:issues['invalid_state_'+key] += 1
         # Stay in the same read transaction as the retained rows above.
         class LedgerRead:
-            def rows(self, sql, args=()):return [dict(r) for r in db.execute(sql, args)]
+            def rows(self, sql, args=()):
+                from .evidence_codec import unpack_row
+                return [unpack_row(r, db) for r in db.execute(sql, args)]
             def get(self, key, default=None):
                 row = db.execute('SELECT value FROM state WHERE key=?', (key,)).fetchone()
                 return json.loads(row[0]) if row else default

@@ -14,6 +14,8 @@ import time
 import httpx
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from backend.evidence_codec import unpack_text
 DB = ROOT/'runtime/astral-dogfood.sqlite'
 URL = 'http://127.0.0.1:8766/api/state'
 
@@ -35,7 +37,7 @@ def audit(after):
         events=connection.execute('SELECT seq,type,payload FROM events WHERE seq>? ORDER BY seq',(after,)).fetchall()
         methods={};errors=0
         for _,kind,payload in events:
-            item=json.loads(payload)
+            item=json.loads(unpack_text(payload))
             if kind in {'api_request','api_request_failed'}:
                 method=item.get('method','unknown');methods[method]=methods.get(method,0)+1
             if kind=='api_request' and item.get('status',200)>=400:errors+=1

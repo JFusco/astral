@@ -176,7 +176,8 @@ def main():
             receipt = {'kind': 'private-original-acceptance', 'at': utcnow(), 'checks': checks, 'projection': result,
                        'inventory': json.loads(inventory), 'connected': connected_receipt, 'source_files': originals,
                        'mapping_sha256': digest(mapping), 'implementation_sha256': {
-                           p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in Path(__file__).parent.glob('activity_*.py')},
+                           p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in
+                           [*Path(__file__).parent.glob('activity_*.py'), Path(__file__).with_name('evidence_codec.py')]},
                        'orders_enabled': False, 'ledger_adjustments': False}
             path = output/'receipt.json';path.write_text(json.dumps(receipt, indent=2)+'\n');path.chmod(0o600)
         finally:

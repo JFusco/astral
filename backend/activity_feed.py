@@ -13,10 +13,12 @@ from .activity_projection import balances_match, canonical, digest, instant, inp
 from .config import SYMBOLS
 from .executor_ownership import account_identity
 from .store import utcnow
+from .evidence_codec import pack_text, reference_text, reference_bytes
 
 ATTEMPT_SECONDS, STREAM_SECONDS, IDLE_SECONDS = 60, 30, 8
 MAX_EVENTS, MAX_BYTES, MAX_FRAME = 10000, 8*1024*1024, 64*1024
 SCHEMA = '''
+CREATE TABLE IF NOT EXISTS evidence_blobs(sha256 BLOB PRIMARY KEY,payload BLOB NOT NULL);
 CREATE TABLE IF NOT EXISTS activity_batches(id TEXT,phase TEXT,account TEXT,at TEXT,payload TEXT,PRIMARY KEY(id,phase));
 CREATE TABLE IF NOT EXISTS activity_events(batch TEXT,ordinal INTEGER,account TEXT,event_id TEXT,ref_id TEXT,type TEXT,at TEXT,sha256 TEXT,payload TEXT,frame BLOB,PRIMARY KEY(batch,ordinal));
 CREATE INDEX IF NOT EXISTS activity_delivery ON activity_events(account,event_id);
@@ -178,8 +180,10 @@ def retain_batch(store, batch, account, result):
             delivery, kind, ref = (activity_identifier(event.get(k)) for k in ('event_id', 'activity_type', 'ref_id'))
             if None in (delivery, kind, ref):
                 result.update(complete=False, error='invalid_activity_identity')
-            prior = store.rows('SELECT DISTINCT sha256 FROM activity_events WHERE account=? AND (event_id=? OR (type=? AND ref_id=?))',
-                               (account, delivery, kind, ref))
+            # Keep both identity checks indexed as acquisition history grows.
+            prior = store.rows('SELECT sha256 FROM activity_events WHERE account=? AND event_id=? '
+                               'UNION SELECT sha256 FROM activity_events WHERE account=? AND type=? AND ref_id=?',
+                               (account, delivery, account, kind, ref))
             for old in prior:
                 if old['sha256'] != sha:
                     conflict = {'prior_sha256': old['sha256'], 'new_sha256': sha, 'ref_id': event.get('ref_id')}
@@ -187,11 +191,12 @@ def retain_batch(store, batch, account, result):
                                      (digest(conflict), account, at, canonical(conflict)))
             frame = frames[index][1] if index < len(frames) else payload.encode()
             store.db.execute('INSERT INTO activity_events VALUES(?,?,?,?,?,?,?,?,?,?)',
-                             (batch, index, account, delivery, ref, kind, at, sha, payload, frame))
+                             (batch, index, account, delivery, ref, kind, at, sha,
+                              reference_text(store.db, payload), reference_bytes(store.db, frame)))
         receipt = {key: value for key, value in result.items() if key not in ('events', 'raw')}
         receipt['raw_hex'] = result.get('raw', b'').hex()
         receipt['raw_sha256'] = hashlib.sha256(result.get('raw', b'')).hexdigest()
-        store.db.execute('INSERT INTO activity_batches VALUES(?,?,?,?,?)', (batch, 'outcome', account, at, canonical(receipt)))
+        store.db.execute('INSERT INTO activity_batches VALUES(?,?,?,?,?)', (batch, 'outcome', account, at, pack_text(canonical(receipt))))
 
 
 async def collect_batch(broker, store, *, critical=True, refresh_snapshot=False):
@@ -275,8 +280,8 @@ def publish_projection(store, batch, mapping, *, now=None):
         # Any omission from previously retained covered history blocks the scan.
         refs = {activity_identifier(e.get('ref_id')) for e in events}
         refs.discard(None)
-        for prior in store.rows("SELECT DISTINCT ref_id,json_extract(payload,'$.at') AS at FROM activity_events WHERE account=? AND batch<>?", (binding, batch)):
-            try: covered = instant(coverage['since']) <= instant(prior['at']) <= instant(coverage['until'])
+        for prior in store.rows("SELECT DISTINCT ref_id,payload FROM activity_events WHERE account=? AND batch<>?", (binding, batch)):
+            try: covered = instant(coverage['since']) <= instant(json.loads(prior['payload'])['at']) <= instant(coverage['until'])
             except (ValueError, KeyError): covered = True
             if covered and prior['ref_id'] not in refs:
                 result['issues'].append('activity_disappeared_from_replay')
@@ -290,7 +295,7 @@ def publish_projection(store, batch, mapping, *, now=None):
         store.db.execute('INSERT OR IGNORE INTO activity_associations VALUES(?,?,?,?)', (sha, binding, now, canonical(mapping)))
         result.update(batch=batch, published_at=now, coverage={k: coverage.get(k) for k in ('since', 'until', 'received_at', 'complete')})
         store.db.execute('INSERT INTO activity_projections VALUES(?,?,?,?,?)',
-                         (uuid.uuid4().hex, binding, now, result['input_sha256'], canonical(result)))
+                         (uuid.uuid4().hex, binding, now, result['input_sha256'], pack_text(canonical(result))))
         return result
 
 

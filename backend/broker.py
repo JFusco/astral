@@ -12,6 +12,7 @@ import httpx
 from .config import DATA_URL, PAPER_URL, SYMBOLS
 from .store import utcnow
 from .executor_ownership import AccountLease, OwnershipError, account_identity
+from .evidence_codec import pack_text
 
 def D(value):
     number = Decimal(str(value))
@@ -170,7 +171,7 @@ class AlpacaPaper:
                     self.store.db.execute("CREATE TABLE IF NOT EXISTS depth_snapshots(id TEXT PRIMARY KEY,at TEXT NOT NULL,symbol TEXT NOT NULL,payload TEXT NOT NULL)")
                     from .store import dumps
                     self.store.db.execute("INSERT OR IGNORE INTO depth_snapshots VALUES(?,?,?,?)",
-                                          (depth["raw_sha256"], received, symbol, dumps(raw_book)))
+                                          (depth["raw_sha256"], received, symbol, pack_text(dumps(raw_book))))
                 except (ValueError, KeyError, TypeError):
                     q["depth_status"] = "unverified; stale, missing or inconsistent book"
         except BrokerFailure:

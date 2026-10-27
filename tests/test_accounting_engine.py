@@ -226,6 +226,9 @@ def test_readonly_cutoff_contract_and_private_exports(tmp_path):
             db.execute('INSERT INTO orders VALUES(?,?,?,?,?,?,?,?)', (r['client_id'], r['request'], '{}', 'filled', 0, 0, KNOWN, KNOWN))
         r = data['fills'][0];db.execute('INSERT INTO fills VALUES(?,?,?,?)', (r['id'], r['client_id'], KNOWN, r['payload']))
         db.execute('INSERT INTO fills VALUES(?,?,?,?)', ('future', 'future', '2026-01-03T00:00:00+00:00', 'DO NOT PARSE'))
+    # End the owned writer before measuring read-only byte preservation; a
+    # transaction context alone leaves a connection and deferred WAL checkpoint.
+    db.close()
     before = path.read_bytes()
     with readonly(path) as db:
         with pytest.raises(sqlite3.OperationalError):db.execute('DELETE FROM fills')

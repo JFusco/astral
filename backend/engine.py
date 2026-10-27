@@ -9,6 +9,7 @@ from pathlib import Path
 from .broker import AlpacaPaper, Simulator, BrokerFailure, TERMINAL, D
 from .config import SYMBOLS
 from .store import dumps, utcnow
+from .evidence_codec import pack_text
 from .risk import VERSION, propose
 from .inventory import attribute, book_for
 from .research import screen
@@ -573,7 +574,7 @@ class Engine:
             digest = hashlib.sha256(json.dumps({"intent": intent, "context": context}, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
             with self.store.transaction():
                 self.store.db.execute("INSERT INTO shadow(at,intent,result,context,input_hash) VALUES(?,?,?,?,?)",
-                                      (context["decision_at"], dumps(intent), dumps(result), dumps(context), digest))
+                                      (context["decision_at"], dumps(intent), dumps(result), pack_text(dumps(context)), digest))
                 self.store.event("shadow_decision", {"symbol": intent["symbol"], "strategy_id": intent["strategy_id"], **result, "input_hash": digest})
             return {**result, "input_hash": digest}
 
@@ -616,7 +617,7 @@ class Engine:
                 result["inventory_gate_passed"] = not (inventory["differences"] or inventory["errors"])
                 if inventory["differences"] or inventory["errors"]:
                     result.update(action="wait", reason="Inventory reconciliation required before strategy timing")
-                self.store.db.execute("INSERT INTO timing(at,symbol,strategy,result,context) VALUES(?,?,?,?,?)", (now, symbol, horizon, dumps(result), dumps(context)))
+                self.store.db.execute("INSERT INTO timing(at,symbol,strategy,result,context) VALUES(?,?,?,?,?)", (now, symbol, horizon, dumps(result), pack_text(dumps(context))))
                 rows.append({"symbol": symbol, "strategy": horizon, **result})
                 if horizon=="swing" and symbol=="BTC" and packet:
                     experiment.observe(self.store, packet, result, context)
@@ -670,7 +671,7 @@ class Engine:
             with self.store.transaction():
                 self.store.put("research_packets", packets)
                 self.store.put("research_review", review)
-                self.store.db.execute("INSERT INTO research(at,packet,result,usage) VALUES(?,?,?,?)", (now, dumps(packets), dumps(review), dumps(review.get("usage", {}))))
+                self.store.db.execute("INSERT INTO research(at,packet,result,usage) VALUES(?,?,?,?)", (now, pack_text(dumps(packets)), dumps(review), dumps(review.get("usage", {}))))
                 self.store.event("research_cycle", {"symbols": len(packets), "eligible": sum(p["eligible"] for p in packets), "review_status": review["status"]})
             if frozen and history.get(frozen["symbol"]):
                 try:
