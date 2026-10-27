@@ -1,77 +1,76 @@
 # Graph Report - astral-trading  (2026-10-27)
 
 ## Corpus Check
-- 210 files · ~85,722 words
+- 210 files · ~86,302 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1581 nodes · 5074 edges · 60 communities (54 shown, 6 thin omitted)
+- 1582 nodes · 5087 edges · 59 communities (54 shown, 5 thin omitted)
 - Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 255 edges (avg confidence: 0.7)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `b0562a02`
+- Built from commit: `28388285`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- timestamp
+- test_event_sources.py
 - Engine
 - run
 - dumps
-- read.ts
-- test_portfolio_replay.py
+- accounting-content.tsx
+- D
 - ui.ts
 - test_learning_engine.py
 - test_state_contract.py
-- test_execution_pilot.py
+- app-frame.tsx
 - scripts
-- provider.tsx
+- useDashboard
 - test_executor_ownership.py
 - compilerOptions
 - contracts.ts
 - support.cjs
 - screen
-- utcnow
+- test_readiness_gates.py
 - motion.tsx
-- health-page.tsx
-- replay_runner.py
+- health-view-state.tsx
+- packet-dialog.tsx
 - relay.ts
 - test_activity_feed.py
-- liquidity_runner.py
-- test_experiment.py
-- activity_feed.py
+- ValueError
+- Meetings
+- activity_validation.py
 - quantconnect/__init__.py
-- test_liquidity_experiment.py
+- datetime
 - devDependencies
 - intelligence.py
-- AlpacaPaper
-- useDashboard
-- datetime
-- app-frame.tsx
+- Settings
+- asset-bar.tsx
+- utcnow
+- test_health_engine.py
 - test_activity_rollout.py
-- test_review_repairs.py
-- Schedule
+- test_risk.py
+- HealthEngine
 - validate_pr_body.cjs
 - test_evidence_storage.py
-- ValueError
-- overnight_watch.py
-- collect_batch
-- test_health_engine.py
-- navigation.tsx
-- retain_batch
 - Store
-- number
+- test_trade_history.py
+- activity_feed.py
+- HealthMonitor
+- navigation.tsx
+- parametrize
+- test_dogfood.py
+- decide
 - boundaries.test.ts
-- import_ledger
+- overnight_watch.py
 - check-skills.cjs
-- audit_crypto
+- test_stage2_validation.py
+- document
 - commitlint.config.cjs
 - proxy.ts
 - next.config.ts
-- test_quantconnect_validation.py
 - prepare-standalone.mjs
-- Connection
 
 ## God Nodes (most connected - your core abstractions)
 1. `Store` - 111 edges
@@ -86,69 +85,69 @@
 10. `AlpacaPaper` - 47 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `test_nanosecond_cutoffs_and_decimal_input_contracts()` --calls--> `instant()`  [EXTRACTED]
-  tests/test_activity_feed.py → backend/activity_projection.py
-- `test_cancel_keeps_reservation_and_models_fill_race_until_ack()` --calls--> `D()`  [INFERRED]
-  tests/test_portfolio_replay.py → backend/broker.py
-- `test_cash_exhaustion_and_pending_orders_never_double_spend()` --calls--> `D()`  [INFERRED]
-  tests/test_portfolio_replay.py → backend/broker.py
-- `test_cash_is_reserved_before_fill_and_price_collar_bounds_purchase()` --calls--> `D()`  [INFERRED]
-  tests/test_portfolio_replay.py → backend/broker.py
-- `test_disconnect_and_unliquidated_position_remain_visible()` --calls--> `D()`  [INFERRED]
-  tests/test_portfolio_replay.py → backend/broker.py
+- `Providers` --uses--> `Settings`  [INFERRED]
+  tests/test_health_engine.py → backend/config.py
+- `FixedDateTime` --uses--> `Settings`  [INFERRED]
+  tests/test_state_contract.py → backend/config.py
+- `Stream` --uses--> `Settings`  [INFERRED]
+  tests/test_state_contract.py → backend/config.py
+- `FixedDateTime` --uses--> `RuleViolation`  [INFERRED]
+  tests/test_state_contract.py → backend/engine.py
+- `Stream` --uses--> `RuleViolation`  [INFERRED]
+  tests/test_state_contract.py → backend/engine.py
 
 ## Import Cycles
 - None detected.
 
-## Communities (60 total, 6 thin omitted)
+## Communities (59 total, 5 thin omitted)
 
-### Community 0 - "timestamp"
-Cohesion: 0.11
-Nodes (30): Retain scoped official calendar catalogs; never certify missing categories., Maintenance needs two current publisher lists. NY Fed remains partial BLS., retain_additional_scopes(), retain_scopes(), catalog(), Cells, event(), maintenance() (+22 more)
+### Community 0 - "test_event_sources.py"
+Cohesion: 0.10
+Nodes (29): Retain scoped official calendar catalogs; never certify missing categories., Maintenance needs two current publisher lists. NY Fed remains partial BLS., retain_additional_scopes(), retain_scopes(), catalog(), Cells, event(), maintenance() (+21 more)
 
 ### Community 1 - "Engine"
-Cohesion: 0.15
-Nodes (4): age(), Engine, symbol_for(), book_for()
+Cohesion: 0.05
+Nodes (32): ExitPlan, Halt, Intent, ResearchBar, RiskCandidate, AlpacaPaper, BrokerFailure, Limiter (+24 more)
 
 ### Community 2 - "run"
-Cohesion: 0.11
-Nodes (49): D(), Failure scenarios and adversarial selection cases; all trades are synthetic., test_ambiguous_fee_is_not_assigned_to_a_strategy(), test_intraday_exit_cannot_liquidate_swing_inventory(), test_late_confirmed_asset_fee_is_idempotent_and_reconciles(), test_local_exit_survives_restart_and_unknown_response(), test_quantity_and_shared_risk_boundaries(), test_read_only_adapter_blocks_post_and_delete_before_transport() (+41 more)
+Cohesion: 0.14
+Nodes (25): test_all_vetoed_cycle_never_calls_model(), test_new_invalid_fee_is_never_applied(), parametrize, run(), test_accepted_timeout_recovered_without_second_post(), test_adapter_fixed_hosts_no_post_retries_and_cooldown(), test_alpaca_state_account_fields_match_dashboard_number_contract(), test_concurrent_duplicate_intent_submits_once() (+17 more)
 
 ### Community 3 - "dumps"
 Cohesion: 0.06
 Nodes (112): at(), canonical(), cost_report(), digest(), evaluate(), main(), number(), precise() (+104 more)
 
-### Community 4 - "read.ts"
-Cohesion: 0.09
-Nodes (24): dynamic, metadata, Page(), dynamic, metadata, RootLayout(), dynamic, metadata (+16 more)
+### Community 4 - "accounting-content.tsx"
+Cohesion: 0.19
+Nodes (12): dynamic, metadata, Page(), AccountingBoundaries(), AccountingContent(), AccountingCosts(), AccountingGross(), AccountingRecords() (+4 more)
 
-### Community 5 - "test_portfolio_replay.py"
-Cohesion: 0.14
-Nodes (36): Assumptions, Portfolio, replay(), stress_suite(), synthetic_events(), at(), clock(), pick() (+28 more)
+### Community 5 - "D"
+Cohesion: 0.11
+Nodes (47): D(), Assumptions, Portfolio, replay(), build_report(), code_hashes(), connect_readonly(), export_events() (+39 more)
 
 ### Community 6 - "ui.ts"
-Cohesion: 0.14
-Nodes (21): AccountingBoundaries(), AccountingCosts(), AccountingGross(), AccountingRecords(), AccountingSummary(), amounts(), LearningBoundaries(), LearningInventory() (+13 more)
+Cohesion: 0.11
+Nodes (23): metadata, dynamic, metadata, Page(), HealthChanges(), HealthPage(), LearningBoundaries(), LearningContent() (+15 more)
 
 ### Community 7 - "test_learning_engine.py"
 Cohesion: 0.15
 Nodes (39): digest(), encode(), evaluate(), main(), markdown(), packet_checks(), protected(), protected_windows() (+31 more)
 
 ### Community 8 - "test_state_contract.py"
-Cohesion: 0.18
-Nodes (23): at(), build_state(), buy(), free_port(), normalize(), pin_clock(), parametrize, Dashboard read-path contract: fixed Store-seeded ledgers and a pinned clock.… (+15 more)
+Cohesion: 0.16
+Nodes (23): at(), build_state(), buy(), FixedDateTime, free_port(), normalize(), pin_clock(), parametrize (+15 more)
 
-### Community 9 - "test_execution_pilot.py"
-Cohesion: 0.25
-Nodes (9): ExecutionPilot, pilot(), parametrize, test_crash_after_entry_resumes_exit_without_new_entry(), test_final_pilot_boundary_blocks_wrong_or_oversize_requests(), test_pilot_and_strategy_workers_cannot_share_authority(), test_pilot_recovers_lost_accepted_entry_without_duplicate(), test_pilot_refuses_existing_positions() (+1 more)
+### Community 9 - "app-frame.tsx"
+Cohesion: 0.21
+Nodes (7): dynamic, metadata, Provider(), AppFrame(), Clock(), HaltButton(), OpeningPanels()
 
 ### Community 10 - "scripts"
 Cohesion: 0.05
 Nodes (37): @commitlint/cli, @commitlint/config-conventional, @commitlint/lint, @commitlint/load, husky, devDependencies, @commitlint/cli, @commitlint/config-conventional (+29 more)
 
-### Community 11 - "provider.tsx"
-Cohesion: 0.21
-Nodes (15): Context, Detail, EvidenceDialog(), PacketDialog(), ResearchExperiments(), ResearchGates(), ResearchPackets(), ResearchStatus() (+7 more)
+### Community 11 - "useDashboard"
+Cohesion: 0.12
+Nodes (31): HealthFooterStatus(), EquityChart(), ExecutionStream(), ModeBadge(), OverviewFooter(), OverviewPage(), views, PortfolioCards() (+23 more)
 
 ### Community 12 - "test_executor_ownership.py"
 Cohesion: 0.22
@@ -159,8 +158,8 @@ Cohesion: 0.07
 Nodes (29): compilerOptions, allowJs, checkJs, esModuleInterop, incremental, isolatedModules, jsx, lib (+21 more)
 
 ### Community 14 - "contracts.ts"
-Cohesion: 0.06
-Nodes (34): api(), errorMessage(), empty, Seed, Snapshot, accountingSchema, amount, counts (+26 more)
+Cohesion: 0.08
+Nodes (26): OrderDialog(), SystemView(), api(), errorMessage(), empty, quoteIsFresh(), Snapshot, amount (+18 more)
 
 ### Community 15 - "support.cjs"
 Cohesion: 0.12
@@ -174,80 +173,80 @@ Nodes (26): assert, cli, config, fs, path, {
 }, test, assert (+18 more)
 
 ### Community 16 - "screen"
-Cohesion: 0.19
-Nodes (19): CodexReviewer, material_hash(), screen(), validate_review(), parametrize, selection_fixture(), test_model_cannot_choose_unlisted_ticker_or_use_news_as_authority(), test_model_cannot_override_veto_or_invent_citations_or_numbers() (+11 more)
+Cohesion: 0.14
+Nodes (25): CodexReviewer, command(), material_hash(), Bounded Codex CLI reviewer. Broker credentials and tools are not inherited., screen(), validate_review(), discover_crypto(), Read-only venue discovery. A listing is never execution authorization. (+17 more)
 
-### Community 17 - "utcnow"
-Cohesion: 0.13
-Nodes (26): parse_bea(), Scoped BEA schedule; a date is retained without inventing an unspecified…, Validate provider fee records without estimating missing fees or rewriting…, record_fee(), validate_activity(), calendar_coverage(), Evidence-by-evidence readiness. No threshold changes or execution capability., All scoped categories need retained, current, forward-covering evidence.… (+18 more)
+### Community 17 - "test_readiness_gates.py"
+Cohesion: 0.12
+Nodes (21): parse_bea(), HTMLParser, Scoped BEA schedule; a date is retained without inventing an unspecified…, Schedule, Validate provider fee records without estimating missing fees or rewriting…, record_fee(), validate_activity(), calendar_coverage() (+13 more)
 
 ### Community 18 - "motion.tsx"
 Cohesion: 0.14
-Nodes (15): Dialog(), AnimationProvider(), initialMode(), initialSystem(), LoadingPanel(), Mode, readMode(), readSystem() (+7 more)
+Nodes (16): HealthSummary(), Heartbeat(), AnimationProvider(), initialMode(), initialSystem(), LoadingPanel(), Mode, readMode() (+8 more)
 
-### Community 19 - "health-page.tsx"
-Cohesion: 0.10
-Nodes (26): metadata, HealthChanges(), HealthDetails(), HealthFooterStatus(), HealthMap(), HealthPage(), HealthSummary(), attention (+18 more)
+### Community 19 - "health-view-state.tsx"
+Cohesion: 0.13
+Nodes (21): HealthDetails(), HealthMap(), attention, inTopic(), reportedNodes(), shown(), Context, HealthViewState() (+13 more)
 
-### Community 20 - "replay_runner.py"
-Cohesion: 0.19
-Nodes (18): contract(), observe(), register(), state(), build_report(), code_hashes(), connect_readonly(), export_events() (+10 more)
+### Community 20 - "packet-dialog.tsx"
+Cohesion: 0.20
+Nodes (10): Dialog(), IntelligenceFeed(), SourceDialog(), ViewDialog(), Detail, EvidenceDialog(), Evidence(), SourceLink() (+2 more)
 
 ### Community 21 - "relay.ts"
-Cohesion: 0.13
-Nodes (17): Context, dynamic, GET(), POST(), runtime, acceptsGzip(), compress, getPaths (+9 more)
+Cohesion: 0.05
+Nodes (35): Context, dynamic, GET(), POST(), runtime, RootLayout(), Connection, Seed (+27 more)
 
 ### Community 22 - "test_activity_feed.py"
-Cohesion: 0.12
-Nodes (30): parse_sse(), ledger_source(), The caller holds a read transaction or the Store lock across this snapshot., destinations(), pure(), parametrize, Behavioral protection for money counted once and unknown evidence staying…, test_absence_of_fee_records_is_never_zero_fee_evidence_even_if_balances_match() (+22 more)
+Cohesion: 0.10
+Nodes (43): parse_sse(), start_batch(), ledger_source(), The caller holds a read transaction or the Store lock across this snapshot., destinations(), controlled_current(), pure(), parametrize (+35 more)
 
-### Community 23 - "liquidity_runner.py"
-Cohesion: 0.28
-Nodes (19): digest(), Policy, binding(), get(), get_inventory_status(), hashes(), load(), now() (+11 more)
+### Community 23 - "ValueError"
+Cohesion: 0.05
+Nodes (86): contract(), diagnose(), digest(), observe(), Frozen research contract and append-only observations. No execution interface., Retrospective price-only prefixes. Never pretend these were known earlier., register(), source_hashes() (+78 more)
 
-### Community 24 - "test_experiment.py"
-Cohesion: 0.12
-Nodes (24): Meetings, parse_fomc(), HTMLParser, Official FOMC meeting dates, scoped context only; no complete macro calendar., propose(), ATR14 + trend/breakout candidate and fixed fractional loss-budget sizing. All…, context(), fomc_html() (+16 more)
+### Community 25 - "activity_validation.py"
+Cohesion: 0.18
+Nodes (26): publish_projection(), balances_match(), canonical(), digest(), input_digest(), instant(), load_mapping(), number() (+18 more)
 
-### Community 25 - "activity_feed.py"
-Cohesion: 0.20
-Nodes (24): activity_identifier(), batch_events(), main(), publish_projection(), Bounded paper activity acquisition and immutable evidence publication., Validate the selected acquisition, including legacy frame semantics., balances_match(), canonical() (+16 more)
-
-### Community 27 - "test_liquidity_experiment.py"
-Cohesion: 0.23
-Nodes (15): evaluate(), floor(), Quote-only liquidity experiment. No orders, fills, positions, P&L or promotion., turnover(), walk(), Same-venue REST book/quote validation. Visible depth never guarantees a fill., _validate(), validate_book() (+7 more)
+### Community 27 - "datetime"
+Cohesion: 0.15
+Nodes (23): parse_fomc(), Official FOMC meeting dates, scoped context only; no complete macro calendar., Isolated deterministic portfolio execution model. No broker or Store imports.…, Point-in-time evidence screening; language models cannot override vetoes., floor_step(), number(), propose(), Reproducible research proposals. No network, randomness, or order side effects. (+15 more)
 
 ### Community 28 - "devDependencies"
 Cohesion: 0.04
 Nodes (48): eslint, eslint-config-next, @fontsource-variable/dm-sans, @fontsource-variable/space-grotesk, dependencies, @fontsource-variable/dm-sans, @fontsource-variable/space-grotesk, motion (+40 more)
 
 ### Community 29 - "intelligence.py"
-Cohesion: 0.08
-Nodes (28): ASTRAL paper-only service., collect(), health_inputs(), intelligence(), lifespan(), Local-only companion: independent DB and lifecycle preserve the shadow pilot., clean(), Collector (+20 more)
+Cohesion: 0.19
+Nodes (12): ASTRAL paper-only service., clean(), date(), named(), parse(), Independent public intelligence collector. No broker, credentials or order…, safe_url(), Source (+4 more)
 
-### Community 30 - "AlpacaPaper"
-Cohesion: 0.07
-Nodes (17): AlpacaPaper, Limiter, Fixed-host Alpaca paper adapter and a separately labelled durable simulator., No remote API. Fills are synthetic and do not model queueing/market impact., Simulator, account_identity(), AccountLease, OwnershipError (+9 more)
+### Community 30 - "Settings"
+Cohesion: 0.18
+Nodes (11): Settings, test_read_only_adapter_blocks_post_and_delete_before_transport(), test_shadow_cannot_submit_even_with_repeated_approvals(), book(), test_quote_adapter_preserves_prices_and_units_unknown_if_book_fails(), test_quote_adapter_retains_raw_book_and_versions_new_normalization(), engine(), fixture (+3 more)
 
-### Community 31 - "useDashboard"
+### Community 31 - "asset-bar.tsx"
+Cohesion: 0.39
+Nodes (6): AssetBar(), Context, Selection, SelectionState(), useSelection(), UniverseSection()
+
+### Community 32 - "utcnow"
 Cohesion: 0.11
-Nodes (29): OrderDialog(), AssetBar(), ConnectionBanner(), EquityChart(), ExecutionStream(), IntelligenceFeed(), ModeBadge(), OverviewFooter() (+21 more)
+Nodes (20): Fixed-host Alpaca paper adapter and a separately labelled durable simulator., No remote API. Fills are synthetic and do not model queueing/market impact., Simulator, One explicitly authorized execution experiment; never an alpha strategy. Uses…, Credential-free local feed read; headlines remain untrusted scoped context., read_context(), Evidence-by-evidence readiness. No threshold changes or execution capability., utcnow() (+12 more)
 
-### Community 32 - "datetime"
-Cohesion: 0.17
-Nodes (12): command(), Bounded Codex CLI reviewer. Broker credentials and tools are not inherited., Frozen research contract and append-only observations. No execution interface., source_hashes(), One explicitly authorized execution experiment; never an alpha strategy. Uses…, Credential-free local feed read; headlines remain untrusted scoped context., Point-in-time evidence screening; language models cannot override vetoes., datetime (+4 more)
-
-### Community 33 - "app-frame.tsx"
-Cohesion: 0.29
-Nodes (4): Clock(), ConnectionStatus(), HaltButton(), OpeningPanels()
+### Community 33 - "test_health_engine.py"
+Cohesion: 0.21
+Nodes (14): observations(), parametrize, Health contracts: temporary ledgers and HTTP fixtures; never models/brokers., report(), test_engine_health_is_separate_from_model_enablement_and_market_closure(), test_event_driven_execution_worker_is_judged_by_status_not_age(), test_local_health_inputs_are_small_read_only_and_do_not_export_account_data(), test_local_observation_failures_do_not_reuse_healthy_state() (+6 more)
 
 ### Community 34 - "test_activity_rollout.py"
-Cohesion: 0.09
-Nodes (34): Latency, Observation, Fixed-size histogram retains every observation without per-request rows., Sample current availability without treating it as collection success., activated_settings(), check_ledger(), ledger_bytes(), main() (+26 more)
+Cohesion: 0.08
+Nodes (37): Latency, Observation, Fixed-size histogram retains every observation without per-request rows., Sample current availability without treating it as collection success., activated_settings(), check_ledger(), ledger_bytes(), main() (+29 more)
 
-### Community 35 - "test_review_repairs.py"
-Cohesion: 0.18
-Nodes (18): read_context(), daily_history(), fee(), parametrize, Locked review regressions. Synthetic brokers, patched models and tmp ledgers…, test_adapter_hashes_are_cached_local_and_covered_by_packet_hash(), test_all_vetoed_cycle_never_calls_model(), test_diagnostic_failure_still_journals_prospective_veto() (+10 more)
+### Community 35 - "test_risk.py"
+Cohesion: 0.24
+Nodes (12): inputs(), parametrize, test_account_restrictions_block(), test_bad_bars_abstain(), test_cost_hurdle_prevents_an_uneconomic_candidate(), test_exact_threshold_latches_across_reconcile_and_restart(), test_exact_wilder_atr_and_repeatable_sizing(), test_intraday_budget_costs_minimum_and_cash() (+4 more)
+
+### Community 36 - "HealthEngine"
+Cohesion: 0.26
+Nodes (5): lifespan(), Standalone health service, separate process and ledger from telemetry/trading., state(), fresh(), HealthEngine
 
 ### Community 37 - "validate_pr_body.cjs"
 Cohesion: 0.23
@@ -255,78 +254,78 @@ Nodes (11): fs, main(), readableText(), REQUIRED_CHECKS, REQUIRED_SECTIONS, sect
 
 ### Community 38 - "test_evidence_storage.py"
 Cohesion: 0.20
-Nodes (22): current_accounting(), Read-only compatibility with ledgers predating the new tables., read_projection(), pack_bytes(), pack_text(), Versioned lossless encoding for new bulky evidence; legacy rows stay intact., reference_bytes(), reference_text() (+14 more)
+Nodes (23): current_accounting(), Read-only compatibility with ledgers predating the new tables., read_projection(), pack_text(), unpack_bytes(), unpack_row(), unpack_text(), fixture (+15 more)
 
-### Community 39 - "ValueError"
-Cohesion: 0.18
-Nodes (10): diagnose(), Retrospective price-only prefixes. Never pretend these were known earlier., price_signal(), Pure OHLC hypothesis; caller validates provenance and time separately., QCAlgorithm, as_utc(), AstralBtcSignalParity, Compare both implementations in cloud memory; export aggregate diagnostics only. (+2 more)
+### Community 39 - "Store"
+Cohesion: 0.12
+Nodes (17): collect(), health_inputs(), intelligence(), lifespan(), Local-only companion: independent DB and lifecycle preserve the shadow pilot., Collector, Store, test_maintenance_empty_snapshot_304_extends_inspection_not_publication() (+9 more)
 
-### Community 40 - "overnight_watch.py"
-Cohesion: 0.25
-Nodes (9): audit(), now(), Bounded overnight observation of the existing GET-only localhost paper lab., safety(), watch(), write_summary(), parametrize, test_observer_counts_lost_write_and_http_failure() (+1 more)
+### Community 40 - "test_trade_history.py"
+Cohesion: 0.29
+Nodes (10): aggregate_daily(), seed(), aggregate(), batch(), parametrize, test_bad_trade_records_fail_closed(), test_history_shares_completed_days_and_reconstructs_each_immutable_batch(), test_missing_trade_day_is_not_filled_from_quotes() (+2 more)
 
-### Community 41 - "collect_batch"
-Cohesion: 0.16
-Nodes (13): collect_batch(), FeedError, Use the adapter's authentication, process boundary and request budget., Incremental SSE framing; raw acquisition bytes are retained separately., SSEParser, stream_activities(), unique_object(), Bounded observation of existing accounting, independent of trading readiness. (+5 more)
+### Community 41 - "activity_feed.py"
+Cohesion: 0.13
+Nodes (23): activity_identifier(), batch_events(), collect_batch(), FeedError, main(), Bounded paper activity acquisition and immutable evidence publication., Use the adapter's authentication, process boundary and request budget., Commit even rejected records before publishing or raising their failure. (+15 more)
 
-### Community 42 - "test_health_engine.py"
-Cohesion: 0.08
-Nodes (27): lifespan(), Standalone health service, separate process and ledger from telemetry/trading., state(), fresh(), HealthEngine, Independent assessments from telemetry observations; no trading authority., effective(), HealthMonitor (+19 more)
+### Community 42 - "HealthMonitor"
+Cohesion: 0.15
+Nodes (9): Independent assessments from telemetry observations; no trading authority., effective(), HealthMonitor, moment(), parse_report(), HTMLParser, Public provider reports, separate from account/model connectivity and risk. No…, StatusHeading (+1 more)
 
 ### Community 43 - "navigation.tsx"
 Cohesion: 0.40
 Nodes (3): NavLink(), Navigation(), pages
 
-### Community 44 - "retain_batch"
-Cohesion: 0.21
-Nodes (16): Commit even rejected records before publishing or raising their failure., retain_batch(), start_batch(), import_capture(), controlled_current(), A mock-provider acceptance, not evidence about another provider account., replay(), test_abandoned_batch_and_publication_failure_do_not_hide_evidence() (+8 more)
+### Community 44 - "parametrize"
+Cohesion: 0.18
+Nodes (11): daily_history(), fee(), parametrize, test_diagnostic_failure_still_journals_prospective_veto(), test_distinct_lab_still_copies_or_reuses(), test_identical_fee_duplicates_and_later_execution_are_idempotent(), test_invalid_confirmed_fee_revision_is_retained_and_latched(), test_lab_rejects_primary_alias_before_lock_or_store() (+3 more)
 
-### Community 45 - "Store"
-Cohesion: 0.10
-Nodes (36): create_app(), ExitPlan, Halt, Intent, ResearchBar, RiskCandidate, BrokerFailure, Exception (+28 more)
+### Community 45 - "test_dogfood.py"
+Cohesion: 0.22
+Nodes (15): Failure scenarios and adversarial selection cases; all trades are synthetic., test_ambiguous_fee_is_not_assigned_to_a_strategy(), test_api_shadow_does_not_enable_orders_and_rejects_bypass_fields(), test_intraday_exit_cannot_liquidate_swing_inventory(), test_late_confirmed_asset_fee_is_idempotent_and_reconciles(), test_local_exit_survives_restart_and_unknown_response(), test_quantity_and_shared_risk_boundaries(), test_readback_422_after_accepted_order_never_releases_reservation() (+7 more)
 
-### Community 46 - "number"
-Cohesion: 0.15
-Nodes (21): Isolated deterministic portfolio execution model. No broker or Store imports.…, floor_step(), number(), Reproducible research proposals. No network, randomness, or order side effects., decide(), Deterministic timing hypotheses. Produces candidates, never orders or fills., One-unit synthetic quote replay, with fills strictly AFTER decisions. Quote-…, replay() (+13 more)
+### Community 46 - "decide"
+Cohesion: 0.33
+Nodes (12): decide(), One-unit synthetic quote replay, with fills strictly AFTER decisions. Quote-…, replay(), test_disabled_model_keeps_deterministic_arm_in_new_observations(), event(), parametrize, test_entry_cancels_if_research_expires_during_latency(), test_entry_timing_fail_closed() (+4 more)
 
 ### Community 47 - "boundaries.test.ts"
 Cohesion: 0.32
 Nodes (6): allowlist, files, isClient(), lines(), root, text()
 
-### Community 48 - "import_ledger"
-Cohesion: 0.17
-Nodes (13): import_ledger(), Copy captured rows into a new disposable Store, leaving source bytes alone., verify_inputs(), document(), fixture, setup(), test_fixture_mapping_and_missing_originals_cannot_satisfy_private_acceptance(), test_sanitized_package_replays_without_private_inputs_and_counts_fees_once() (+5 more)
+### Community 48 - "overnight_watch.py"
+Cohesion: 0.25
+Nodes (9): audit(), now(), Bounded overnight observation of the existing GET-only localhost paper lab., safety(), watch(), write_summary(), parametrize, test_observer_counts_lost_write_and_http_failure() (+1 more)
 
 ### Community 49 - "check-skills.cjs"
 Cohesion: 0.33
 Nodes (6): checkSkills(), crypto, fs, hashSkillFolder(), path, ROOT
 
-### Community 50 - "audit_crypto"
-Cohesion: 0.32
-Nodes (7): audit_crypto(), Read-only reconciliation analysis. Hypotheses cannot become ledger entries., Compare authoritative gross executions and positions; explain, never waive. Fee…, reconciliation_fixture(), test_confirmed_fee_matches_and_duplicate_activity_is_not_counted_twice(), test_exact_fee_hypothesis_never_clears_an_unconfirmed_difference(), test_incomplete_or_conflicting_execution_evidence_cannot_match()
+### Community 50 - "test_stage2_validation.py"
+Cohesion: 0.20
+Nodes (13): audit_crypto(), Read-only reconciliation analysis. Hypotheses cannot become ledger entries., Compare authoritative gross executions and positions; explain, never waive. Fee…, parametrize, Synthetic decision-path and fault tests; none are broker-paper executions., reconciliation_fixture(), test_confirmed_fee_matches_and_duplicate_activity_is_not_counted_twice(), test_downstream_candidate_is_visible_but_inventory_still_vetoes() (+5 more)
+
+### Community 51 - "document"
+Cohesion: 0.40
+Nodes (5): document(), fixture, setup(), test_fixture_mapping_and_missing_originals_cannot_satisfy_private_acceptance(), test_selected_capture_file_must_match_the_mapping_source_role()
 
 ### Community 52 - "commitlint.config.cjs"
 Cohesion: 0.83
 Nodes (3): bodyMaxLineLength(), footerMaxLineLength(), maxLineLength()
 
-### Community 58 - "test_quantconnect_validation.py"
-Cohesion: 0.16
-Nodes (28): bundle(), compare(), main(), new_output(), pinned_sources(), Package an in-cloud comparison or validate its aggregate-only diagnostic log., sha(), evaluate() (+20 more)
-
 ## Knowledge Gaps
 - **154 isolated node(s):** `Source`, `metadata`, `dynamic`, `runtime`, `dynamic` (+149 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **6 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **5 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Store` connect `Store` to `timestamp`, `run`, `dumps`, `test_portfolio_replay.py`, `test_learning_engine.py`, `test_state_contract.py`, `test_executor_ownership.py`, `screen`, `utcnow`, `replay_runner.py`, `test_activity_feed.py`, `liquidity_runner.py`, `test_experiment.py`, `activity_feed.py`, `test_liquidity_experiment.py`, `intelligence.py`, `AlpacaPaper`, `datetime`, `test_activity_rollout.py`, `test_review_repairs.py`, `test_evidence_storage.py`, `test_health_engine.py`, `retain_batch`, `import_ledger`?**
-  _High betweenness centrality (0.070) - this node is a cross-community bridge._
-- **Why does `utcnow()` connect `utcnow` to `timestamp`, `Engine`, `run`, `dumps`, `test_execution_pilot.py`, `screen`, `replay_runner.py`, `activity_feed.py`, `intelligence.py`, `AlpacaPaper`, `datetime`, `test_activity_rollout.py`, `test_review_repairs.py`, `test_evidence_storage.py`, `ValueError`, `collect_batch`, `test_health_engine.py`, `retain_batch`, `Store`?**
+- **Why does `Store` connect `Store` to `test_event_sources.py`, `Engine`, `run`, `dumps`, `D`, `test_learning_engine.py`, `test_state_contract.py`, `test_executor_ownership.py`, `screen`, `test_readiness_gates.py`, `test_activity_feed.py`, `ValueError`, `activity_validation.py`, `datetime`, `Settings`, `utcnow`, `test_health_engine.py`, `test_activity_rollout.py`, `HealthEngine`, `test_evidence_storage.py`, `test_trade_history.py`, `HealthMonitor`, `test_dogfood.py`, `document`?**
+  _High betweenness centrality (0.076) - this node is a cross-community bridge._
+- **Why does `utcnow()` connect `utcnow` to `test_event_sources.py`, `Engine`, `run`, `dumps`, `screen`, `test_readiness_gates.py`, `test_activity_feed.py`, `ValueError`, `activity_validation.py`, `intelligence.py`, `Settings`, `test_health_engine.py`, `test_activity_rollout.py`, `HealthEngine`, `test_evidence_storage.py`, `Store`, `activity_feed.py`, `HealthMonitor`, `test_dogfood.py`?**
   _High betweenness centrality (0.041) - this node is a cross-community bridge._
-- **Why does `Engine` connect `Engine` to `datetime`, `test_activity_rollout.py`, `dumps`, `run`, `test_portfolio_replay.py`, `test_review_repairs.py`, `test_state_contract.py`, `collect_batch`, `test_execution_pilot.py`, `Store`, `screen`, `utcnow`, `replay_runner.py`, `test_activity_feed.py`, `test_experiment.py`, `AlpacaPaper`?**
-  _High betweenness centrality (0.031) - this node is a cross-community bridge._
+- **Why does `Engine` connect `Engine` to `utcnow`, `test_activity_rollout.py`, `dumps`, `run`, `D`, `Store`, `test_state_contract.py`, `activity_feed.py`, `parametrize`, `test_dogfood.py`, `screen`, `test_stage2_validation.py`, `test_activity_feed.py`, `ValueError`, `datetime`, `Settings`?**
+  _High betweenness centrality (0.032) - this node is a cross-community bridge._
 - **Are the 8 inferred relationships involving `Store` (e.g. with `ExitPlan` and `Halt`) actually correct?**
   _`Store` has 8 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 102 inferred relationships involving `ValueError` (e.g. with `at()` and `cost_report()`) actually correct?**
