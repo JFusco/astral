@@ -1,22 +1,30 @@
 """Bounded paper activity acquisition and immutable evidence publication."""
 import asyncio
 import codecs
+from contextlib import contextmanager
+from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 from pathlib import Path
+import re
+import sqlite3
 import uuid
 
 import httpx
 
+from .accounting_snapshot import bound_epoch, commit_snapshot, valid_epoch
 from .activity_projection import balances_match, canonical, digest, instant, input_digest, ledger_source, load_mapping, project
 from .config import SYMBOLS
 from .executor_ownership import account_identity
 from .store import utcnow
 from .evidence_codec import pack_bytes, pack_text, reference_text, reference_bytes
+from .activity_diagnostics import (ACTIVE, AcquisitionTrace, DiagnosticStorageError,
+                                   classify, failure_kind, ledger_write, request_span, trace_extensions)
 
 ATTEMPT_SECONDS, STREAM_SECONDS, IDLE_SECONDS = 60, 30, 8
 MAX_EVENTS, MAX_BYTES, MAX_FRAME = 10000, 8*1024*1024, 64*1024
+_SSE_LINE_END = re.compile(r'[\r\n]')
 SCHEMA = '''
 CREATE TABLE IF NOT EXISTS evidence_blobs(sha256 BLOB PRIMARY KEY,payload BLOB NOT NULL);
 CREATE TABLE IF NOT EXISTS activity_batches(id TEXT,phase TEXT,account TEXT,at TEXT,payload TEXT,PRIMARY KEY(id,phase));
@@ -45,25 +53,26 @@ class SSEParser:
         if self.size > MAX_BYTES:
             raise FeedError('Activity byte budget exceeded')
         self.pending += self.decoder.decode(chunk, final=final)
-        # Process CR, LF and CRLF, including CRLF split across transport chunks.
-        while True:
-            import re
-            match = re.search(r'[\r\n]', self.pending)
-            if not match:
-                break
-            index = match.start()
-            if self.pending[index:] == '\r' and not final:
-                break
-            line = self.pending[:index]
-            width = 2 if self.pending[index:index+2] == '\r\n' else 1
-            self.pending = self.pending[index+width:]
-            self.frame_size += len(line.encode())+width
-            if self.frame_size > MAX_FRAME:
-                raise FeedError('Activity frame budget exceeded')
-            if line:
-                self.lines.append(line)
-            else:
-                self._frame()
+        # Consume a terminated line before validation, including on failure.
+        consumed = 0
+        try:
+            while match := _SSE_LINE_END.search(self.pending, consumed):
+                index = match.start()
+                if self.pending[index] == '\r' and index+1 == len(self.pending) and not final:
+                    break
+                line = self.pending[consumed:index]
+                width = 2 if (self.pending[index] == '\r' and index+1 < len(self.pending)
+                              and self.pending[index+1] == '\n') else 1
+                consumed = index+width
+                self.frame_size += len(line.encode())+width
+                if self.frame_size > MAX_FRAME:
+                    raise FeedError('Activity frame budget exceeded')
+                if line:
+                    self.lines.append(line)
+                else:
+                    self._frame()
+        finally:
+            self.pending = self.pending[consumed:]
         if len(self.pending.encode())+self.frame_size > MAX_FRAME:
             raise FeedError('Activity frame budget exceeded')
         if final and (self.pending or self.lines):
@@ -115,6 +124,11 @@ def parse_sse(raw):
 
 
 async def stream_activities(broker, since, until):
+    with request_span('GET', '/v2beta1/events/activities') as diagnostic:
+        return await _stream_activities(broker, since, until, diagnostic)
+
+
+async def _stream_activities(broker, since, until, diagnostic):
     """Use the adapter's authentication, process boundary and request budget."""
     from .broker import BrokerFailure
     import time
@@ -123,18 +137,28 @@ async def stream_activities(broker, since, until):
         raise FeedError('Invalid activity interval')
     broker.account_lease.check_process()
     if not broker.settings.configured:
+        diagnostic['denial'] = 'configuration'
         raise BrokerFailure('Paper credentials unavailable', sent=False)
     if time.monotonic() < broker.cooldown['trading']:
+        diagnostic['denial'] = 'local-cooldown'
         raise BrokerFailure('Provider cooldown active', 429, sent=False)
-    broker.trading.take(False)
+    try:
+        broker.trading.take(False)
+    except BrokerFailure:
+        diagnostic['denial'] = 'local-budget'
+        raise
     parser, raw = SSEParser(), bytearray()
     result = {'events': [], 'raw': b'', 'complete': False, 'error': None, 'since': since, 'until': until}
     try:
         async with asyncio.timeout(STREAM_SECONDS):
             from .config import PAPER_URL
+            diagnostic['dispatch'] = 'started-outcome-unknown'
             async with broker.http.stream('GET', PAPER_URL+'/v2beta1/events/activities',
-                                          params={'since': since, 'until': until}, timeout=IDLE_SECONDS) as response:
-                broker.store.event('activity_request', {'method': 'GET', 'status': response.status_code, 'at': utcnow()})
+                                          params={'since': since, 'until': until}, timeout=IDLE_SECONDS,
+                                          extensions=trace_extensions(diagnostic)) as response:
+                diagnostic.update(dispatch='response-received', http_status=response.status_code)
+                ledger_write(broker.store.event, 'activity_request',
+                             {'method': 'GET', 'status': response.status_code, 'at': utcnow()})
                 if response.status_code == 429:
                     try: delay = float(response.headers.get('retry-after', '60'))
                     except ValueError: delay = 60
@@ -147,7 +171,8 @@ async def stream_activities(broker, since, until):
                     parser.feed(chunk)
                 parser.feed(b'', final=True)
                 result['complete'] = True
-    except (httpx.HTTPError, ValueError, TimeoutError, UnicodeError):
+    except (httpx.HTTPError, ValueError, TimeoutError, UnicodeError) as exc:
+        classify(diagnostic, exc)
         result['error'] = 'activity_stream_incomplete'
     finally:
         result.update(events=[e for e, _ in parser.frames], raw=bytes(raw), received_at=utcnow())
@@ -156,10 +181,13 @@ async def stream_activities(broker, since, until):
     return result
 
 
-def start_batch(store, account, since, until):
-    batch = uuid.uuid4().hex
-    store.db.execute('INSERT INTO activity_batches VALUES(?,?,?,?,?)',
-                     (batch, 'start', account, utcnow(), canonical({'since': since, 'until': until})))
+def start_batch(store, account, since, until, *, batch_id=None, lifecycle=None):
+    batch = batch_id or uuid.uuid4().hex
+    ledger_write(store.db.execute, 'INSERT INTO activity_batches VALUES(?,?,?,?,?)',
+                 (batch, 'start', account, utcnow(), canonical({'since': since, 'until': until})),
+                 lifecycle=lifecycle)
+    if lifecycle:
+        lifecycle.batch_started = True
     return batch
 
 
@@ -205,7 +233,7 @@ def retain_batch(store, batch, account, result):
         store.db.execute('INSERT INTO activity_batches VALUES(?,?,?,?,?)', (batch, 'outcome', account, at, pack_text(canonical(receipt))))
 
 
-async def collect_batch(broker, store, *, critical=True, refresh_snapshot=False):
+async def collect_batch(broker, store, *, critical=True, refresh_snapshot=False, batch_id=None, lifecycle=None):
     if refresh_snapshot and (broker.settings.enable_orders or broker.settings.mode != 'alpaca'):
         raise FeedError('Accounting snapshot refresh requires orders-off paper settings')
     binding = store.get('account_binding')
@@ -216,19 +244,30 @@ async def collect_batch(broker, store, *, critical=True, refresh_snapshot=False)
     if earliest:
         start = min(start, datetime.fromisoformat(earliest.replace('Z', '+00:00'))-timedelta(days=1))
     since, until = start.isoformat(), utcnow()
-    batch = start_batch(store, binding, since, until)
+    batch = start_batch(store, binding, since, until, batch_id=batch_id, lifecycle=lifecycle)
     broker._last_activity_stream = None
+    trace = AcquisitionTrace(batch, lifecycle)
+    acquisition_epoch = None
+    token = ACTIVE.set(trace)
     result = {'complete': False, 'events': [], 'raw': b'', 'since': since, 'until': until,
               'account_id': binding, 'received_at': utcnow(), 'error': 'activity_acquisition_incomplete',
               'request_attempts': 0}
+    cancelled = False
     try:
         async with asyncio.timeout(ATTEMPT_SECONDS):
             if refresh_snapshot:
+                trace.stage = 'initial-snapshot'
                 result['request_attempts'] += 3
                 snapshot = await broker.snapshot(critical=critical)
-                if account_identity(snapshot['account']) != binding:
-                    raise FeedError('Paper account identity changed')
-                store.put('account_snapshot', snapshot)
+                try:
+                    with store.transaction():
+                        committed_epoch = commit_snapshot(store, snapshot)
+                except (sqlite3.Error, OSError):
+                    # S1 snapshot rollback remains an ordinary incomplete attempt.
+                    trace.failure = 'storage'
+                    raise
+                acquisition_epoch = committed_epoch
+            trace.stage = 'identity-before'
             result['request_attempts'] += 1
             before = await broker.request('GET', '/v2/account', critical=critical)
             result['before'] = before
@@ -237,34 +276,111 @@ async def collect_batch(broker, store, *, critical=True, refresh_snapshot=False)
             if before.get('created_at'):
                 created = datetime.fromisoformat(before['created_at'].replace('Z', '+00:00'))
                 since = min(start, created).isoformat()
-            until = utcnow()
+            with store.lock:
+                until = utcnow()
+                if not refresh_snapshot:
+                    acquisition_epoch = bound_epoch(store, store.get('account_snapshot'))
+            trace.stage = 'activity-stream'
             result['request_attempts'] += 1
             stream = await broker.stream_activities(since, until)
             result.update(stream, account_id=binding)
+            trace.stage = 'identity-after'
             result['request_attempts'] += 1
             after = await broker.request('GET', '/v2/account', critical=critical)
             result['after'] = after
             if account_identity(after) != binding:
                 raise FeedError('Paper account identity changed')
+            trace.stage = 'positions-after'
             result['request_attempts'] += 1
             result['after_positions'] = await broker.request('GET', '/v2/positions', critical=critical)
             if not isinstance(result['after_positions'], list):
                 raise FeedError('Post-stream positions unavailable')
             if any(e.get('account_id', binding) != binding for e in result['events']):
                 raise FeedError('Activity belongs to another account')
-    except asyncio.CancelledError:
+    except DiagnosticStorageError:
+        trace.failure = 'storage'
+        result.update(complete=False, error='activity_acquisition_incomplete')
+        raise
+    except asyncio.CancelledError as exc:
+        cancelled = True
+        trace.failure = trace.failure or failure_kind(exc)
         result.update(getattr(broker, '_last_activity_stream', None) or {}, complete=False, error='activity_acquisition_cancelled')
         raise
-    except Exception:
+    except Exception as exc:
+        trace.failure = trace.failure or failure_kind(exc)
         result.update(getattr(broker, '_last_activity_stream', None) or {}, complete=False, error='activity_acquisition_incomplete')
     finally:
         result['received_at'] = utcnow()
-        retain_batch(store, batch, binding, result)
-        broker._last_activity_acquisition = result
+        result['snapshot_epoch'] = acquisition_epoch
+        result['diagnostics'] = trace.view()
+        ACTIVE.reset(token)
+        if lifecycle is None or not lifecycle.observation.storage_failed:
+            if lifecycle:
+                lifecycle.mark('retention_start')
+            try:
+                ledger_write(retain_batch, store, batch, binding, result, lifecycle=lifecycle)
+            except DiagnosticStorageError:
+                if not cancelled:
+                    raise
+            else:
+                if lifecycle:
+                    lifecycle.outcome_retained = True
+                    lifecycle.mark('retention_end')
+                broker._last_activity_acquisition = result
     return batch, result
 
 
-def batch_events(store, batch):
+class AccountingRead:
+    """Private evidence for one locked read, never an authorization result."""
+
+    def __init__(self, store, cutoff):
+        self.store, self.cutoff = store, cutoff
+        self.source = ledger_source(store)
+        self.binding = self.source['state']['account_binding']
+        self.input_sha256 = input_digest(self.source)
+        self.batches = {}
+
+    def check(self, store, cutoff=None):
+        if self.store is not store or (cutoff is not None and instant(cutoff) != instant(self.cutoff)):
+            raise FeedError('Accounting read context differs or has ended')
+
+    def close(self):
+        self.batches.clear()
+        self.source = None
+        self.store = None
+
+
+@contextmanager
+def accounting_read(store, *, cutoff=None):
+    """The context cannot outlive the enclosing Store lock."""
+    with store.lock:
+        context = AccountingRead(store, cutoff or utcnow())
+        try:
+            yield context
+        finally:
+            context.close()
+
+
+def batch_events(store, batch, *, read_context=None):
+    if read_context is None:
+        return _validate_batch(store, batch)
+    read_context.check(store)
+    if not isinstance(batch, str):
+        raise FeedError('Activity batch identity required')
+    key = (read_context.binding, batch)
+    if key not in read_context.batches:
+        try:
+            read_context.batches[key] = _validate_batch(store, batch)
+        except (ValueError, TypeError, KeyError) as exc:
+            read_context.batches[key] = exc
+    result = read_context.batches[key]
+    if isinstance(result, Exception):
+        raise result
+    # Callers may add issues; none receives the retained mutable evidence.
+    return deepcopy(result)
+
+
+def _validate_batch(store, batch):
     """Validate the selected outcome and every delivery against its raw stream."""
     binding = store.get('account_binding')
     outcomes = store.rows("SELECT payload FROM activity_batches WHERE id=? AND phase='outcome' AND account=?", (batch, binding))
@@ -303,8 +419,19 @@ def publish_projection(store, batch, mapping, *, now=None):
         source = ledger_source(store)
         binding = source['state']['account_binding']
         events, coverage, integrity_issues = batch_events(store, batch)
-        result = project(source, events, mapping, coverage, knowledge_cutoff=now)
+        if coverage.get('complete'):
+            result = project(source, events, mapping, coverage, knowledge_cutoff=now)
+        else:
+            result = {'effects': [], 'issues': ['incomplete_activity_coverage'], 'net_books': {},
+                      'by_symbol': {s: {'passed': False, 'status': 'unverified'} for s in SYMBOLS},
+                      'cash_reconciliation': {'status': 'unknown', 'cash': None},
+                      'mapping_sha256': digest(mapping), 'input_sha256': input_digest(source),
+                      'association_count': 0, 'activity_count': len({e.get('ref_id') for e in events if isinstance(e.get('ref_id'), str)}),
+                      'fixture': mapping['kind'] != 'reviewed-provider'}
         result['issues'].extend(integrity_issues)
+        if coverage.get('error') == 'invalid_activity_identity':
+            result['issues'].append('invalid_activity_evidence')
+            result['activity_count'] = 0
         if not coverage.get('historical_import'):
             try:
                 after = {'account': coverage['after'], 'positions': coverage['after_positions']}
@@ -315,7 +442,7 @@ def publish_projection(store, batch, mapping, *, now=None):
         # Any omission from previously retained covered history blocks the scan.
         refs = {activity_identifier(e.get('ref_id')) for e in events}
         refs.discard(None)
-        for prior in store.rows("SELECT DISTINCT ref_id,payload FROM activity_events WHERE account=? AND batch<>?", (binding, batch)):
+        for prior in (store.rows("SELECT DISTINCT ref_id,payload FROM activity_events WHERE account=? AND batch<>?", (binding, batch)) if coverage.get('complete') else []):
             try: covered = instant(coverage['since']) <= instant(json.loads(prior['payload'])['at']) <= instant(coverage['until'])
             except (ValueError, KeyError): covered = True
             if covered and prior['ref_id'] not in refs:
@@ -329,32 +456,44 @@ def publish_projection(store, batch, mapping, *, now=None):
         sha = digest(mapping)
         store.db.execute('INSERT OR IGNORE INTO activity_associations VALUES(?,?,?,?)', (sha, binding, now, canonical(mapping)))
         result.update(batch=batch, published_at=now, coverage={k: coverage.get(k) for k in ('since', 'until', 'received_at', 'complete')})
+        result['coverage']['snapshot_epoch'] = coverage.get('snapshot_epoch') if not coverage.get('historical_import') else None
+        projection_id = uuid.uuid4().hex
         store.db.execute('INSERT INTO activity_projections VALUES(?,?,?,?,?)',
-                         (uuid.uuid4().hex, binding, now, result['input_sha256'], pack_text(canonical(result))))
+                         (projection_id, binding, now, result['input_sha256'], pack_text(canonical(result))))
+        if not result['issues'] and not result['fixture']:
+            store.put('activity_last_covered_projection', {'id': projection_id, 'sha256': digest(result)})
         return result
 
 
-def read_projection(store, *, cutoff=None):
+def read_projection(store, *, cutoff=None, diagnostics=None, read_context=None):
     """Read-only compatibility with ledgers predating the new tables."""
-    cutoff = cutoff or utcnow()
+    if read_context is not None:
+        read_context.check(store, cutoff)
+    cutoff = cutoff or (read_context.cutoff if read_context is not None else utcnow())
+    binding = store.get('account_binding')
+    attempts = (store.rows('SELECT id,phase,at FROM activity_batches WHERE account=? ORDER BY rowid DESC', (binding,))
+                if store.rows("SELECT name FROM sqlite_master WHERE name='activity_batches'") else [])
+    latest = next((a for a in attempts if instant(a['at']) <= instant(cutoff)), None)
+    if diagnostics is not None:
+        diagnostics.update(latest_attempt=({**latest, 'status': 'pending' if latest['phase'] == 'start' else 'unpublished'}
+                                           if latest else None))
     if not store.rows("SELECT name FROM sqlite_master WHERE name='activity_projections'"):
         return None
-    binding = store.get('account_binding')
     rows = store.rows('SELECT rowid,at FROM activity_projections WHERE account=? ORDER BY rowid DESC', (binding,))
     for row in rows:
         if instant(row['at']) <= instant(cutoff):
             result = json.loads(store.rows('SELECT payload FROM activity_projections WHERE rowid=?', (row['rowid'],))[0]['payload'])
             # Decode and validate only the acquisition selected by the cutoff.
             try:
-                retained, _, integrity_issues = batch_events(store, result['batch'])
+                retained, _, integrity_issues = batch_events(store, result['batch'], read_context=read_context)
                 if not integrity_issues and len({event['ref_id'] for event in retained}) != result.get('activity_count'):
                     integrity_issues = ['activity_evidence_integrity_error']
                 result['issues'].extend(integrity_issues)
             except (ValueError, TypeError, KeyError):
                 result['issues'].append('activity_evidence_integrity_error')
             # A retained attempt cannot disappear behind an older publication.
-            attempts = store.rows('SELECT id,at FROM activity_batches WHERE account=? ORDER BY rowid DESC', (binding,))
-            latest = next((a for a in attempts if instant(a['at']) <= instant(cutoff)), None)
+            if diagnostics is not None and latest and latest['phase'] != 'start' and latest['id'] == result['batch']:
+                diagnostics['latest_attempt']['status'] = 'complete' if result['coverage']['complete'] else 'incomplete'
             if latest and latest['id'] != result['batch']:
                 result['issues'].append('new_activity_attempt_pending')
             conflicts = store.rows('SELECT at FROM activity_conflicts WHERE account=?', (binding,))
@@ -369,18 +508,76 @@ def read_projection(store, *, cutoff=None):
     return None
 
 
-def current_accounting(store, *, enabled=False, now=None, max_snapshot_age=30):
-    now = now or utcnow()
+def historical_checkpoint(store, *, cutoff, read_context=None):
+    if read_context is not None:
+        read_context.check(store, cutoff)
+    try:
+        pointer = store.get('activity_last_covered_projection')
+        if not (isinstance(pointer, dict) and isinstance(pointer.get('id'), str) and isinstance(pointer.get('sha256'), str)):
+            return None
+        rows = store.rows('SELECT payload FROM activity_projections WHERE id=? AND account=?',
+                          (pointer['id'], store.get('account_binding')))
+        if not rows:
+            return None
+        result = json.loads(rows[0]['payload'])
+        if result['issues'] or result['fixture'] or digest(result) != pointer['sha256'] or instant(result['published_at']) > instant(cutoff):
+            return None
+        _, _, issues = batch_events(store, result['batch'], read_context=read_context)
+        if issues:
+            return None
+        return {**result['cash_reconciliation'], 'status': 'historical-only', 'current_authority': False, 'batch': result['batch'],
+                'published_at': result['published_at'], 'coverage_until': result['coverage']['until'],
+                'knowledge_cutoff': result['cash_reconciliation']['knowledge_cutoff']}
+    except (ValueError, TypeError, KeyError):
+        return None
+
+
+def current_accounting(store, *, enabled=False, now=None, max_snapshot_age=30, read_context=None):
+    if read_context is None:
+        with accounting_read(store, cutoff=now) as local:
+            return current_accounting(store, enabled=enabled, now=now,
+                                      max_snapshot_age=max_snapshot_age, read_context=local)
+    if read_context is not None:
+        read_context.check(store, now)
+    now = now or (read_context.cutoff if read_context is not None else utcnow())
     with store.lock:
-        source = ledger_source(store)
-        result = read_projection(store, cutoff=now)
+        source = read_context.source if read_context is not None else ledger_source(store)
+        diagnostics = {}
         reasons = []
+        try:
+            result = read_projection(store, cutoff=now, diagnostics=diagnostics, read_context=read_context)
+        except (ValueError, TypeError, KeyError):
+            result = None
+            reasons.append('activity_evidence_integrity_error')
+        # Current authority sees the latest retained attempt even after wall rollback.
+        attempts = (store.rows('SELECT id,phase,at FROM activity_batches WHERE account=? ORDER BY rowid DESC LIMIT 1',
+                               (store.get('account_binding'),))
+                    if store.rows("SELECT name FROM sqlite_master WHERE name='activity_batches'") else [])
+        latest = attempts[0] if attempts else None
+        if latest:
+            latest = {**latest, 'status': 'pending' if latest['phase'] == 'start' else 'unpublished'}
+            if result and latest['id'] == result['batch'] and latest['phase'] == 'outcome':
+                latest['status'] = 'complete' if result['coverage']['complete'] else 'incomplete'
+            if not result or latest['id'] != result['batch']:
+                reasons.append('new_activity_attempt_pending')
+            try:
+                if latest['phase'] not in {'start', 'outcome'} or instant(latest['at']) > instant(now):
+                    reasons.append('activity_attempt_time_unavailable')
+            except (ValueError, TypeError, KeyError):
+                reasons.append('activity_attempt_time_unavailable')
+        diagnostics['latest_attempt'] = latest
+        epoch = bound_epoch(store, source['state'].get('account_snapshot'))
         if not enabled: reasons.append('activity_reader_disabled')
         if not result: reasons.append('activity_projection_unavailable')
         else:
             reasons.extend(result['issues'])
             if result['fixture']: reasons.append('fixture_evidence_only')
-            if input_digest(source) != result['input_sha256']: reasons.append('accounting_inputs_changed')
+            acquired_epoch = result['coverage'].get('snapshot_epoch')
+            if epoch is None: reasons.append('accounting_snapshot_epoch_unavailable')
+            if not valid_epoch(acquired_epoch): reasons.append('activity_snapshot_epoch_unavailable')
+            elif epoch is not None and epoch != acquired_epoch: reasons.append('accounting_snapshot_replaced')
+            source_digest = read_context.input_sha256 if read_context is not None else input_digest(source)
+            if source_digest != result['input_sha256']: reasons.append('accounting_inputs_changed')
             if not 0 <= instant(now)-instant(result['coverage']['received_at']) <= 90: reasons.append('activity_acquisition_stale')
             try:
                 if not 0 <= instant(now)-instant(source['state']['account_snapshot']['at']) <= max_snapshot_age:
@@ -390,7 +587,19 @@ def current_accounting(store, *, enabled=False, now=None, max_snapshot_age=30):
             except (ValueError, KeyError, TypeError): reasons.append('accounting_snapshot_unavailable')
         by_symbol = {s: {'passed': not reasons and result['by_symbol'].get(s, {}).get('passed', False),
                           'status': 'matched' if not reasons and result['by_symbol'].get(s, {}).get('passed') else 'unverified'} for s in SYMBOLS}
-        return {'accounting_by_symbol': by_symbol,
+        latest = diagnostics.get('latest_attempt')
+        evidence = {'snapshot_epoch': epoch,
+                    'acquisition_epoch': result['coverage'].get('snapshot_epoch') if result else None,
+                    'snapshot_at': (source['state'].get('account_snapshot') or {}).get('at'),
+                    'coverage_until': result['coverage']['until'] if result else None,
+                    'acquired_at': result['coverage']['received_at'] if result else None,
+                    'published_at': result.get('published_at') if result else None,
+                    'batch': result.get('batch') if result else None,
+                    'input_sha256': result.get('input_sha256') if result else None,
+                    'mapping_sha256': result.get('mapping_sha256') if result else None,
+                    'latest_attempt': latest, 'historical_checkpoint': historical_checkpoint(
+                        store, cutoff=now, read_context=read_context)}
+        return {'accounting_evidence': evidence, 'accounting_by_symbol': by_symbol,
                 'activity_coverage': {'status': 'current' if not reasons else 'incomplete', 'issues': sorted(set(reasons))},
                 'association_summary': {'reviewed_records': result.get('association_count', 0) if result else 0},
                 'cash_reconciliation': result['cash_reconciliation'] if result and not reasons else {'status': 'unknown', 'cash': None}}

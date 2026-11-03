@@ -395,3 +395,130 @@ def test_alpaca_state_account_fields_match_dashboard_number_contract(tmp_path, b
         assert account["equity_change"] == (250.5 if baseline else None)
     finally:
         run(adapter.close());store.close()
+
+
+@pytest.mark.parametrize('path', ['/v2/stocks/quotes/latest', '/v1beta1/news', '/v2/orders:by_client_order_id'])
+@pytest.mark.parametrize('mode', ['before-headers', 'body', 'provider-status', 'provider-redirect',
+                                 'invalid-json', 'local-cooldown', 'local-budget'])
+def test_s0_corroborating_get_failures_are_safe_without_acquisition(tmp_path, path, mode):
+    from backend.activity_diagnostics import ACTIVE
+    calls = []
+    class Body(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            yield b'private-provider-body'
+            raise httpx.ReadTimeout('sensitive-secret')
+    def handler(request):
+        calls.append(request)
+        if mode == 'before-headers':
+            raise httpx.ConnectError('sensitive-secret') from OSError('private-network-detail')
+        if mode == 'invalid-json':return httpx.Response(200, content=b'private-provider-body')
+        return httpx.Response(503 if mode == 'provider-status' else 302 if mode == 'provider-redirect' else 200,
+                              stream=Body() if mode == 'body' else None, json={} if mode != 'body' else None)
+    store = Store(tmp_path/'isolated.sqlite', 'alpaca')
+    broker = AlpacaPaper(Settings(api_key='fixture', secret_key='fixture'), store, httpx.MockTransport(handler))
+    if mode == 'local-cooldown':broker.cooldown['trading'] = float('inf')
+    if mode == 'local-budget':broker.trading.normal = 0
+    async def scenario():
+        try:
+            assert ACTIVE.get() is None
+            with pytest.raises(BrokerFailure):
+                await broker.request('GET', path, params={'client_order_id': 'private-order-id'})
+            row, = store.rows("SELECT type,payload FROM events WHERE type IN ('api_request_failed','api_request_diagnostic')")
+            diagnostic = json.loads(row['payload'])
+            assert diagnostic['path'] == path
+            assert diagnostic['dispatch'] == ('not-started' if mode.startswith('local-') else
+                'started-outcome-unknown' if mode == 'before-headers' else 'response-received')
+            if mode in {'before-headers', 'body', 'invalid-json'}:
+                assert row['type'] == 'api_request_failed'
+                assert diagnostic['outcome'] == 'transport-or-response-error'
+            else:
+                assert row['type'] == 'api_request_diagnostic'
+                assert 'outcome' not in diagnostic
+            assert diagnostic['http_status'] == (503 if mode == 'provider-status' else
+                302 if mode == 'provider-redirect' else 200 if mode in {'body', 'invalid-json'} else None)
+            assert diagnostic['failure_locus'] == {
+                'before-headers': 'transport-before-observed-headers', 'body': 'transport-after-headers',
+                'provider-status': 'observed-provider-status', 'local-cooldown': 'local-cooldown',
+                'provider-redirect': 'observed-provider-status', 'invalid-json': 'unclassified',
+                'local-budget': 'local-budget'}[mode]
+            assert len(calls) == (0 if mode.startswith('local-') else 1)
+            # New classifications must not enter the existing request/error population.
+            assert len(store.rows("SELECT seq FROM events WHERE type='api_request_failed'")) == (
+                1 if mode in {'before-headers', 'body', 'invalid-json'} else 0)
+            assert not hasattr(broker, '_last_activity_acquisition')
+            for secret in ['private-order-id', 'private-provider-body', 'sensitive-secret', 'private-network-detail']:
+                assert secret not in row['payload']
+        finally:
+            await broker.close()
+            store.close()
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize('pool,normal,reserve',[('trading',60,20),('data',100,10)])
+def test_request_budgets_keep_pools_and_recovery_reserves_separate(tmp_path,monkeypatch,pool,normal,reserve):
+    """Normal callers cannot spend recovery capacity or exhaust the other pool."""
+    monkeypatch.setattr('backend.broker.time.monotonic',lambda:1000)
+    store = Store(tmp_path/'budgets.sqlite','alpaca');calls = []
+    def handler(request):
+        calls.append((request.method,str(request.url)));return httpx.Response(200,json={})
+    broker = AlpacaPaper(Settings(api_key='fixture',secret_key='fixture'),store,httpx.MockTransport(handler))
+    async def scenario():
+        async def request(critical=False,other=False):
+            data = (pool == 'data') != other
+            return await broker.request('GET','/v1beta1/news' if data else '/v2/account',data=data,critical=critical)
+        try:
+            for _ in range(normal):await request()
+            with pytest.raises(BrokerFailure) as caught:await request()
+            assert caught.value.sent is False and len(calls) == normal
+            await request(other=True)
+            for _ in range(reserve):await request(critical=True)
+            with pytest.raises(BrokerFailure) as caught:await request(critical=True)
+            assert caught.value.sent is False and len(calls) == normal+reserve+1
+            await request(other=True)
+            assert all(method == 'GET' for method,_ in calls)
+        finally:await broker.close()
+    try:run(scenario())
+    finally:store.close()
+
+
+@pytest.mark.parametrize('kind',['trading','data','activity-stream'])
+@pytest.mark.parametrize('header,delay',[
+    pytest.param('0.5',1,id='below-minimum'),pytest.param('1',1,id='minimum'),
+    pytest.param('12',12,id='inside'),pytest.param('300',300,id='maximum'),
+    pytest.param('301',300,id='above-maximum'),pytest.param(None,60,id='missing'),
+    pytest.param('invalid',60,id='malformed')])
+def test_retry_after_clamp_blocks_only_its_pool_until_expiry(tmp_path,monkeypatch,kind,header,delay):
+    """Cooldown rejection sends nothing; equality at expiry restores only that pool."""
+    clock = [1000.0];monkeypatch.setattr('backend.broker.time.monotonic',lambda:clock[0])
+    store = Store(tmp_path/'cooldown.sqlite','alpaca');calls = [];limited = [True]
+    target = '/v2beta1/events/activities' if kind == 'activity-stream' else '/v1beta1/news' if kind == 'data' else '/v2/account'
+    def handler(request):
+        calls.append((request.method,request.url.path))
+        if request.url.path == target and limited[0]:
+            limited[0] = False
+            return httpx.Response(429,headers={} if header is None else {'retry-after':header},json={})
+        return httpx.Response(200,headers={'content-type':'text/event-stream'},content=b'') if request.url.path == '/v2beta1/events/activities' else httpx.Response(200,json={})
+    broker = AlpacaPaper(Settings(api_key='fixture',secret_key='fixture'),store,httpx.MockTransport(handler))
+    async def scenario():
+        async def request():
+            if kind == 'activity-stream':return await broker.stream_activities('2030-01-01T00:00:00Z','2030-01-01T00:00:01Z')
+            return await broker.request('GET',target,data=kind == 'data')
+        try:
+            if kind == 'activity-stream':assert not (await request())['complete']
+            else:
+                with pytest.raises(BrokerFailure) as caught:await request()
+                assert caught.value.status == 429
+            pool = 'data' if kind == 'data' else 'trading'
+            assert broker.cooldown[pool] == 1000+delay
+            assert broker.cooldown['trading' if pool == 'data' else 'data'] == 0
+            clock[0] = 1000+delay-.0001
+            with pytest.raises(BrokerFailure) as caught:await request()
+            assert caught.value.sent is False and len(calls) == 1
+            await broker.request('GET','/v2/account' if pool == 'data' else '/v1beta1/news',data=pool != 'data')
+            clock[0] = 1000+delay
+            result = await request()
+            if kind == 'activity-stream':assert result['complete']
+            assert len(calls) == 3 and all(method == 'GET' for method,_ in calls)
+        finally:await broker.close()
+    try:run(scenario())
+    finally:store.close()

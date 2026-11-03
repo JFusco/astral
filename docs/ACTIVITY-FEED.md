@@ -67,3 +67,41 @@ Fee readiness is separate for BTC, ETH, SOL, SPY, QQQ, GLD, TLT and IWM. Only th
 Before activation, require affected tests, `npm run verify:push`, the full `npm run verify:ci`, the private replay, a controls-off connected comparison and independent implementation review. A passing CI fixture is not private provider acceptance.
 
 Rollback disables the reader while keeping the stricter readiness gate. Preserve raw records, mappings, conflicts, checkpoints and projections. Saved reports remain historical evidence; they cannot enable actions. Net P&L, tax basis, strategy readiness and live-money execution remain uncertified.
+
+## Distinguish a fresh snapshot from retained history
+
+Fresh snapshots receive a locally assigned version, `snapshot_epoch`. Current accounting requires the same positive integer in the stored snapshot, its state counter and the acquisition receipt. Equal balances or a backward wall clock cannot preserve authority after replacement. Existing identity, input, cutoff, freshness, mapping, conflict and reader checks still apply.
+
+`accounting_snapshot.commit_snapshot` validates identity and finite financial values inside the caller's existing transaction. It stores the snapshot and counter atomically and opens no nested transaction. Reconciliation, refreshing collection and the disposable connected validator use this helper. Reconciliation alone retains custody checkpoints, risk marks, baseline equity and equity history.
+
+Refreshing collection records the helper's returned epoch only after commit succeeds. Default collection captures the existing snapshot and counter together when choosing the actual stream cutoff. It adds no snapshot refresh, request or commit. Publication preserves the captured epoch; it never fills a missing version from current state.
+
+Historical imports keep their original receipts and remain epochless. They can explain past cash and custody without establishing current authority. A connected validation run commits a genuinely fresh snapshot before collection, preserving its eleven GETs, input hashes and before/after balance and order checks. Its implementation manifest includes the shared snapshot helper.
+
+Current reads always see the newest retained attempt by insertion order, including pending attempts with future or invalid timestamps. Historical projection reads retain their cutoff semantics. Unknown versions, failed transactions and unbound snapshots block current accounting; they do not erase historical evidence. A compatible older writer leaves no embedded epoch, so rolling forward cannot reuse a surviving counter alone.
+
+Malformed counters require the separately approved [evidence-preserving recovery procedure](ACCOUNTING-ROLLOUT.md#recover-a-damaged-snapshot-counter). There is no automatic reset or repair.
+
+## Keep timing diagnostics separate from accounting
+
+Observation cycles have bounded start, finish, abandonment and sleep events. Their attempt identity becomes the batch ID only if collection starts. Standalone collection still allocates its own batch ID and retains its existing lifecycle; diagnostic events never become accounting attempts.
+
+Outcomes retain acquisition-time request diagnostics with at most seven spans and fixed transport-phase summaries. Later retention, publication and sampling boundaries belong to the observer envelope. Each clock offset identifies its run/process; absent phases remain unknown. No diagnostic retains headers, bodies, query identifiers or arbitrary exception messages.
+
+A diagnostic or retention storage failure disables the active observer in memory and skips later writes. Preserve any committed start/outcome/projection and report missing operational evidence. Recovery annotations never supply an outcome, successful completion or current authority. Historical imports, snapshot-version binding and every existing current-accounting gate retain their meaning.
+
+## Rehearse old readers and new writers separately
+
+Use only the pinned compatible predecessor from the reviewed rehearsal package. It can decode retained binary evidence and body references. An older reader without that codec is not a rollback candidate.
+
+Rehearse rollback with the reader and execution controls disabled, retaining activity records, diagnostics, conflicts, epochs, receipts, projections and frozen manifests. Read historical evidence and explicitly reconcile only through a synthetic GET-only transport. Record expected snapshot, custody, equity, risk and request-evidence changes separately from preserved execution records.
+
+On roll-forward, inspect current accounting before startup or reconciliation can replace the predecessor-written snapshot. A surviving counter cannot bind an epochless snapshot. Equal balances, equal timestamps and backward wall time cannot restore the old acquisition or witness. A genuinely fresh snapshot and a new qualifying nonhistorical acquisition remain necessary; persistent conflicts stay blocked.
+
+Disposable fixtures establish compatibility mechanics only. Actual ledger-copy access, private original replay and a fresh GET-only broker comparison each need separate authorization. None of them activates the reader, approves an observation, enables orders or replaces the fixed [operational gates and owner decisions](ACCOUNTING-ROLLOUT.md#record-the-remaining-owner-decisions).
+
+## Bind a future observation to prospective approval
+
+The [observation approval procedure](ACCOUNTING-ROLLOUT.md#bind-approval-before-starting-a-run) allocates a run ID before operator approval. Launch requires the immutable record and its explicitly supplied byte digest, matching source/account/ledger/mapping/policy/controls and a prospective start window. The locked recheck occurs before Store/Engine startup. Research/news values must be explicit and match the approved policy.
+
+Approval time is operator-attested, not independently timestamped. Existing run identities, including embedded summary and recovery IDs, cannot be reused. Unknown identity evidence blocks startup. No collector, real E1–E4 verifier or operational acceptance is added. Private replay, fresh GET-only comparison, activation and orders keep their separate authorization gates.

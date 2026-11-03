@@ -7,6 +7,7 @@ from decimal import Decimal, ROUND_DOWN, ROUND_UP
 from pathlib import Path
 
 from .broker import AlpacaPaper, Simulator, BrokerFailure, TERMINAL, D
+from .accounting_snapshot import SnapshotCommitError, commit_snapshot, snapshot_identity, validate_snapshot
 from .config import SYMBOLS
 from .store import dumps, utcnow
 from .evidence_codec import pack_text
@@ -203,7 +204,11 @@ class Engine:
     async def _reconcile(self):
         bound = self.store.get("account_binding")
         if not self.identity_checked:
-            identity = (await self.broker.snapshot())["account"]["id"]
+            try:
+                identity = snapshot_identity(await self.broker.snapshot())
+            except SnapshotCommitError as exc:
+                self.connected = False
+                raise BrokerFailure("Accounting snapshot identity unavailable; reconciliation required") from exc
             if bound and bound != identity:
                 self.connected = False
                 raise BrokerFailure("Database is bound to a different paper account")
@@ -225,33 +230,31 @@ class Engine:
         # Read positions AFTER order states; pending exposure may be double counted
         # briefly, but a newly confirmed fill must not disappear from reservations.
         snapshot = await self.broker.snapshot()
-        account = snapshot["account"]
-        D(account["equity"]);D(account["cash"])
-        for p in snapshot["positions"]:
-            for name in ("qty", "market_value", "cost_basis", "unrealized_pl"):
-                D(p[name])
-        if account["id"] != self.store.get("account_binding"):
+        try:
+            validate_snapshot(snapshot, self.store.get("account_binding"))
+            account = snapshot["account"]
+            with self.store.transaction():
+                from .custody import retain_checkpoint
+                if self.settings.mode == 'alpaca':retain_checkpoint(self.store, snapshot)
+                commit_snapshot(self.store, snapshot)
+                if self.store.get("baseline_equity") is None:
+                    self.store.put("baseline_equity", account["equity"])
+                risk = self.store.get("risk_marks", {})
+                today = datetime.now(timezone.utc).date().isoformat()
+                if risk.get("day") != today:
+                    risk = {"day": today, "day_equity": account["equity"], "highwater": risk.get("highwater", account["equity"])}
+                risk["highwater"] = str(max(D(risk["highwater"]), D(account["equity"])))
+                self.store.put("risk_marks", risk)
+                reason = self.loss_breach(account, risk)
+                if reason and not self.store.get("risk_latch"):
+                    self.store.put("risk_latch", {"reason": reason, "at": utcnow(), "equity": account["equity"], "marks": risk})
+                    self.store.event("risk_circuit_latched", self.store.get("risk_latch"))
+                if time.monotonic()-self.last_equity_record >= 30:
+                    self.store.db.execute("INSERT INTO equity(at,value) VALUES(?,?)", (snapshot["at"], str(account["equity"])))
+                    self.last_equity_record = time.monotonic()
+        except SnapshotCommitError as exc:
             self.connected = False
-            raise BrokerFailure("Paper account identity changed")
-        with self.store.transaction():
-            from .custody import retain_checkpoint
-            if self.settings.mode == 'alpaca':retain_checkpoint(self.store, snapshot)
-            self.store.put("account_snapshot", snapshot)
-            if self.store.get("baseline_equity") is None:
-                self.store.put("baseline_equity", account["equity"])
-            risk = self.store.get("risk_marks", {})
-            today = datetime.now(timezone.utc).date().isoformat()
-            if risk.get("day") != today:
-                risk = {"day": today, "day_equity": account["equity"], "highwater": risk.get("highwater", account["equity"])}
-            risk["highwater"] = str(max(D(risk["highwater"]), D(account["equity"])))
-            self.store.put("risk_marks", risk)
-            reason = self.loss_breach(account, risk)
-            if reason and not self.store.get("risk_latch"):
-                self.store.put("risk_latch", {"reason": reason, "at": utcnow(), "equity": account["equity"], "marks": risk})
-                self.store.event("risk_circuit_latched", self.store.get("risk_latch"))
-            if time.monotonic()-self.last_equity_record >= 30:
-                self.store.db.execute("INSERT INTO equity(at,value) VALUES(?,?)", (snapshot["at"], str(account["equity"])))
-                self.last_equity_record = time.monotonic()
+            raise BrokerFailure("Accounting snapshot readback failed; reconciliation required") from exc
         self.connected = True
         self.worker("reconciliation", "healthy", "Balances, positions, open and unresolved orders read back")
         # Expiry only requests cancellation. Reservation remains until terminal readback.
@@ -506,6 +509,16 @@ class Engine:
             if cur.rowcount: self.store.event("news", safe)
         self.store.put("news_coverage", {"status": "available", "at": utcnow(), "scope": "Latest 20 metadata records; not exhaustive news coverage"})
 
+    async def inspect_accounting_window(self, symbol, *, expected=None):
+        """Read-only rehearsal boundary; never submits or authorizes an order."""
+        from .accounting_window import capture, recheck
+        async with self.lock:
+            if expected is not None:
+                if not isinstance(expected, dict) or expected.get('symbol') != symbol:
+                    raise RuleViolation('Accounting witness belongs to another symbol')
+                return recheck(self.store, expected, enabled=self.activity_enabled, max_snapshot_age=self.settings.max_snapshot_age)
+            return capture(self.store, symbol, enabled=self.activity_enabled, max_snapshot_age=self.settings.max_snapshot_age)
+
     async def refresh_activity_feed(self):
         from .activity_feed import collect_batch, publish_projection, FeedError
         if self.activity_observation:
@@ -552,8 +565,9 @@ class Engine:
             self.store.put("fee_coverage", {"after": after, "at": utcnow(), "status": "window-fetched", "late_fees_possible": True})
             self.store.event("fee_readback", {"records": len(items), "after": after})
 
-    def inventory(self):
-        return attribute(self.store, self.store.get("account_snapshot", {}))
+    def inventory(self, *, read_context=None):
+        snapshot = (read_context.source['state'].get('account_snapshot') or {}) if read_context is not None else self.store.get("account_snapshot", {})
+        return attribute(self.store, snapshot, read_context=read_context)
 
     def decision_context(self):
         return {"snapshot": self.store.get("account_snapshot"), "quotes": self.store.get("quotes"),
@@ -815,8 +829,23 @@ class Engine:
         snap = self.store.get("account_snapshot", {}) if snap is None else snap
         return self.connected and bool(snap) and age(snap["at"]) <= self.settings.max_snapshot_age
 
+    def accounting_view(self, *, read_context=None):
+        from .activity_feed import current_accounting
+        if self.settings.mode != 'alpaca' or not self.settings.configured:
+            return None
+        return current_accounting(self.store, enabled=self.activity_enabled,
+                                  max_snapshot_age=self.settings.max_snapshot_age, read_context=read_context)
+
     def state(self):
-        snap = self.store.get("account_snapshot", {})
+        from .activity_feed import accounting_read
+        with self.store.lock:
+            if self.settings.mode == 'alpaca':
+                with accounting_read(self.store, cutoff=utcnow()) as read_context:
+                    return self._state(read_context=read_context)
+            return self._state()
+
+    def _state(self, *, read_context=None):
+        snap = (read_context.source['state'].get('account_snapshot') or {}) if read_context is not None else self.store.get("account_snapshot", {})
         a = snap.get("account", {});quotes = self.store.get("quotes", {})
         positions = {symbol_for(p["symbol"]) or p["symbol"]: p for p in snap.get("positions", [])}
         assets = []
@@ -836,15 +865,18 @@ class Engine:
         last_seq = self.store.rows("SELECT COALESCE(MAX(seq),0) n FROM events")[0]["n"]
         latest_news = self.store.rows("SELECT payload FROM news n WHERE revision=(SELECT MAX(revision) FROM news WHERE id=n.id) ORDER BY revision DESC LIMIT 20")
         healthy = self.broker_ready(snap)
+        inventory = self.inventory(read_context=read_context)
         return {"service_version": "0.2", "mode": self.settings.mode, "paper_only": True, "configured": self.settings.configured,
                 "connected": healthy, "as_of": snap.get("at"), "server_time": utcnow(), "halted": self.store.get("halted", False) or bool(self.store.get("risk_latch")),
                 "risk_policy": self.risk_policy(),
-                "inventory": self.inventory(), "exit_plans": list(self.store.get("exit_plans", {}).values()),
+                **({"accounting": self.accounting_view(read_context=read_context)} if self.settings.mode == "alpaca" and self.settings.configured else {}),
+                "inventory": inventory, "exit_plans": list(self.store.get("exit_plans", {}).values()),
                 "experiment": experiment.state(self.store),
                 "portfolio_replay": self.replay_view(),
                 "liquidity_experiment": self.liquidity_view(),
                 "readiness": readiness_view(self.store, feed_enabled=self.activity_enabled,
-                                            max_snapshot_age=self.settings.max_snapshot_age) if self.settings.mode == "alpaca" and self.settings.configured else None,
+                                            max_snapshot_age=self.settings.max_snapshot_age,
+                                            read_context=read_context, inventory=inventory) if self.settings.mode == "alpaca" and self.settings.configured else None,
                 "execution_pilot": self.store.get("execution_pilot"),
                 "shadow": {"enabled": self.settings.enable_shadow, "counts": self.store.rows("SELECT json_extract(result,'$.decision') decision,COUNT(*) count FROM shadow GROUP BY decision"),
                            "recent": [{"at": r["at"], "intent": json.loads(r["intent"]), "result": json.loads(r["result"]), "input_hash": r["input_hash"]} for r in self.store.rows("SELECT * FROM shadow ORDER BY id DESC LIMIT 16")]},

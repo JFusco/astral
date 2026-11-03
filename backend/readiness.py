@@ -1,5 +1,6 @@
 """Evidence-by-evidence readiness. No threshold changes or execution capability."""
 from decimal import Decimal
+from copy import deepcopy
 from datetime import timedelta
 import json
 import hashlib
@@ -36,13 +37,16 @@ def calendar_coverage(calendar, symbol, now, proofs=None):
     return {"passed":not missing,"required_categories":sorted(required),"missing_categories":missing}
 
 
-def view(store, *, feed_enabled=False, max_snapshot_age=30):
+def view(store, *, feed_enabled=False, max_snapshot_age=30, read_context=None, inventory=None):
     from .inventory import attribute
-    now = timestamp(utcnow())
-    snapshot = store.get("account_snapshot", {})
-    inventory = attribute(store, snapshot)
+    if read_context is not None:
+        read_context.check(store)
+    now = timestamp(read_context.cutoff if read_context is not None else utcnow())
+    snapshot = (read_context.source['state'].get('account_snapshot') or {}) if read_context is not None else store.get("account_snapshot", {})
+    inventory = attribute(store, snapshot, read_context=read_context) if inventory is None else deepcopy(inventory)
     from .activity_feed import current_accounting
-    accounting = current_accounting(store, enabled=feed_enabled, now=now.isoformat(), max_snapshot_age=max_snapshot_age)
+    accounting = current_accounting(store, enabled=feed_enabled, now=now.isoformat(),
+                                    max_snapshot_age=max_snapshot_age, read_context=read_context)
     proofs={}; calendars=store.get("event_calendars",{})
     active_hashes={c.get("retained_evidence_sha256") for symbol in ("BTC","ETH","SOL")
                    for key,c in calendars.get(symbol,{}).get("categories",{}).items()

@@ -90,20 +90,39 @@ class AlpacaPaper:
             return await self._request(method, path, critical=critical, **kwargs)
 
     async def _request(self, method, path, *, data=False, critical=False, **kwargs):
-        if not self.settings.configured:
-            raise BrokerFailure("Alpaca paper credentials are not configured", sent=False)
+        from .activity_diagnostics import request_span
+        with request_span(method, path) as diagnostic:
+            return await self._perform_request(method, path, data=data, critical=critical, diagnostic=diagnostic, **kwargs)
+
+    async def _perform_request(self, method, path, *, data=False, critical=False, diagnostic, **kwargs):
+        from .activity_diagnostics import classify, ledger_write, trace_extensions
         pool = "data" if data else "trading"
-        if time.monotonic() < self.cooldown[pool]:
-            raise BrokerFailure("Provider cooldown active", 429, sent=False)
-        (self.data if data else self.trading).take(critical)
         started = time.monotonic()
         try:
-            response = await self.http.request(method, (DATA_URL if data else PAPER_URL) + path, **kwargs)
-            self.store.put("last_api_call", {"pool": pool, "method": method, "path": path,
-                                             "status": response.status_code, "at": utcnow(),
-                                             "latency_ms": round((time.monotonic()-started)*1000),
-                                             "remaining": response.headers.get("x-ratelimit-remaining")})
-            self.store.event("api_request", self.store.get("last_api_call"))
+            if not self.settings.configured:
+                diagnostic['denial'] = 'configuration'
+                raise BrokerFailure("Alpaca paper credentials are not configured", sent=False)
+            if time.monotonic() < self.cooldown[pool]:
+                diagnostic['denial'] = 'local-cooldown'
+                raise BrokerFailure("Provider cooldown active", 429, sent=False)
+            try:
+                (self.data if data else self.trading).take(critical)
+            except BrokerFailure:
+                diagnostic['denial'] = 'local-budget'
+                raise
+            started = time.monotonic()
+            diagnostic['dispatch'] = 'started-outcome-unknown'
+            extensions = trace_extensions(diagnostic, kwargs.pop('extensions', None))
+            async with self.http.stream(method, (DATA_URL if data else PAPER_URL) + path,
+                                        extensions=extensions, **kwargs) as response:
+                diagnostic.update(dispatch='response-received', http_status=response.status_code)
+                await response.aread()
+            last_call = {"pool": pool, "method": method, "path": path,
+                         "status": response.status_code, "at": utcnow(),
+                         "latency_ms": round((time.monotonic()-started)*1000),
+                         "remaining": response.headers.get("x-ratelimit-remaining")}
+            ledger_write(self.store.put, "last_api_call", last_call)
+            ledger_write(self.store.event, "api_request", last_call)
             if response.status_code == 404:
                 return None
             if response.status_code == 429:
@@ -115,10 +134,18 @@ class AlpacaPaper:
             if response.status_code >= 400 or 300 <= response.status_code < 400:
                 raise BrokerFailure(f"Alpaca {pool} request returned HTTP {response.status_code}", response.status_code)
             return response.json() if response.content else {}
-        except (httpx.HTTPError, ValueError) as exc:
-            self.store.event("api_request_failed", {"pool": pool, "method": method, "path": path,
-                                                    "at": utcnow(), "latency_ms": round((time.monotonic()-started)*1000), "outcome": "transport-or-response-error"})
-            # Never log credentials, request headers, or arbitrary provider response bodies.
+        except (httpx.HTTPError, ValueError, BrokerFailure) as exc:
+            classify(diagnostic, exc)
+            # Fixed templates and bounded fields, even without an acquisition trace.
+            safe = {key: diagnostic[key] for key in
+                    ('method', 'path', 'dispatch', 'http_status', 'failure_kind', 'failure_locus', 'denial')}
+            kind = 'api_request_diagnostic' if isinstance(exc, BrokerFailure) else 'api_request_failed'
+            payload = {"pool": pool, **safe, "at": utcnow(), "latency_ms": round((time.monotonic()-started)*1000)}
+            if kind == 'api_request_failed':
+                payload['outcome'] = 'transport-or-response-error'
+            ledger_write(self.store.event, kind, payload)
+            if isinstance(exc, BrokerFailure):
+                raise
             raise BrokerFailure("Alpaca request outcome is unavailable; reconcile before resubmission") from exc
 
     async def load_assets(self):

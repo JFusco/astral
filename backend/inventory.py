@@ -19,10 +19,13 @@ def book_for(intent):
     return name if name in {"swing", "intraday"} else "manual"
 
 
-def attribute(store, snapshot):
+def attribute(store, snapshot, *, read_context=None):
+    if read_context is not None:
+        read_context.check(store)
     paper = store.get('mode') == 'alpaca'
-    cutoff = moment(utcnow()) if paper else None
-    orders = {r["client_id"]: r for r in store.rows("SELECT * FROM orders")}
+    cutoff = moment(read_context.cutoff if read_context is not None else utcnow()) if paper else None
+    source = read_context.source if read_context is not None else None
+    orders = {r["client_id"]: r for r in (source['orders'] if source is not None else store.rows("SELECT * FROM orders"))}
     balances, owners, errors, entries = {}, {}, [], {}
     if store.get("fee_reconciliation_required"):
         errors.append({"reason": "Confirmed fee revision requires reconciliation review"})
@@ -48,9 +51,10 @@ def attribute(store, snapshot):
     if paper:
         from .activity_feed import read_projection
         from .activity_projection import input_digest, ledger_source
-        projection = read_projection(store, cutoff=cutoff.isoformat())
+        projection = read_projection(store, cutoff=cutoff.isoformat(), read_context=read_context)
         if projection:
-            if projection['issues'] or projection['input_sha256'] != input_digest(ledger_source(store)):
+            source_digest = read_context.input_sha256 if read_context is not None else input_digest(ledger_source(store))
+            if projection['issues'] or projection['input_sha256'] != source_digest:
                 errors.append({'reason': 'Activity evidence requires reconciliation review'})
             else:
                 effects = projection['effects']

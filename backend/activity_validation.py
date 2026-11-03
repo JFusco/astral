@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 
+from .accounting_snapshot import commit_snapshot
 from .activity_projection import balances_match, digest, load_mapping, number
 from .config import ROOT, Settings
 from .store import Store, dumps, utcnow
@@ -123,7 +124,8 @@ async def connected(store, mapping, settings):
         current_orders = await broker.request('GET', '/v2/orders', params={'status': 'all', 'limit': 500}, critical=True)
         if not isinstance(current_orders, list) or len(current_orders) >= 500:
             raise ValueError('Order coverage unavailable')
-        store.put('account_snapshot', snap)
+        with store.transaction():
+            commit_snapshot(store, snap)
         batch, receipt = await collect_batch(broker, store)
         after = await broker.snapshot()
         if not balances_match(snap, after):
@@ -177,7 +179,8 @@ def main():
                        'inventory': json.loads(inventory), 'connected': connected_receipt, 'source_files': originals,
                        'mapping_sha256': digest(mapping), 'implementation_sha256': {
                            p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in
-                           [*Path(__file__).parent.glob('activity_*.py'), Path(__file__).with_name('evidence_codec.py')]},
+                           [*Path(__file__).parent.glob('activity_*.py'), Path(__file__).with_name('evidence_codec.py'),
+                            Path(__file__).with_name('accounting_snapshot.py')]},
                        'orders_enabled': False, 'ledger_adjustments': False}
             path = output/'receipt.json';path.write_text(json.dumps(receipt, indent=2)+'\n');path.chmod(0o600)
         finally:
