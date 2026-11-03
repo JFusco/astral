@@ -8,6 +8,7 @@ from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 import httpx
 import pytest
@@ -400,13 +401,28 @@ def test_abandoned_batch_and_publication_failure_do_not_hide_evidence(setup,monk
 
 
 def controlled_current(setup):
-    """A mock-provider acceptance, not evidence about another provider account."""
-    store,original,reviewed=setup
-    capture,mapping=deepcopy(original),deepcopy(reviewed)
-    capture['request']['params']['until']=KNOWN;capture['request']['received_at']=KNOWN
-    mapping['kind']='reviewed-provider'
-    snapshot=store.get('account_snapshot');snapshot['at']=KNOWN;store.put('account_snapshot',snapshot)
-    return replay(setup,capture,mapping)
+    """Fresh mock-provider collection; never promote an imported receipt."""
+    from backend.accounting_snapshot import commit_snapshot
+    store, original, reviewed = setup
+    mapping = deepcopy(reviewed);mapping['kind'] = 'reviewed-provider'
+    snapshot = deepcopy(store.get('account_snapshot'));snapshot['at'] = KNOWN
+    def handler(request):
+        assert request.method == 'GET'
+        if request.url.path == '/v2/account':return httpx.Response(200, json=snapshot['account'])
+        if request.url.path == '/v2/positions':return httpx.Response(200, json=snapshot['positions'])
+        if request.url.path == '/v2/clock':return httpx.Response(200, json=snapshot['clock'])
+        assert request.url.path == '/v2beta1/events/activities'
+        return httpx.Response(200, headers={'content-type':'text/event-stream'}, content=(FIXTURE/'activity-sse.raw').read_bytes())
+    broker = AlpacaPaper(Settings(api_key='fixture', secret_key='fixture'), store, httpx.MockTransport(handler))
+    async def scenario():
+        try:
+            fresh = await broker.snapshot()
+            with store.transaction():commit_snapshot(store, fresh)
+            batch, _ = await collect_batch(broker, store)
+            return publish_projection(store, batch, mapping, now=KNOWN)
+        finally:await broker.close()
+    with patch('backend.activity_feed.utcnow', return_value=KNOWN), patch('backend.broker.utcnow', return_value=KNOWN):
+        return asyncio.run(scenario())
 
 
 @pytest.mark.parametrize('age,passed',[(0,True),(90,True),(90.000001,False)])
@@ -521,7 +537,8 @@ def test_worker_requires_post_stream_balances_before_publishing_usable_accountin
     store, _, reviewed = setup
     monkeypatch.setattr('backend.activity_feed.utcnow', lambda: KNOWN)
     snapshot = store.get('account_snapshot');snapshot['at'] = KNOWN
-    store.put('account_snapshot', snapshot)
+    from backend.accounting_snapshot import commit_snapshot
+    with store.transaction():epoch = commit_snapshot(store, snapshot)
     mapping = deepcopy(reviewed);mapping['kind'] = 'reviewed-provider'
     mapping_path = tmp_path/'controlled-mapping.json';mapping_path.write_text(json.dumps(mapping))
     settings = Settings(api_key='fixture', secret_key='fixture', enable_activity_feed=True, activity_mapping_path=mapping_path)
@@ -559,7 +576,7 @@ def test_worker_requires_post_stream_balances_before_publishing_usable_accountin
             assert not result['effects'] and result['cash_reconciliation']['cash'] is None
             assert not any(r['passed'] for r in current['accounting_by_symbol'].values())
             assert current['cash_reconciliation']['cash'] is None
-        assert store.get('account_snapshot') == snapshot
+        assert store.get('account_snapshot') == {**snapshot, 'snapshot_epoch': epoch}
     finally:asyncio.run(broker.close())
 
 
@@ -714,3 +731,124 @@ def test_absence_of_fee_records_is_never_zero_fee_evidence_even_if_balances_matc
     result=pure(setup,capture,mapping)
     assert 'trade_fee_coverage_unverified' in result['issues']
     assert result['cash_reconciliation']['cash'] is None
+
+
+@pytest.mark.parametrize('separator', [b'\n', b'\r', b'\r\n'], ids=['lf','cr','crlf'])
+def test_parser_preserves_frame_bytes_at_every_separator_split(separator):
+    raw = separator.join([b': ping', b'id: first', b'data: {"value":1}', b'', b''])
+    expected = [({'value': 1}, b': ping\nid: first\ndata: {"value":1}\n\n')]
+    for split in range(len(raw)+1):
+        parser = SSEParser()
+        parser.feed(raw[:split]);parser.feed(b'');parser.feed(raw[split:]);parser.feed(b'', final=True)
+        assert parser.frames == expected
+
+
+def test_non_sse_unicode_and_c0_characters_do_not_split_lines():
+    value = 'a\u0085b\u2028c\u2029d'
+    raw = (': \v\f\x1c\x1d\x1e\nid: before\vafter\nevent: update\fretry\n'
+           'data: {"value":"'+value+'"}\n\n').encode()
+    parser = SSEParser();parser.feed(raw, final=True)
+    assert parser.frames == [({'value': value}, raw)]
+
+
+@pytest.mark.parametrize('bad,message', [
+    (b'unknown: field\n\n', 'Unsupported SSE field'),
+    (b': dropped messages\n\n', 'Unverified provider activity notice'),
+    (b'data: broken\n\n', 'Malformed activity JSON'),
+    (b'data: {"x":1,"x":2}\n\n', 'Malformed activity JSON'),
+], ids=['field','notice','json','duplicate-key'])
+def test_failed_frame_is_consumed_and_later_suffix_is_not_replayed(bad, message):
+    from backend.activity_feed import FeedError
+    parser = SSEParser();parser.feed(b'data: {"first":1}\n\n')
+    with pytest.raises(FeedError, match=message):parser.feed(bad+b'data: {"last":2}\n\n')
+    assert [event for event, _ in parser.frames] == [{'first':1}]
+    parser.feed(b'', final=True);parser.feed(b'', final=True)
+    assert [event for event, _ in parser.frames] == [{'first':1}, {'last':2}]
+
+
+def test_decode_failure_does_not_scan_valid_text_in_the_same_chunk():
+    parser = SSEParser();parser.feed(b'data: {"first":1}\n\n')
+    with pytest.raises(UnicodeError):parser.feed(b'data: {"lost":2}\n\n\xff')
+    assert [event for event, _ in parser.frames] == [{'first':1}]
+    parser.feed(b'data: {"last":3}\n\n', final=True)
+    assert [event for event, _ in parser.frames] == [{'first':1}, {'last':3}]
+
+
+def padded_sse_frame(length, separator=b'\n'):
+    head, tail = b'data: {"pad":"', b'"}'+separator+separator
+    return head+b'x'*(length-len(head)-len(tail))+tail
+
+
+@pytest.mark.parametrize('separator', [b'\n', b'\r\n'], ids=['lf','crlf'])
+def test_actual_frame_byte_limit_accepts_equality_and_retains_prior_frames_on_overflow(separator):
+    from backend.activity_feed import MAX_FRAME, FeedError
+    parser = SSEParser();parser.feed(padded_sse_frame(MAX_FRAME, separator), final=True)
+    assert len(parser.frames) == 1
+    parser = SSEParser();parser.feed(b'data: {}\n\n')
+    with pytest.raises(FeedError, match='Activity frame budget exceeded'):
+        parser.feed(padded_sse_frame(MAX_FRAME+1, separator), final=True)
+    assert [event for event, _ in parser.frames] == [{}]
+
+
+def test_actual_pending_utf8_frame_limit_preserves_completed_frames_at_equality_and_overflow():
+    from backend.activity_feed import MAX_FRAME, FeedError
+    first = b'data: {}\n\n'
+    pending = ('data:'+'é'*((MAX_FRAME-6)//2)+'x').encode()
+    assert len(pending) == MAX_FRAME
+    assert len(pending.decode())+1 < MAX_FRAME
+    parser = SSEParser();parser.feed(first+pending)
+    assert parser.frames == [({}, first)]
+    with pytest.raises(FeedError, match='^Activity frame budget exceeded$'):
+        parser.feed(b'\n')
+    assert parser.frames == [({}, first)]
+    parser = SSEParser()
+    with pytest.raises(FeedError, match='^Activity frame budget exceeded$'):
+        parser.feed(first+pending+b'x')
+    assert parser.frames == [({}, first)]
+
+
+def test_actual_transport_byte_limit_preserves_prior_frames_and_rejects_before_decode():
+    from backend.activity_feed import MAX_BYTES, FeedError
+    raw = padded_sse_frame(32*1024)*256
+    assert len(raw) == MAX_BYTES
+    parser = SSEParser();parser.feed(raw, final=True)
+    assert len(parser.frames) == 256
+    with pytest.raises(FeedError, match='Activity byte budget exceeded'):parser.feed(b'\xff')
+    assert len(parser.frames) == 256
+    overflow = SSEParser()
+    with pytest.raises(FeedError, match='Activity byte budget exceeded'):overflow.feed(raw+b'\xff', final=True)
+    assert overflow.frames == []
+    chunks = SSEParser()
+    for index in range(0, len(raw), 32*1024):chunks.feed(raw[index:index+32*1024])
+    chunks.feed(b'', final=True)
+    with pytest.raises(FeedError, match='Activity byte budget exceeded'):chunks.feed(b'x')
+    assert chunks.frames == parser.frames
+
+
+def test_actual_event_limit_keeps_successful_frames_and_consumes_rejected_frame():
+    from backend.activity_feed import MAX_EVENTS, FeedError
+    parser = SSEParser();parser.feed(b'data: {}\n\n'*MAX_EVENTS)
+    assert len(parser.frames) == MAX_EVENTS
+    with pytest.raises(FeedError, match='Activity event budget exceeded'):parser.feed(b'data: []\n\n')
+    parser.feed(b'', final=True)
+    assert len(parser.frames) == MAX_EVENTS
+
+
+@pytest.mark.parametrize('tail', [b'data: broken\n\n', b'data: \xff\n\n'], ids=['json','utf8'])
+def test_stream_failure_retains_only_earlier_completed_frames_and_raw_evidence(setup, tail):
+    from backend.activity_feed import stream_activities
+    store, _, _ = setup
+    first = b'data: {"first":1}\n\n'
+    class Parts(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            yield first
+            yield tail
+    broker = AlpacaPaper(Settings(api_key='fixture',secret_key='fixture'), store,
+        httpx.MockTransport(lambda request: httpx.Response(200, headers={'content-type':'text/event-stream'}, stream=Parts())))
+    async def scenario():
+        try:return await stream_activities(broker, '2026-10-25T00:00:00Z', KNOWN)
+        finally:await broker.close()
+    result = asyncio.run(scenario())
+    assert result['events'] == [{'first':1}]
+    assert result['raw'] == first+tail
+    assert result['complete'] is False and result['error'] == 'activity_stream_incomplete'

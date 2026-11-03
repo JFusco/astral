@@ -884,3 +884,36 @@ test.describe("development hydration smoke @dev", () => {
       expect(diagnostics).toEqual([]);
     });
 });
+
+
+test("backend state timestamps parse in the browser @s4-timestamps", async ({ page, browser, browserName }, testInfo) => {
+  await page.goto("/");
+  const samples = [
+    { name: "backend microseconds", value: "2026-10-31T12:34:56.123456+00:00", expected: Date.UTC(2026, 9, 31, 12, 34, 56, 123) },
+    { name: "backend microseconds truncate", value: "2026-10-31T12:34:56.999999+00:00", expected: Date.UTC(2026, 9, 31, 12, 34, 56, 999) },
+    { name: "backend whole seconds", value: "2026-10-31T12:34:56+00:00", expected: Date.UTC(2026, 9, 31, 12, 34, 56) },
+    { name: "UTC Z compatibility", value: "2026-10-31T12:34:56.123456Z", expected: Date.UTC(2026, 9, 31, 12, 34, 56, 123) },
+  ];
+  const observed = await page.evaluate(async (cases) => {
+    const literals = cases.map((sample) => ({ ...sample, parsed: Date.parse(sample.value) }));
+    const response = await fetch("/api/state", { cache: "no-store" });
+    if (!response.ok) throw new Error(`Fixture state returned ${response.status}`);
+    const state = await response.json();
+    const timestamp: string = state.server_time;
+    const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{6}))?\+00:00$/.exec(timestamp);
+    if (!match) throw new Error(`Unexpected fixture timestamp format: ${timestamp}`);
+    const [year, month, day, hour, minute, second] = match.slice(1, 7).map(Number);
+    const expected = Date.UTC(year, month - 1, day, hour, minute, second, Math.floor(Number(match[7] ?? "0") / 1000));
+    return { literals, relay: { timestamp, parsed: Date.parse(timestamp), expected } };
+  }, samples);
+  await testInfo.attach("timestamp-parsing", {
+    body: JSON.stringify({ browserName, version: browser.version(), ...observed }, null, 2),
+    contentType: "application/json",
+  });
+  for (const sample of observed.literals) {
+    expect(Number.isFinite(sample.parsed), sample.name).toBe(true);
+    expect(sample.parsed, sample.name).toBe(sample.expected);
+  }
+  expect(Number.isFinite(observed.relay.parsed)).toBe(true);
+  expect(observed.relay.parsed).toBe(observed.relay.expected);
+});

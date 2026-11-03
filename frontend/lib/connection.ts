@@ -16,6 +16,9 @@ export type Snapshot = {
   health: Health | null;
   intelligence: Intelligence | null;
   connected: boolean;
+  /** Diagnostic receipt for the displayed response, never execution authority. */
+  ownReadAt: number | null;
+  ownReadIdentity: { server_time: string; sequence: number } | null;
   /** Server-rendered dashboard state not yet confirmed by the browser's own read. */
   seeded: boolean;
   healthConnected: boolean;
@@ -38,6 +41,8 @@ const empty: Snapshot = {
   health: null,
   intelligence: null,
   connected: false,
+  ownReadAt: null,
+  ownReadIdentity: null,
   seeded: false,
   healthConnected: false,
   healthLoading: true,
@@ -107,7 +112,10 @@ export class Connection {
         state.fills.forEach((f) => this.seen.add(f.id));
         this.bootstrapped = true;
       }
-      this.accept(state);
+      const prior = this.snapshot.state;
+      const eligible = Number.isFinite(Date.parse(state.server_time)) &&
+        (!prior || Number.isFinite(Date.parse(prior.server_time)));
+      this.accept(state, eligible ? Date.now() : null);
       if (this.snapshot.connected && !this.source) this.openStream();
     } catch (error) {
       if (generation === this.generation && !this.controller?.signal.aborted)
@@ -120,7 +128,7 @@ export class Connection {
       if (generation === this.generation) this.pendingState = false;
     }
   }
-  private accept(state: Dashboard) {
+  private accept(state: Dashboard, ownReadAt: number | null = null) {
     const current = this.snapshot.state;
     if (current) {
       const time = Date.parse(state.server_time),
@@ -129,10 +137,16 @@ export class Connection {
         time < currentTime ||
         (time === currentTime && state.sequence < current.sequence)
       )
-        return;
+        return false;
     }
     this.lastMessage = Date.now();
-    this.update({ state, connected: true, seeded: false, error: null });
+    this.update({
+      state, connected: true, seeded: false, error: null, ownReadAt,
+      ownReadIdentity: ownReadAt === null ? null : {
+        server_time: state.server_time, sequence: state.sequence,
+      },
+    });
+    return true;
   }
   private openStream() {
     const source = new EventSource(`/api/events?after=${this.cursor}`);

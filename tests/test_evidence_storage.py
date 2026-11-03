@@ -1,25 +1,51 @@
 """Lossless mixed-ledger reads and fail-closed evidence decoding."""
+import asyncio
 import hashlib
 import json
 from pathlib import Path
 import struct
+from unittest.mock import patch
 import zlib
 
+import httpx
 import pytest
 
 from backend.evidence_codec import (MAGIC, NAMESPACE, REFERENCE, MAX_BYTES, pack_bytes, pack_text,
                                     unpack_bytes, unpack_text, reference_bytes)
 from backend.store import Store
 from backend.activity_projection import digest
-from backend.activity_feed import (SSEParser, current_accounting, parse_sse, publish_projection,
+from backend.activity_feed import (SSEParser, collect_batch, current_accounting, parse_sse, publish_projection,
                                    read_projection, retain_batch, start_batch)
 from backend.activity_validation import import_ledger, import_capture, acceptance
 from backend.accounting_engine import source_snapshot, at
+from backend.broker import AlpacaPaper
+from backend.config import Settings
 from backend.liquidity_runner import readonly, snapshot
 from backend.replay_runner import export_events
 
 NOW = '2030-01-01T00:00:00+00:00'
 FIXTURE = Path(__file__).parent/'fixtures/activity_feed/btc-sanitized-v1'
+
+
+def fresh_projection(store, raw, mapping):
+    """Collect controlled provider evidence; imported history stays historical."""
+    snapshot = store.get('account_snapshot')
+    def handler(request):
+        assert request.method == 'GET'
+        for path, key in [('/v2/account', 'account'), ('/v2/positions', 'positions'), ('/v2/clock', 'clock')]:
+            if request.url.path == path:return httpx.Response(200, json=snapshot[key])
+        assert request.url.path == '/v2beta1/events/activities'
+        return httpx.Response(200, headers={'content-type':'text/event-stream'}, content=raw)
+    broker = AlpacaPaper(Settings(api_key='fixture', secret_key='fixture'), store, httpx.MockTransport(handler))
+    async def scenario():
+        try:
+            batch, receipt = await collect_batch(broker, store, refresh_snapshot=True)
+            assert receipt['complete']
+            return publish_projection(store, batch, mapping, now=NOW)
+        finally:await broker.close()
+    with patch('backend.activity_feed.utcnow', return_value=NOW), patch('backend.broker.utcnow', return_value=NOW), \
+         patch('backend.inventory.utcnow', return_value=NOW):
+        return asyncio.run(scenario())
 
 
 @pytest.mark.parametrize('raw', [b'', b'data: {}\n\n', NAMESPACE+b'raw rejected bytes',
@@ -117,11 +143,10 @@ def retained_accounting(tmp_path, monkeypatch):
     mapping = json.loads((FIXTURE/'mapping.json').read_text())
     raw = (FIXTURE/'activity-sse.raw').read_bytes()
     import_ledger(store, json.loads((FIXTURE/'ledger-selected-readonly.json').read_text()))
-    snapshot = store.get('account_snapshot');snapshot['at'] = NOW;store.put('account_snapshot', snapshot)
     capture['request']['params']['until'] = capture['request']['received_at'] = NOW
     mapping['kind'] = 'reviewed-provider'
-    result = import_capture(store, capture, raw, mapping, now=NOW)
     try:
+        result = fresh_projection(store, raw, mapping)
         assert not result['issues'] and len(result['effects']) == 8
         assert current_accounting(store, enabled=True, now=NOW)['accounting_by_symbol']['BTC']['passed']
         yield path, store, capture, raw, mapping, result
@@ -192,7 +217,7 @@ def test_selected_outcome_and_entire_delivery_sequence_are_required_for_accounti
     capture['events'] = [*capture['events'], capture['events'][0]]
     raw = b'\xef\xbb\xbf: heartbeat\r\n\r\n'+b''.join(
         ('data: '+json.dumps(event)+'\r\n\r\n').encode() for event in capture['events'])
-    intact = import_capture(store, capture, raw, mapping, now=NOW)
+    intact = fresh_projection(store, raw, mapping)
     for result in (intact, read_projection(store, cutoff=NOW), source_snapshot(path, at(NOW))['activity_projection']):
         assert not result['issues'] and result['effects'] == first['effects']
         assert result['cash_reconciliation'] == first['cash_reconciliation']

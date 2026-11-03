@@ -151,7 +151,7 @@ The Compose environment comes from ignored `.env`. Docker deployment was not exe
 
 ```sh
 .venv/bin/python -m pip install -r requirements-dev.txt
-.venv/bin/python -m pytest -q
+npm run test:backend
 npm run lint
 npm run typecheck
 npm test
