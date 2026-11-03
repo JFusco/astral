@@ -48,6 +48,68 @@ def identity(value):
     return isinstance(value, str) and re.fullmatch('[0-9a-f]{32}', value) is not None
 
 
+def legacy_summary(value):
+    """Recognize the a6bf6ca summary shape, without attesting provenance or a run."""
+    keys = {'status', 'reason', 'started_at', 'duration_seconds', 'elapsed_seconds',
+            'cycles', 'complete_acquisitions', 'matched_publications', 'received_bytes',
+            'request_budget_units', 'max_acquisition_gap_seconds', 'last_success_at',
+            'blocked_reasons', 'latency', 'availability_samples', 'growth_bytes',
+            'current_accounting_is_separate', 'operational_acceptance', 'reader_enabled',
+            'orders_enabled'}
+    if not isinstance(value, dict) or set(value) != keys:
+        return False
+    if (not isinstance(value['status'], str)
+            or value['status'] not in {'prepared', 'observing', 'expired', 'stopped', 'failed'}
+            or (value['reason'] is not None and not isinstance(value['reason'], str))
+            or type(value['duration_seconds']) is not int or value['duration_seconds'] != 86400
+            or value['current_accounting_is_separate'] is not True
+            or value['operational_acceptance'] != 'owner-review-required'
+            or type(value['reader_enabled']) is not bool or value['orders_enabled'] is not False):
+        return False
+    for name in ('started_at', 'last_success_at'):
+        stamp = value[name]
+        if stamp is None:
+            continue
+        if not isinstance(stamp, str) or not re.fullmatch(
+                r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,6})?\+00:00', stamp):
+            return False
+        try:
+            datetime.fromisoformat(stamp)
+        except ValueError:
+            return False
+    for name in ('elapsed_seconds', 'max_acquisition_gap_seconds'):
+        amount = value[name]
+        # The preflight decoder uses float; the offline report uses Decimal.
+        if type(amount) not in (int, float, Decimal) or not Decimal(str(amount)).is_finite() or amount < 0:
+            return False
+    def counter(amount):
+        return type(amount) is int and amount >= 0
+    if not all(counter(value[name]) for name in ('cycles', 'complete_acquisitions',
+            'matched_publications', 'received_bytes', 'request_budget_units', 'growth_bytes')):
+        return False
+    for name in ('blocked_reasons', 'availability_samples'):
+        counts = value[name]
+        # Exact containers and integer leaves exclude identities at every depth.
+        if not isinstance(counts, dict) or any(
+                not isinstance(key, str) or key in {'run_id', 'recovered_by'} or not counter(amount)
+                for key, amount in counts.items()):
+            return False
+    if not set(value['availability_samples']) <= {'current', 'incomplete'}:
+        return False
+    latencies = value['latency']
+    if not isinstance(latencies, dict) or set(latencies) != {'acquisition', 'publication', 'state'}:
+        return False
+    for histogram in latencies.values():
+        if (not isinstance(histogram, dict)
+                or set(histogram) != {'samples', 'p95_upper_ms', 'over_5000_ms'}
+                or not counter(histogram['samples']) or not counter(histogram['over_5000_ms'])):
+            return False
+        upper = histogram['p95_upper_ms']
+        if upper is not None and (type(upper) is not int or upper not in (5, 10, 25, 50, 100, 250, 500, 1000, 2000, 5000)):
+            return False
+    return True
+
+
 def clock(value):
     if not isinstance(value, dict):
         raise ValueError('missing-clock')
@@ -476,6 +538,8 @@ class Analysis:
                 self.issue('malformed-record', row['reference']); continue
             if row['kind'] == 'batch':
                 batches.setdefault(row['id'], []).append(row); continue
+            if row['kind'] == 'event' and row.get('type') == 'activity_rollout_previous' and legacy_summary(value):
+                continue
             embedded = value.get('clock_diagnostics')
             run = embedded.get('run_id') if isinstance(embedded, dict) else value.get('run_id')
             if run != self.run:

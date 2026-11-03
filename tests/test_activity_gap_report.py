@@ -17,7 +17,7 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
-from test_activity_rollout import NOW, mock_engine, rollout  # noqa: F401
+from test_activity_rollout import NOW, legacy_summary_fixture, mock_engine, rollout, seed_legacy_lifecycle  # noqa: F401
 from backend.activity_gap_report import PRODUCER, SUPPORTED_PRODUCER_SHA256, S5_PRODUCER_SHA256, build_report, main
 from backend.evidence_codec import pack_text, unpack_text, REFERENCE
 
@@ -946,4 +946,85 @@ def test_report_identifies_whole_reviewed_contract_without_relabeling_input(evid
     text = capsys.readouterr().out
     assert 'Matched producer contract: '+('unknown' if contract == 'unsupported' else contract) in text
     assert 'None' not in text
+    assert snapshot(evidence.ledger.parent) == before
+
+
+@pytest.mark.parametrize('status', ['prepared', 'observing', 'expired', 'stopped', 'failed'])
+def test_legacy_archive_preserves_selected_report_and_input_bytes(rollout, monkeypatch, tmp_path, status):
+    """Old archives must not suppress or contribute to a complete selected run."""
+    summary = legacy_summary_fixture(status)
+    rollout[1].put('activity_rollout_observation', summary)
+    seed_legacy_lifecycle(rollout[1], summary, rollout[3])
+    item = generated(rollout, monkeypatch, tmp_path)
+    before = snapshot(item.ledger.parent)
+    value = report(item)
+    selected = item.observation.summary()
+    assert value['E1'] == 'satisfied', value['issues']
+    assert value['exit_code'] == 0
+    assert value['counters'] == {'cycles': 2, 'complete_acquisitions': 2, 'ratio_requirement': 'satisfied'}
+    assert value['populations'] == {key: selected[key] for key in (
+        'matched_publications', 'received_bytes', 'request_budget_units', 'latency',
+        'availability_samples', 'publication_availability_samples')}
+    assert len(value['intervals']) == 3
+    assert value['operational_acceptance'] == 'not-assessed'
+    assert snapshot(item.ledger.parent) == before
+
+
+@pytest.mark.parametrize('damage', [
+    'extra-field', 'clock-diagnostics', 'malformed-id', 'selected-id', 'nested-id',
+    'recovery-id', 'boolean-counter', 'nonfinite-counter', 'duplicate-key', 'state-summary', 'stopped-event',
+])
+def test_legacy_looking_records_outside_exception_remain_unknown(evidence, damage):
+    """Malformed, selected and current summaries must not gain the historical exception."""
+    summary = legacy_summary_fixture()
+    if damage == 'extra-field':summary['extra'] = 0
+    elif damage == 'clock-diagnostics':summary['clock_diagnostics'] = {}
+    elif damage == 'malformed-id':summary['run_id'] = True
+    elif damage == 'selected-id':summary['run_id'] = evidence.run
+    elif damage == 'nested-id':summary['blocked_reasons']['run_id'] = 0
+    elif damage == 'recovery-id':summary['recovered_by'] = evidence.run
+    elif damage == 'boolean-counter':summary['cycles'] = True
+    elif damage == 'nonfinite-counter':summary['cycles'] = float('inf')
+    raw = json.dumps(summary)
+    if damage == 'duplicate-key':raw = '{"cycles":3,'+raw[1:]
+    def alter(db):
+        if damage == 'state-summary':
+            db.execute("UPDATE state SET value=? WHERE key='activity_rollout_observation'", (raw,))
+        else:
+            kind = 'activity_rollout_stopped' if damage == 'stopped-event' else 'activity_rollout_previous'
+            db.execute('INSERT INTO events(at,type,payload) VALUES(?,?,?)', (NOW, kind, raw))
+    change(evidence.ledger, alter)
+    before = snapshot(evidence.ledger.parent)
+    value = report(evidence)
+    assert value['E1'] == 'unknown'
+    assert value['exit_code'] == 3
+    expected = ('malformed-record' if damage in {'nonfinite-counter', 'duplicate-key'} else
+                'invalid-summary' if damage == 'selected-id' else 'unassignable-record')
+    assert expected in {issue['reason'] for issue in value['issues']}
+    assert value['operational_acceptance'] == 'not-assessed'
+    assert snapshot(evidence.ledger.parent) == before
+
+
+def test_legacy_shaped_foreign_archive_cannot_replace_selected_terminal(evidence):
+    """Valid foreign IDs remain isolated, and neither archive form supplies missing evidence."""
+    def seed(db):
+        for extra in ({}, {'run_id': 'd'*32}):
+            db.execute('INSERT INTO events(at,type,payload) VALUES(?,?,?)',
+                       (NOW, 'activity_rollout_previous', json.dumps({**legacy_summary_fixture(), **extra})))
+    change(evidence.ledger, seed)
+    before = snapshot(evidence.ledger.parent)
+    value = report(evidence)
+    assert value['E1'] == 'satisfied' and value['exit_code'] == 0
+    assert value['counters']['cycles'] == 2
+    assert snapshot(evidence.ledger.parent) == before
+    def remove_selected(db):
+        db.execute("DELETE FROM state WHERE key='activity_rollout_observation'")
+        db.execute("DELETE FROM events WHERE type='activity_rollout_stopped'")
+    change(evidence.ledger, remove_selected)
+    before = snapshot(evidence.ledger.parent)
+    value = report(evidence)
+    assert value['E1'] == 'unknown' and value['exit_code'] == 3
+    assert value['counters']['cycles'] is value['counters']['complete_acquisitions'] is None
+    assert value['populations'] is None
+    assert value['operational_acceptance'] == 'not-assessed'
     assert snapshot(evidence.ledger.parent) == before

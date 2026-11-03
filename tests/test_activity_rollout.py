@@ -28,6 +28,44 @@ FIXTURE = Path(__file__).parent/'fixtures/activity_feed/btc-sanitized-v1'
 NOW = '2030-01-01T00:00:00+00:00'
 
 
+def legacy_summary_fixture(status='stopped'):
+    """Inline a6bf6ca Observation.summary/Latency.view contract; no history lookup."""
+    started = status not in {'prepared', 'failed'}
+    return {
+        'status': status,
+        'reason': {'stopped': 'owner_stopped', 'failed': 'ledger_recheck_failed'}.get(status),
+        'started_at': '2029-12-31T23:00:00+00:00' if started else None,
+        'duration_seconds': 86400,
+        'elapsed_seconds': (86400.125 if status == 'expired' else 180.125) if started else 0,
+        'cycles': 3 if started else 0, 'complete_acquisitions': 2 if started else 0,
+        'matched_publications': 2 if started else 0, 'received_bytes': 1024 if started else 0,
+        'request_budget_units': 21 if started else 0,
+        'max_acquisition_gap_seconds': 60.25 if started else 0,
+        'last_success_at': '2029-12-31T23:02:00.125+00:00' if started else None,
+        'blocked_reasons': {'incomplete_activity_coverage': 1} if started else {},
+        'latency': {
+            'acquisition': {'samples': 3 if started else 0, 'p95_upper_ms': 2000 if started else None, 'over_5000_ms': 0},
+            'publication': {'samples': 3 if started else 0, 'p95_upper_ms': 250 if started else None, 'over_5000_ms': 0},
+            'state': {'samples': 0, 'p95_upper_ms': None, 'over_5000_ms': 0},
+        },
+        'availability_samples': {'current': 2, 'incomplete': 1} if started else {},
+        'growth_bytes': 2048, 'current_accounting_is_separate': True,
+        'operational_acceptance': 'owner-review-required',
+        'reader_enabled': status == 'observing', 'orders_enabled': False,
+    }
+
+
+def seed_legacy_lifecycle(store, summary, mapping_sha256):
+    """Base lifecycle records retained their own ID even when summaries did not."""
+    if summary['status'] not in {'prepared', 'failed'}:
+        store.event('activity_rollout_started', {
+            'run_id': 'd'*32, 'mapping_sha256': mapping_sha256, 'duration_seconds': 86400})
+    if summary['status'] == 'stopped':
+        store.event('activity_rollout_stopped', {'run_id': 'd'*32, **summary})
+    elif summary['status'] == 'failed':
+        store.event('activity_rollout_failed', {'run_id': 'd'*32, 'reason': summary['reason']})
+
+
 @pytest.fixture
 def rollout(tmp_path, monkeypatch):
     # This synthetic provenance label exercises validation mechanics only.
@@ -2101,4 +2139,147 @@ def test_research_requires_existing_registration_and_rechecks_it_without_writes(
     store.put('frozen_experiment', {**registration,'manifest_sha256':'0'*64})
     before = source_bytes(settings)
     with pytest.raises(ValueError):activated_settings(settings,spec)
+    assert source_bytes(settings) == before
+
+
+def test_legacy_state_archives_unchanged_and_allows_fresh_observations_only(rollout, monkeypatch):
+    """An old saved summary must not make the documented approved restart unusable."""
+    settings, store, path, sha, mapping = rollout
+    store.put('activity_rollout_observation', legacy_summary_fixture())
+    seeded = store.rows("SELECT value FROM state WHERE key='activity_rollout_observation'")[0]['value']
+    for run_id in ('e'*32, 'f'*32):
+        before = source_bytes(settings)
+        spec = approved_fixture(settings, prepare(settings, path, sha, mapping['account_id']), run_id=run_id)
+        cfg = activated_settings(settings, spec)
+        assert cfg.enable_activity_feed and not cfg.enable_orders
+        assert source_bytes(settings) == before
+        engine, _, _ = mock_engine(rollout, spec)
+        with monkeypatch.context() as patch:
+            one_timing_cycle(engine, patch)
+            async def scenario():
+                try:
+                    await engine.activity_observation.run(engine)
+                    assert engine.activity_observation.cycles == engine.activity_observation.complete == 1
+                    assert engine.activity_observation.status == 'stopped'
+                finally:
+                    await engine.broker.close()
+            asyncio.run(scenario())
+        archived = store.rows("SELECT payload FROM events WHERE type='activity_rollout_previous' ORDER BY seq")
+        assert archived[0]['payload'].encode() == seeded.encode()
+    before = source_bytes(settings)
+    for run_id in ('e'*32, 'f'*32):
+        with pytest.raises(ValueError):
+            approved_fixture(settings, prepare(settings, path, sha, mapping['account_id']), run_id=run_id)
+        assert source_bytes(settings) == before
+
+
+@pytest.mark.parametrize('status', ['prepared', 'observing', 'expired', 'stopped', 'failed'])
+def test_existing_legacy_archive_and_lifecycle_allow_fresh_approval_without_writes(rollout, status):
+    """Already archived and interrupted base runs must not strand fresh approvals."""
+    settings, store, path, sha, mapping = rollout
+    summary = legacy_summary_fixture(status)
+    seed_legacy_lifecycle(store, summary, sha)
+    store.event('activity_rollout_previous', summary)
+    before = source_bytes(settings)
+    spec = approved_fixture(settings, prepare(settings, path, sha, mapping['account_id']), run_id='e'*32)
+    assert activated_settings(settings, spec).enable_activity_feed
+    assert source_bytes(settings) == before
+    if status != 'prepared':
+        with pytest.raises(ValueError):
+            approved_fixture(settings, prepare(settings, path, sha, mapping['account_id']), run_id='d'*32)
+        assert source_bytes(settings) == before
+
+
+@pytest.mark.parametrize('damage', [
+    pytest.param(lambda v: v.pop('reason'), id='missing-field'),
+    pytest.param(lambda v: v.update(extra=0), id='extra-field'),
+    pytest.param(lambda v: v.update(clock_diagnostics={}), id='partially-new-summary'),
+    pytest.param(lambda v: v.update(status='unknown'), id='unsupported-status'),
+    pytest.param(lambda v: v.update(reason=[]), id='non-string-reason'),
+    pytest.param(lambda v: v.update(started_at='2029-02-30T00:00:00+00:00'), id='invalid-timestamp'),
+    pytest.param(lambda v: v.update(duration_seconds=60), id='short-duration'),
+    pytest.param(lambda v: v.update(elapsed_seconds=True), id='boolean-duration'),
+    pytest.param(lambda v: v.update(max_acquisition_gap_seconds=-1), id='negative-duration'),
+    pytest.param(lambda v: v.update(elapsed_seconds=float('inf')), id='nonfinite-duration'),
+    pytest.param(lambda v: v.update(cycles=True), id='boolean-counter'),
+    pytest.param(lambda v: v.update(cycles=1.5), id='fractional-counter'),
+    pytest.param(lambda v: v.update(cycles=-1), id='negative-counter'),
+    pytest.param(lambda v: v.update(cycles=float('nan')), id='nan-counter'),
+    pytest.param(lambda v: v.update(cycles=float('inf')), id='infinite-counter'),
+    pytest.param(lambda v: v.update(blocked_reasons=[]), id='invalid-counter-dictionary'),
+    pytest.param(lambda v: v['blocked_reasons'].update(incomplete_activity_coverage=True), id='boolean-nested-counter'),
+    pytest.param(lambda v: v['availability_samples'].update(unknown=1), id='unsupported-availability'),
+    pytest.param(lambda v: v['latency'].pop('state'), id='missing-latency-population'),
+    pytest.param(lambda v: v['latency'].update(lock_wait={}), id='new-latency-population'),
+    pytest.param(lambda v: v['latency']['state'].update(extra=0), id='extra-histogram-field'),
+    pytest.param(lambda v: v['latency']['state'].pop('samples'), id='missing-histogram-field'),
+    pytest.param(lambda v: v['latency']['state'].update(samples=True), id='boolean-latency-counter'),
+    pytest.param(lambda v: v['latency']['state'].update(p95_upper_ms=True), id='boolean-latency-bound'),
+    pytest.param(lambda v: v['latency']['state'].update(p95_upper_ms=251), id='unsupported-latency-bound'),
+    pytest.param(lambda v: v.update(current_accounting_is_separate=False), id='changed-accounting-marker'),
+    pytest.param(lambda v: v.update(operational_acceptance='accepted'), id='changed-acceptance-marker'),
+    pytest.param(lambda v: v.update(reader_enabled=1), id='non-boolean-reader'),
+    pytest.param(lambda v: v.update(orders_enabled=True), id='enabled-orders'),
+    pytest.param(lambda v: v.update(run_id=True), id='malformed-direct-identity'),
+    pytest.param(lambda v: v.update(clock_diagnostics={'run_id': 'wrong'}), id='malformed-clock-identity'),
+    pytest.param(lambda v: v.update(run_id='e'*32), id='reused-direct-identity'),
+    pytest.param(lambda v: v.update(recovered_by='e'*32), id='reused-recovery-identity'),
+    pytest.param(lambda v: v['blocked_reasons'].update(run_id=0), id='identity-key-in-counter'),
+    pytest.param(lambda v: v['blocked_reasons'].update(run_id='e'*32), id='reused-nested-identity'),
+    pytest.param(lambda v: v['blocked_reasons'].update(history=[{'recovered_by': True}]), id='malformed-list-identity'),
+    pytest.param(lambda v: v['blocked_reasons'].update(history=[{'recovered_by': 'e'*32}]), id='reused-list-identity'),
+])
+def test_legacy_looking_corruption_denies_proposal_and_recheck_without_writes(rollout, damage):
+    """The compatibility exception must not hide damaged history or identity reuse."""
+    settings, store, path, sha, mapping = rollout
+    spec = approved_fixture(settings, prepare(settings, path, sha, mapping['account_id']), run_id='e'*32)
+    summary = legacy_summary_fixture()
+    damage(summary)
+    # Raw fixture insertion exercises the decoder's nonfinite rejection as well.
+    store.db.execute('INSERT INTO events(at,type,payload) VALUES(?,?,?)',
+                     (NOW, 'activity_rollout_previous', json.dumps(summary)))
+    before = source_bytes(settings)
+    with pytest.raises(ValueError):
+        approved_fixture(settings, prepare(settings, path, sha, mapping['account_id']), run_id='e'*32)
+    assert source_bytes(settings) == before
+    with pytest.raises(ValueError):
+        activated_settings(settings, spec)
+    assert source_bytes(settings) == before
+
+
+@pytest.mark.parametrize('kind', ['activity_rollout_started', 'activity_rollout_stopped',
+                                'activity_attempt_started', 'activity_observation_sleep_started'])
+def test_legacy_summary_under_another_event_type_still_denies(rollout, kind):
+    """An old payload cannot excuse missing lifecycle identities outside previous archives."""
+    settings, store, path, sha, mapping = rollout
+    store.event(kind, legacy_summary_fixture())
+    before = source_bytes(settings)
+    with pytest.raises(ValueError):
+        approved_fixture(settings, prepare(settings, path, sha, mapping['account_id']))
+    assert source_bytes(settings) == before
+
+
+@pytest.mark.parametrize('field', ['run_id', 'recovered_by'])
+def test_legacy_looking_foreign_identity_keeps_reuse_checks(rollout, field):
+    """Identity-bearing history keeps its existing foreign/reused handling."""
+    settings, store, path, sha, mapping = rollout
+    store.event('activity_rollout_previous', {**legacy_summary_fixture(), field: 'd'*32})
+    before = source_bytes(settings)
+    spec = approved_fixture(settings, prepare(settings, path, sha, mapping['account_id']), run_id='e'*32)
+    assert activated_settings(settings, spec).enable_activity_feed
+    assert source_bytes(settings) == before
+    with pytest.raises(ValueError):
+        approved_fixture(settings, prepare(settings, path, sha, mapping['account_id']), run_id='d'*32)
+    assert source_bytes(settings) == before
+
+
+def test_duplicate_field_in_legacy_archive_denies_without_repair(rollout):
+    """A repeated old field must not be collapsed into an apparently valid archive."""
+    settings, store, path, sha, mapping = rollout
+    raw = '{"cycles":3,'+json.dumps(legacy_summary_fixture())[1:]
+    store.db.execute('INSERT INTO events(at,type,payload) VALUES(?,?,?)',
+                     (NOW, 'activity_rollout_previous', raw))
+    before = source_bytes(settings)
+    with pytest.raises(ValueError):
+        approved_fixture(settings, prepare(settings, path, sha, mapping['account_id']))
     assert source_bytes(settings) == before

@@ -14,6 +14,7 @@ from pathlib import Path
 import shutil
 import sqlite3
 
+from .activity_gap_analysis import legacy_summary
 from .activity_projection import canonical
 from .activity_validation import verify_inputs
 from .config import ROOT, Settings
@@ -202,12 +203,13 @@ def check_unused_run(path, run_id):
     with closing(sqlite3.connect(path.as_uri()+'?mode=ro', uri=True, timeout=3)) as db:
         db.execute('PRAGMA query_only=ON')
         db.execute('BEGIN')
-        for (raw,) in db.execute("""SELECT payload FROM events WHERE type GLOB 'activity_rollout_*'
+        for kind, raw in db.execute("""SELECT type, payload FROM events WHERE type GLOB 'activity_rollout_*'
             OR type GLOB 'activity_attempt_*' OR type GLOB 'activity_observation_sleep_*'"""):
             record = json.loads(raw, object_pairs_hook=no_duplicates,
                 parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Invalid identity evidence')))
             found = identities(record)
-            if not isinstance(record, dict) or not found or run_id in found:
+            if (not isinstance(record, dict) or run_id in found
+                    or (not found and not (kind == 'activity_rollout_previous' and legacy_summary(record)))):
                 raise ValueError('Used or unreadable observation identity')
         row = db.execute("SELECT value FROM state WHERE key='activity_rollout_observation'").fetchone()
         if row:
