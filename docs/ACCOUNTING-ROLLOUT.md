@@ -9,7 +9,7 @@ Use this runbook to prepare and, after a separate owner decision, observe the ex
 
 ## Validate private inputs without activation
 
-Complete the [private historical replay and GET-only comparison](ACTIVITY-FEED.md) against the reviewed code. Keep originals and the reviewed mapping outside the repository. Missing or changed sources fail validation; sanitized fixtures cannot replace them.
+Complete the [G3-v2 qualification procedure](ACTIVITY-FEED.md#qualify-a-replacement-g3-evidence-package) against the reviewed code. The accepted prospective amendment replaces only the original BTC capture dependency, including handoff tasks 1 and 2. Preserve the unresolved original case and all failed evidence. Keep the newly authenticated package, independently sealed expectations and mapping outside the repository. Missing or unsupported evidence blocks qualification; sanitized fixtures cannot replace it.
 
 Run the default preparation command with the exact operational ledger, account and mapping digest. The digest is SHA-256 of the reviewed mapping file bytes, including whitespace. Replace the descriptive values with your private inputs:
 
@@ -32,7 +32,7 @@ Before activation, the owner must approve the exact code revision, ledger/accoun
 Require these prerequisites:
 
 1. Affected tests, `npm run verify:push` and full local `npm run verify:ci` pass for the delivered source. Record hosted checks separately.
-2. Private original replay and a fresh GET-only comparison pass independently from CI fixtures.
+2. Complete G3-v2 provenance, accounting and replay evidence, followed by an independently accepted fresh GET-only comparison. Authenticated originals retain their separate legacy path; CI fixtures supply neither pass.
 3. A focused implementation review has no unresolved accepted findings.
 4. A rehearsal using an isolated disposable database confirms schema addition, duplicate/restart recovery and retained execution rows.
 5. Record a consistent private database backup, execution-table hashes, enabled controls, process identity, storage and latency baseline under the approved operational procedure.
@@ -144,7 +144,7 @@ An adopted SSE state clears the receipt, even when timestamp and sequence match.
 
 Require an actual 24-hour window, at least 99% complete acquisitions, no unexplained acquisition gap over 120 seconds, the storage/latency limits above and zero broker mutations. Preserve startup, completion, interruption and failure receipts. Every unmatched publication and sampled blocked state needs an explanation; a collection-success count cannot conceal unusable accounting.
 
-Poll `/api/state` and the observation endpoint at the agreed cadence during the approved window to retain current gate status and latency samples. Missing latency samples, acquisition gaps or missing original evidence cannot pass. The observer deliberately reports `owner-review-required`; it does not certify its own operational acceptance. Simulated clocks and disposable provider tests do not establish elapsed real-world observation.
+Poll `/api/state` and the observation endpoint at the agreed cadence during the approved window to retain current gate status and latency samples. Missing latency samples, acquisition gaps or missing required private evidence cannot pass. The observer deliberately reports `owner-review-required`; it does not certify its own operational acceptance. Simulated clocks and disposable provider tests do not establish elapsed real-world observation.
 
 Compare covered current cash and asset quantities exactly, retaining the normal inventory/custody checks. Confirm that shared views apply asset fees once and disclose already-included USD fees without another cash debit. Unsupported symbols remain unverified. Save abstentions and blocked intervals as evidence.
 
@@ -339,7 +339,7 @@ Before a separately authorized operational run, freeze these decisions and their
 | Decision | Evidence or unresolved choice |
 | --- | --- |
 | Revision and binding | Delivered inventory, protected hashes, completed review, post-review CI, rehearsal receipts, account/ledger identity and mapping-file digest |
-| Private validation | Separately authorized ledger-copy access, original historical replay and fresh GET-only broker comparison |
+| Private validation | Separately qualified acquisition/export, authorized new evidence and independent expectations, G3-v2 replay and fresh GET-only comparison; preserve the unresolved original case |
 | Controls and process | Disabled execution controls, executable/invocation, PID and start identity, account/database ownership and one writer |
 | Backup and recovery | Consistent backup including committed WAL data, independent restore check, execution hashes, graceful stop, restart and rollback procedure |
 | Polling | Fixed state/observation polling cadences and retained actual request samples |
@@ -360,3 +360,25 @@ Require actual 86,400 monotonic seconds and report wall elapsed too. Preserve at
 Maximum-budget and retained-history measurements are diagnostics. Record individual samples, source/dependency/runner/input identities, CPU, memory, physical DB/WAL/free space and shared-host overlap. Keep parser, retention, publication, accounting, witness, state and actual HTTP populations separate. Fixture watchdogs are external resource limits, never application deadlines; censored samples are not completed durations. Short storage samples cannot establish 24-hour growth acceptance.
 
 Accounting acceptance leaves execution unavailable. Cooldown wiring, uncertain cancellation, operator-control responsiveness, exit-failure isolation, residual positions and every eligibility/risk veto still require separately authorized planning, implementation and review before a supervised paper round trip or multi-day pilot.
+
+## Complete G3-v2 before requesting G4
+
+Keep one evidence register with applicable source/environment pins, permissions, retained receipts, PASS/FAIL/INCOMPLETE and the independent evaluator’s conclusion for every row:
+
+| Row | Required operational evidence |
+| --- | --- |
+| Provenance | Complete inception-wide capture, selected ledger, checkpoint closure, mapping and independently sealed expectations |
+| Accounting | Exact movement identities, cash, gross/net books, real included-USD and received-asset fee examples, and custody reductions |
+| Replay | Unchanged inputs, exact results, duplicate delivery and reopen at one historical cutoff |
+| Recovery | WAL-aware backup, independent restore, integrity and exact typed same-state comparison |
+| Runtime | Current PID/birth/executable/invocation, owned account/database, effective orders-off controls and qualified stop/rollback |
+| Observation | Prospectively measured timing policy, workload and feasible complete manual coverage of both endpoints |
+| Acceptance | Authorized independent evaluation of all mandatory rows and Joe’s acceptance of the exact bindings |
+
+Joe remains owner/operator and final approver, coordinates exclusivity and is the only known actor. The selected target is a new local orders-off runtime on the previously matched configured paper account. Current identity and actual exclusive control still need evidence. A separate AI evaluator has a read-only role; private access needs its own approval. Joe’s planned full manual coverage is not demonstrated feasibility. The collector remains declined, and full history plus real fee evidence remain mandatory.
+
+Follow packages A–G: qualification engineering; separately qualified acquisition/export and actual capture; independent expectations; historical replay; recovery/current comparison; runtime/observer preparation; final G3-v2 evaluation and owner acceptance. Package A alone cannot complete G3. Each operational request binds actual inputs, source/environment, permitted routes/tables, finite bounds, supervision, destinations and stop rules. Never substitute a generic approval or renew an exhausted allowance.
+
+Keep both failed short monitoring attempts failed. Use controlled clocks for logical deadlines and separately reviewed native tests for signaling, reaping and cleanup. Preserve the production supervisor’s 5-second target, 15-second maximum gap and 3,720-second whole-call limit. Preserve the compatible reader-disabled predecessor `a6bf6caac80164a58517a15a98bc1c5133613853`. A decoded replay export is not the raw typed preservation artifact required for recovery or G4.
+
+G4 still requires an actual 86,400-second orders-off window with every existing completeness, edge/gap, storage, latency, ownership, execution and E1–E4 requirement. Retain quiet-host operation and prohibit all local POSTs, including denied and emergency requests. A restart requires fresh bindings, prospective approval and a full new window. No short or stitched rehearsal earns credit. Later execution-safety engineering and one separately supervised paper entry/exit/reconciliation remain separate gates.
