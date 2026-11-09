@@ -186,6 +186,88 @@ def assert_outcome(out, status, reason=None):
         assert out['primary_failure']['reason'] == reason, out
 
 
+def add_second_asset_buy(case):
+    # Two disjoint buy windows; the later sale closes both net lots.
+    order = deepcopy(case.ledger['rows']['orders'][0])
+    raw = json.loads(order['raw'])
+    raw.update(id='o-buy-2', client_order_id='buy-2', submitted_at=at(6), filled_at=at(8))
+    order.update(client_id='buy-2', raw=json.dumps(raw), created_at=at(6), updated_at=at(9))
+    case.ledger['rows']['orders'].insert(1, order)
+    fill = deepcopy(case.ledger['rows']['fills'][0])
+    payload = json.loads(fill['payload']); payload.update(client_id='buy-2', at=at(8))
+    fill.update(id='fill-buy-2', client_id='buy-2', at=at(9), payload=json.dumps(payload))
+    case.ledger['rows']['fills'].insert(1, fill)
+    buy, fee = deepcopy(case.events[1:3])
+    buy.update(ref_id='buy-2', event_id='event-buy-2', at=at(8), executed_at=at(8))
+    buy['details'].update(order_id='o-buy-2', client_order_id='buy-2')
+    fee.update(ref_id='asset-fee-2', event_id='event-asset-fee-2', at=at(8), executed_at=at(8))
+    fee['details'].update(order_id='o-buy-2', parent_id='buy-2')
+    case.events[3:3] = [buy, fee]
+    case.mapping['trade_contracts']['buy-2'] = deepcopy(case.mapping['trade_contracts']['buy'])
+    association = deepcopy(case.mapping['fee_associations'][0])
+    association.update(id='association-asset-fee-2', fee_ref_id='asset-fee-2', trade_ref_id='buy-2',
+                       client_id='buy-2', order_id='o-buy-2')
+    case.mapping['fee_associations'].append(association)
+    for new, old in [('buy-2', 'buy'), ('asset-fee-2', 'asset-fee')]:
+        case.economics[new] = deepcopy(case.economics[old])
+        case.economics[new].update(client_id='buy-2', order_id='o-buy-2')
+    sell = case.ledger['rows']['orders'][-1]
+    raw = json.loads(sell['raw']); raw['filled_qty'] = '1.8'; sell['raw'] = json.dumps(raw)
+    fill = case.ledger['rows']['fills'][-1]
+    payload = json.loads(fill['payload']); payload.update(quantity='1.8', value='180')
+    fill['payload'] = json.dumps(payload)
+    case.events[-2].update(qty='1.8', net_amount='179')
+    case.economics['sell'].update(qty='1.8', net_amount='179', gross_value='180')
+    snapshot = case.ledger['state']['account_snapshot']
+    snapshot['account']['cash'] = '979'
+    point = deepcopy(snapshot); point.update(at=at(9), positions=[{'symbol': 'BTCUSD', 'qty': '1.8'}])
+    point['account']['cash'] = '800'
+    case.ledger['rows']['events'].append({'seq': 3, 'at': at(9), 'type': 'custody_snapshot',
+                                         'payload': json.dumps({'snapshot': point, 'working_orders': []})})
+    case.ledger['state']['custody_checkpoint']['seqs'].append(3)
+    reduction = deepcopy(case.custody[0])
+    reduction.update(client_id='buy-2', order_id='o-buy-2')
+    reduction['checkpoints'][0].update(before='checkpoint:2', after='checkpoint:3', before_at=at(5),
+                                       after_at=at(9), before_quantity='0.9', after_quantity='1.8')
+    case.custody.append(reduction)
+    def closing(exp):
+        exp['closing'].update(cash='979', gross_books={'BTC': {'manual': '0.2'}})
+    case.mutate_expected = closing
+
+
+@pytest.mark.parametrize('changed_checkpoint', [False, True])
+def test_two_buy_custody_windows_reconcile_each_checkpoint(case, monkeypatch, changed_checkpoint):
+    from backend import inventory
+    add_second_asset_buy(case)
+    original = inventory.attribute
+    def attribute(*args, **kwargs):
+        result = original(*args, **kwargs)
+        if changed_checkpoint:
+            result['custody_reconciliation']['reductions'][1]['checkpoints'][0]['after_quantity'] = '1.7'
+        return result
+    monkeypatch.setattr(inventory, 'attribute', attribute)
+    out = q.run(case.prepare())
+    if changed_checkpoint:
+        assert_outcome(out, 'FAIL', 'custody_checkpoint_quantity')
+    else:
+        assert_outcome(out, 'PASS')
+        receipt = json.loads(Path(out['receipt']).read_bytes())
+        assert {r['client_id'] for r in receipt['result']['custody']['reductions']} == {'buy', 'buy-2'}
+        assert receipt['checks'] == dict.fromkeys(q.CHECKS, 'PASS')
+
+
+def test_uncovered_asset_fee_cannot_pass_with_an_incomplete_reduction_set(case):
+    add_second_asset_buy(case)
+    case.ledger['rows']['events'].pop()
+    case.ledger['state']['custody_checkpoint']['seqs'].pop()
+    case.custody.pop()
+    out = q.run(case.prepare())
+    assert_outcome(out, 'INCOMPLETE', 'missing_required_custody')
+    receipt = json.loads(Path(out['receipt']).read_bytes())
+    assert receipt['status'] == 'INCOMPLETE'
+    assert receipt['primary_failure']['detail'] == [['buy-2', 'o-buy-2', 'BTC', 'manual']]
+
+
 def test_complete_evidence_replays_and_reopens_without_second_effect(case, monkeypatch):
     monkeypatch.setattr(Settings, 'from_env', lambda: pytest.fail('Offline must not load credentials'))
     args = case.prepare()
@@ -218,6 +300,19 @@ def test_supported_failure_survives_an_unsupported_relation(case):
     case.economics['buy']['gross_value'] = '101'
     case.economics['sell']['equation_evidence']['gross_from_qty_price']['exactness_evidenced'] = False
     assert_outcome(q.run(case.prepare()), 'FAIL', 'execution_equation_mismatch')
+
+
+def test_equation_failure_retains_residuals_when_later_fee_denomination_is_unknown(case):
+    case.economics['buy']['gross_value'] = '101'
+    case.economics['asset-fee']['denomination'] = None
+    out = q.run(case.prepare())
+    assert_outcome(out, 'FAIL', 'execution_equation_mismatch')
+    assert {(r['ref'], r['relation'], r['residual']) for r in out['primary_failure']['detail']} == {
+        ('buy', 'gross_from_qty_price', '1'), ('buy', 'net_from_gross_and_included_fees', '1')}
+    assert out['secondary_failures'] == [{'reason': 'fee_denomination_unknown', 'status': 'INCOMPLETE', 'detail': None}]
+    receipt = json.loads(Path(out['receipt']).read_bytes())
+    assert receipt['primary_failure'] == out['primary_failure']
+    assert receipt['secondary_failures'] == out['secondary_failures']
 
 
 @pytest.mark.parametrize('change,reason', [
@@ -260,14 +355,47 @@ def test_noncontract_decimal_never_qualifies(case, value):
     assert q.run(case.prepare())['status'] != 'PASS'
 
 
-def test_existing_output_and_tampered_input_denied(case):
+def test_existing_output_and_tampered_input_denied(case, monkeypatch):
     args = case.prepare()
     Path(args[args.index('--output-dir')+1]).mkdir()
     assert_outcome(q.run(args), 'REJECTED', 'new_destination_required')
     args = case.prepare()
+    monkeypatch.setattr('backend.store.Store', lambda *a, **kw: pytest.fail('Store before sealed-input verification'))
     with (case.inputs/'activity-sse.raw').open('ab') as f:
         f.write(b' ')
-    assert q.run(args)['status'] != 'PASS'
+    assert_outcome(q.run(args), 'FAIL', 'sealed_input_changed')
+
+
+def test_approved_oversized_input_remains_incomplete(case):
+    args = case.prepare()
+    path = Path(args[args.index('--request-file')+1])
+    request = json.loads(path.read_bytes())
+    next(e for e in request['inputs'] if e['role'] == 'raw')['bytes'] = q.RAW_BYTES + 1
+    write(path, request)
+    args[args.index('--request-sha256')+1] = q.sha(path.read_bytes())
+    assert_outcome(q.run(args), 'INCOMPLETE', 'input_budget')
+
+
+def test_input_growth_during_preservation_blocks_comparison_credentials(case, monkeypatch):
+    from backend import activity_validation
+    first = q.run(case.prepare()); assert_outcome(first, 'PASS')
+    args = case.prepare('compare', first['receipt'])
+    original = activity_validation.import_capture
+    count = 0
+    def import_capture(*a, **kw):
+        nonlocal count
+        result = original(*a, **kw)
+        count += 1
+        if count == 2:
+            with (case.inputs/'activity-sse.raw').open('ab') as f:
+                f.write(b' ')
+        return result
+    monkeypatch.setattr(activity_validation, 'import_capture', import_capture)
+    calls = []
+    out = q.run(args, settings_loader=lambda: pytest.fail('Credentials after input growth'),
+                transport=httpx.MockTransport(handler_for(case, calls)))
+    assert_outcome(out, 'FAIL', 'input_changed')
+    assert calls == [] and count == 2
 
 
 def handler_for(case, calls, change=None):
@@ -300,6 +428,51 @@ def test_comparison_has_eleven_gets_after_full_offline_replay(case):
     receipt = json.loads(Path(out['receipt']).read_bytes())
     assert len(receipt['transport']) == 11
     assert all(r['complete'] for r in receipt['transport'])
+
+
+@pytest.mark.parametrize('get_number', [5, 7])
+def test_acquisition_account_contradiction_fails_even_when_collection_is_incomplete(case, get_number):
+    first = q.run(case.prepare()); assert_outcome(first, 'PASS')
+    account = {**case.ledger['state']['account_snapshot']['account'], 'id': '00000000-0000-4000-8000-000000000002'}
+    def change(request, count):
+        if count == get_number:
+            return httpx.Response(200, json=account)
+    calls = []
+    out = q.run(case.prepare('compare', first['receipt']),
+                settings_loader=lambda: Settings(api_key='synthetic', secret_key='synthetic'),
+                transport=httpx.MockTransport(handler_for(case, calls, change)))
+    assert_outcome(out, 'FAIL', 'account_mismatch')
+    receipt = json.loads(Path(out['receipt']).read_bytes())
+    record = receipt['transport'][get_number-1]
+    assert record['complete'] and record['status'] == 200
+    assert json.loads((Path(out['receipt']).parent/record['body']).read_bytes()) == account
+
+
+@pytest.mark.parametrize('conflict', ['none', 'revision', 'duplicate', 'account'])
+def test_partial_stream_preserves_demonstrated_conflicts_without_inferring_disappearance(case, conflict):
+    first = q.run(case.prepare()); assert_outcome(first, 'PASS')
+    event = deepcopy(case.events[0])
+    events = [event]
+    if conflict == 'revision':
+        event['net_amount'] = '1001'
+    elif conflict == 'duplicate':
+        other = deepcopy(event); other.update(event_id='other', net_amount='1001')
+        events.append(other)
+    elif conflict == 'account':
+        event['account_id'] = '00000000-0000-4000-8000-000000000002'
+    def change(request, count):
+        if count == 6:
+            body = b''.join(b'data: '+encode(e)+b'\n\n' for e in events)+b'data: {invalid}\n\n'
+            return httpx.Response(200, headers={'content-type': 'text/event-stream'}, content=body)
+    calls = []
+    out = q.run(case.prepare('compare', first['receipt']),
+                settings_loader=lambda: Settings(api_key='synthetic', secret_key='synthetic'),
+                transport=httpx.MockTransport(handler_for(case, calls, change)))
+    reasons = {'none': ('INCOMPLETE', 'current_acquisition_incomplete'),
+               'revision': ('FAIL', 'current_disappearance_or_revision'),
+               'duplicate': ('FAIL', 'current_conflict'), 'account': ('FAIL', 'account_mismatch')}
+    assert_outcome(out, *reasons[conflict])
+    assert len(calls) <= 8
 
 
 def test_failed_offline_phase_never_loads_credentials_or_calls_transport(case):
@@ -350,6 +523,61 @@ def test_receipt_storage_failure_preserves_established_mismatch(case, monkeypatc
     assert_outcome(out, 'FAIL', 'execution_equation_mismatch')
     assert out['receipt'] is None
     assert out['secondary_failures'][0]['reason'] == 'unexpected_failure'
+
+
+def test_replay_mismatch_survives_store_close_failure(case, monkeypatch):
+    from backend import inventory
+    from backend.store import Store
+    original_attribute, original_close = inventory.attribute, Store.close
+    closed = []
+    def attribute(*args, **kwargs):
+        result = original_attribute(*args, **kwargs)
+        result['custody_reconciliation']['reductions'][0]['checkpoints'][0]['after_quantity'] = '0.8'
+        return result
+    def close(store):
+        closed.append(store.path if hasattr(store, 'path') else 'store')
+        original_close(store)
+        raise OSError('synthetic close failure')
+    monkeypatch.setattr(inventory, 'attribute', attribute)
+    monkeypatch.setattr(Store, 'close', close)
+    out = q.run(case.prepare())
+    assert_outcome(out, 'FAIL', 'custody_checkpoint_quantity')
+    assert len(closed) == 1 and out['cleanup'] == 'unknown'
+    assert out['secondary_failures'] == [{'reason': 'unexpected_failure', 'status': 'ERROR', 'detail': 'OSError'}]
+    receipt = json.loads(Path(out['receipt']).read_bytes())
+    assert receipt['cleanup'] == 'unknown' and receipt['secondary_failures'] == out['secondary_failures']
+
+
+@pytest.mark.parametrize('store_close_fails', [False, True])
+def test_comparison_mismatch_survives_transport_close_and_still_closes_store(case, monkeypatch, store_close_fails):
+    from backend.store import Store
+    first = q.run(case.prepare()); assert_outcome(first, 'PASS')
+    closed, calls = [], []
+    original_close = Store.close
+    def close(store):
+        closed.append('store')
+        original_close(store)
+        if store_close_fails and len(closed) == 4:
+            raise OSError('synthetic store close failure')
+    def change(request, count):
+        if count == 1:
+            return httpx.Response(200, json={**case.ledger['state']['account_snapshot']['account'], 'cash': '988'})
+    class Transport(httpx.MockTransport):
+        async def aclose(self):
+            closed.append('transport')
+            await super().aclose()
+            raise OSError('synthetic transport close failure')
+    monkeypatch.setattr(Store, 'close', close)
+    out = q.run(case.prepare('compare', first['receipt']),
+                settings_loader=lambda: Settings(api_key='synthetic', secret_key='synthetic'),
+                transport=Transport(handler_for(case, calls, change)))
+    assert_outcome(out, 'FAIL', 'cash_mismatch')
+    assert closed == ['store', 'store', 'transport', 'store']
+    assert out['cleanup'] == 'unknown'
+    assert len(out['secondary_failures']) == 1 + store_close_fails
+    assert all(e == {'reason': 'unexpected_failure', 'status': 'ERROR', 'detail': 'OSError'} for e in out['secondary_failures'])
+    receipt = json.loads(Path(out['receipt']).read_bytes())
+    assert receipt['cleanup'] == 'unknown' and receipt['primary_failure']['reason'] == 'cash_mismatch'
 
 
 @pytest.mark.parametrize('link', ['symbolic', 'hard'])

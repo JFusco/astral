@@ -152,15 +152,19 @@ def open_input(p):
         os.close(parent)
 
 
-def read_bytes(p, limit):
+def read_bytes(p, limit, *, expected_size=None, expected_identity=None, changed_reason='input_changed'):
     before = identity(p)
+    if expected_size is not None:
+        require(before[2] == expected_size, changed_reason, 'FAIL')
+    if expected_identity is not None:
+        require(before == expected_identity, changed_reason, 'FAIL')
     fd = open_input(p)
     with os.fdopen(fd, 'rb') as f:
         s = os.fstat(f.fileno())
         require((s.st_dev, s.st_ino) == before[:2], 'input_replaced', 'FAIL')
         raw = f.read(limit + 1)
+    require(identity(p) == before, changed_reason, 'FAIL')
     require(len(raw) <= limit, 'input_budget', 'INCOMPLETE')
-    require(identity(p) == before, 'input_changed', 'FAIL')
     return raw, before
 
 
@@ -252,7 +256,8 @@ class Package:
         for path, entry in self.entries.items():
             ceiling = RAW_BYTES if entry['role'] == 'raw' else CONTROL_BYTES if entry['role'] == 'replay_receipt' else DATA_BYTES
             require(entry['bytes'] <= ceiling, 'input_budget', 'INCOMPLETE')
-            raw, ident = read_bytes(Path(path), entry['bytes'])
+            raw, ident = read_bytes(Path(path), entry['bytes'], expected_size=entry['bytes'],
+                                    changed_reason='sealed_input_changed')
             require(len(raw) == entry['bytes'] and sha(raw) == entry['sha256'], 'sealed_input_changed', 'FAIL')
             require(ident[:2] not in inode_set, 'input_alias')
             inode_set.add(ident[:2]); self.raw[path], self.ids[path] = raw, ident
@@ -283,7 +288,7 @@ class Package:
 
     def preserve(self):
         for path, raw in self.raw.items():
-            current, ident = read_bytes(Path(path), len(raw))
+            current, ident = read_bytes(Path(path), len(raw), expected_size=len(raw), expected_identity=self.ids[path])
             require(ident == self.ids[path] and current == raw, 'input_changed', 'FAIL')
         require(self.request['source'] == source_identity() and self.request['environment'] == environment(),
                 'source_environment_drift', 'FAIL')
@@ -501,77 +506,83 @@ def economic_checks(p):
     cash, included = Decimal(0), Decimal(0)
     gross, net = defaultdict(lambda: defaultdict(Decimal)), defaultdict(lambda: defaultdict(Decimal))
     relations, unknowns, failures = [], [], []
-    for ref, event in unique.items():
-        item = exp['economics'][ref]
-        shape(item, 'qty price net_amount currency symbol book order_id client_id treatment gross_value denomination evidence_refs equation_evidence', 'economic_movement')
-        p.refs(item['evidence_refs'])
-        require(all(item[k] == event[k] for k in ('qty', 'price', 'net_amount', 'currency')), 'source_value_mismatch', 'FAIL', ref)
-        q, price, amount = (dec(item[k]) for k in ('qty', 'price', 'net_amount'))
-        if ref in trades:
-            owner = provider_orders.get(event['details']['order_id'])
-            require(owner is not None and owner['client_id'] == event['details']['client_order_id']
-                    and owner['symbol'] == symbol(event['details']['symbol']) and owner['side'] == event['details']['side'], 'trade_identity', 'FAIL')
-            require(all(item[k] == owner[k] for k in ('symbol', 'book', 'order_id', 'client_id')), 'economic_owner', 'FAIL')
-            require(item['currency'] == item['denomination'] == 'USD' and item['treatment'] == 'provider-net', 'trade_currency', 'FAIL')
-            require(mapping['trade_contracts'][ref] == {'sha256': digest(event), 'symbol': owner['symbol'], 'book': owner['book'],
-                                                      'currency': 'USD', 'cash_treatment': 'provider-net'}, 'trade_contract', 'FAIL')
-            require(q > 0 and price > 0, 'execution_values', 'FAIL')
-            g = dec(item['gross_value']); sign = Decimal(-1 if owner['side'] == 'buy' else 1)
-            charges = [a for a in fees.values() if a.get('trade_ref_id') == ref and a['treatment'] != 'standalone-usd']
-            require(charges, 'unsupported_zero_fee_trade', 'INCOMPLETE')
-            fee = sum((dec(unique[a['fee_ref_id']]['net_amount']) for a in charges if a['treatment'] == 'included-usd'), Decimal(0))
-            shape(item['equation_evidence'], 'gross_from_qty_price net_from_gross_and_included_fees', 'equations')
-            for name, residual in (('gross_from_qty_price', g - q * price), ('net_from_gross_and_included_fees', amount - (sign * g + fee))):
-                declaration = shape(item['equation_evidence'][name], 'exactness_evidenced evidence_refs', 'equation_evidence')
-                require(type(declaration['exactness_evidenced']) is bool, 'equation_declaration')
-                p.refs(declaration['evidence_refs'], needed=False)
-                supported = declaration['exactness_evidenced'] and bool(declaration['evidence_refs'])
-                status = 'FAIL' if supported and residual else 'PASS' if supported else 'INCOMPLETE'
-                relations.append({'ref': ref, 'relation': name, 'evidence_refs': declaration['evidence_refs'], 'residual': str(residual), 'status': status})
-                if status == 'FAIL':
-                    failures.append(ref)
-                elif status == 'INCOMPLETE':
-                    unknowns.append(ref)
-            cash += amount
-            gross[owner['symbol']][owner['book']] -= sign * q
-            net[owner['symbol']][owner['book']] -= sign * q
-        elif ref in journals:
-            require(q == 0 and item['currency'] == item['denomination'] == 'USD' and item['treatment'] == 'journal'
-                    and all(item[k] is None for k in ('symbol', 'book', 'order_id', 'client_id', 'gross_value', 'equation_evidence')), 'journal_economics', 'INCOMPLETE')
-            require(mapping['journal_contracts'][ref] == {'sha256': digest(event), 'currency': 'USD'}, 'journal_contract', 'FAIL')
-            cash += amount
-        else:
-            a = fees[ref]
-            require(symbol(item['symbol']) == item['symbol'] and item['book'] in ('manual', 'swing', 'intraday', 'external'),
-                    'unsupported_fee_owner', 'INCOMPLETE')
-            require(item['equation_evidence'] is None and item['gross_value'] is None, 'fee_schema')
-            require(a['fee_sha256'] == digest(event) and item['treatment'] == a['treatment']
-                    and item['symbol'] == a['symbol'] and item['book'] == a['book']
-                    and item['order_id'] == a.get('order_id') and item['client_id'] == a.get('client_id'), 'fee_mapping', 'FAIL')
-            treatment = a['treatment']
-            if treatment != 'standalone-usd':
-                trade = unique.get(a.get('trade_ref_id'))
-                require(trade is not None and trade['ref_id'] in trades and a['trade_sha256'] == digest(trade), 'fee_trade_binding', 'FAIL')
-                owner = provider_orders.get(a['order_id'])
-                require(owner is not None and all(a[k] == owner[k] for k in ('client_id', 'symbol', 'book'))
-                        and trade['details']['order_id'] == a['order_id'], 'fee_owner', 'FAIL')
-                require(event['details'].get('parent_id') in (None, trade['ref_id'])
-                        and event['details'].get('order_id') in (None, a['order_id']), 'fee_parent', 'FAIL')
-            if treatment == 'asset-debit':
-                require(item['denomination'] is not None, 'fee_denomination_unknown', 'INCOMPLETE')
-                require(item['denomination'] == item['symbol'] == event['currency'] and owner['side'] == 'buy', 'fee_denomination', 'FAIL')
-                require(q < 0 and amount == 0 and item['symbol'] in ('BTC', 'ETH', 'SOL'), 'asset_fee_economics', 'INCOMPLETE')
-                net[item['symbol']][item['book']] += q
-            elif treatment in ('included-usd', 'standalone-usd'):
-                require(q == 0 and amount < 0 and item['currency'] == item['denomination'] == 'USD', 'usd_fee_economics', 'FAIL')
-                if treatment == 'included-usd':
-                    included -= amount
-                else:
-                    h = hexsha(a['standalone_evidence_sha256'])
-                    require(any(p.entries[r]['sha256'] == h for r in item['evidence_refs']), 'standalone_evidence_unresolved', 'INCOMPLETE')
-                    cash += amount
+    try:
+        for ref, event in unique.items():
+            item = exp['economics'][ref]
+            shape(item, 'qty price net_amount currency symbol book order_id client_id treatment gross_value denomination evidence_refs equation_evidence', 'economic_movement')
+            p.refs(item['evidence_refs'])
+            require(all(item[k] == event[k] for k in ('qty', 'price', 'net_amount', 'currency')), 'source_value_mismatch', 'FAIL', ref)
+            q, price, amount = (dec(item[k]) for k in ('qty', 'price', 'net_amount'))
+            if ref in trades:
+                owner = provider_orders.get(event['details']['order_id'])
+                require(owner is not None and owner['client_id'] == event['details']['client_order_id']
+                        and owner['symbol'] == symbol(event['details']['symbol']) and owner['side'] == event['details']['side'], 'trade_identity', 'FAIL')
+                require(all(item[k] == owner[k] for k in ('symbol', 'book', 'order_id', 'client_id')), 'economic_owner', 'FAIL')
+                require(item['currency'] == item['denomination'] == 'USD' and item['treatment'] == 'provider-net', 'trade_currency', 'FAIL')
+                require(mapping['trade_contracts'][ref] == {'sha256': digest(event), 'symbol': owner['symbol'], 'book': owner['book'],
+                                                          'currency': 'USD', 'cash_treatment': 'provider-net'}, 'trade_contract', 'FAIL')
+                require(q > 0 and price > 0, 'execution_values', 'FAIL')
+                g = dec(item['gross_value']); sign = Decimal(-1 if owner['side'] == 'buy' else 1)
+                charges = [a for a in fees.values() if a.get('trade_ref_id') == ref and a['treatment'] != 'standalone-usd']
+                require(charges, 'unsupported_zero_fee_trade', 'INCOMPLETE')
+                fee = sum((dec(unique[a['fee_ref_id']]['net_amount']) for a in charges if a['treatment'] == 'included-usd'), Decimal(0))
+                shape(item['equation_evidence'], 'gross_from_qty_price net_from_gross_and_included_fees', 'equations')
+                for name, residual in (('gross_from_qty_price', g - q * price), ('net_from_gross_and_included_fees', amount - (sign * g + fee))):
+                    declaration = shape(item['equation_evidence'][name], 'exactness_evidenced evidence_refs', 'equation_evidence')
+                    require(type(declaration['exactness_evidenced']) is bool, 'equation_declaration')
+                    p.refs(declaration['evidence_refs'], needed=False)
+                    supported = declaration['exactness_evidenced'] and bool(declaration['evidence_refs'])
+                    status = 'FAIL' if supported and residual else 'PASS' if supported else 'INCOMPLETE'
+                    relations.append({'ref': ref, 'relation': name, 'evidence_refs': declaration['evidence_refs'], 'residual': str(residual), 'status': status})
+                    if status == 'FAIL':
+                        failures.append(ref)
+                    elif status == 'INCOMPLETE':
+                        unknowns.append(ref)
+                cash += amount
+                gross[owner['symbol']][owner['book']] -= sign * q
+                net[owner['symbol']][owner['book']] -= sign * q
+            elif ref in journals:
+                require(q == 0 and item['currency'] == item['denomination'] == 'USD' and item['treatment'] == 'journal'
+                        and all(item[k] is None for k in ('symbol', 'book', 'order_id', 'client_id', 'gross_value', 'equation_evidence')), 'journal_economics', 'INCOMPLETE')
+                require(mapping['journal_contracts'][ref] == {'sha256': digest(event), 'currency': 'USD'}, 'journal_contract', 'FAIL')
+                cash += amount
             else:
-                raise QualificationError('unsupported_fee_treatment', 'INCOMPLETE')
+                a = fees[ref]
+                require(symbol(item['symbol']) == item['symbol'] and item['book'] in ('manual', 'swing', 'intraday', 'external'),
+                        'unsupported_fee_owner', 'INCOMPLETE')
+                require(item['equation_evidence'] is None and item['gross_value'] is None, 'fee_schema')
+                require(a['fee_sha256'] == digest(event) and item['treatment'] == a['treatment']
+                        and item['symbol'] == a['symbol'] and item['book'] == a['book']
+                        and item['order_id'] == a.get('order_id') and item['client_id'] == a.get('client_id'), 'fee_mapping', 'FAIL')
+                treatment = a['treatment']
+                if treatment != 'standalone-usd':
+                    trade = unique.get(a.get('trade_ref_id'))
+                    require(trade is not None and trade['ref_id'] in trades and a['trade_sha256'] == digest(trade), 'fee_trade_binding', 'FAIL')
+                    owner = provider_orders.get(a['order_id'])
+                    require(owner is not None and all(a[k] == owner[k] for k in ('client_id', 'symbol', 'book'))
+                            and trade['details']['order_id'] == a['order_id'], 'fee_owner', 'FAIL')
+                    require(event['details'].get('parent_id') in (None, trade['ref_id'])
+                            and event['details'].get('order_id') in (None, a['order_id']), 'fee_parent', 'FAIL')
+                if treatment == 'asset-debit':
+                    require(item['denomination'] is not None, 'fee_denomination_unknown', 'INCOMPLETE')
+                    require(item['denomination'] == item['symbol'] == event['currency'] and owner['side'] == 'buy', 'fee_denomination', 'FAIL')
+                    require(q < 0 and amount == 0 and item['symbol'] in ('BTC', 'ETH', 'SOL'), 'asset_fee_economics', 'INCOMPLETE')
+                    net[item['symbol']][item['book']] += q
+                elif treatment in ('included-usd', 'standalone-usd'):
+                    require(q == 0 and amount < 0 and item['currency'] == item['denomination'] == 'USD', 'usd_fee_economics', 'FAIL')
+                    if treatment == 'included-usd':
+                        included -= amount
+                    else:
+                        h = hexsha(a['standalone_evidence_sha256'])
+                        require(any(p.entries[r]['sha256'] == h for r in item['evidence_refs']), 'standalone_evidence_unresolved', 'INCOMPLETE')
+                        cash += amount
+                else:
+                    raise QualificationError('unsupported_fee_treatment', 'INCOMPLETE')
+    except BaseException as exc:
+        if failures:
+            raise BaseExceptionGroup('Execution equations and later failure', [
+                QualificationError('execution_equation_mismatch', 'FAIL', relations), exc]) from None
+        raise
     # Check every exact relation before considering unsupported relations, so a
     # supported failure cannot be downgraded by an unrelated unknown.
     require(not failures, 'execution_equation_mismatch', 'FAIL', relations)
@@ -671,6 +682,9 @@ def custody_checks(p, inventory):
                     == dec(r['quantity']) == dec(r['linked_confirmed_fee_quantity']), 'custody_equation', 'FAIL')
             require(0 < instant(c['after_at']) - instant(c['before_at']) <= 60, 'custody_window_duration', 'FAIL')
     require(len({key(r) for r in want}) == len(want), 'duplicate_custody_expectation')
+    required = {key(item) for item in p.expected['economics'].values() if item['treatment'] == 'asset-debit'}
+    missing = required - {key(r) for r in want}
+    require(not missing, 'missing_required_custody', 'INCOMPLETE', sorted(missing))
     have = {key(r): r for r in actual['reductions']}
     require(set(have) == {key(r) for r in want}, 'custody_membership', 'FAIL')
     for r in want:
@@ -679,12 +693,12 @@ def custody_checks(p, inventory):
         for k in ('quantity', 'linked_confirmed_fee_quantity', 'additional_debit_quantity'):
             require(dec(str(a[k])) == dec(r[k]), 'custody_value', 'FAIL')
         require(len(a['checkpoints']) == len(r['checkpoints']), 'custody_checkpoint_mismatch', 'FAIL')
-        for have, want in zip(a['checkpoints'], r['checkpoints']):
-            require(have['before'] == want['before'] and have['after'] == want['after'], 'custody_checkpoint_identity', 'FAIL')
+        for got, sealed in zip(a['checkpoints'], r['checkpoints']):
+            require(got['before'] == sealed['before'] and got['after'] == sealed['after'], 'custody_checkpoint_identity', 'FAIL')
             for k in ('before_at', 'after_at'):
-                require(instant(have[k]) == instant(want[k]), 'custody_checkpoint_time', 'FAIL')
+                require(instant(got[k]) == instant(sealed[k]), 'custody_checkpoint_time', 'FAIL')
             for k in ('before_quantity', 'gross_buy_quantity', 'after_quantity', 'reduction_quantity'):
-                require(dec(str(have[k])) == dec(want[k]), 'custody_checkpoint_quantity', 'FAIL')
+                require(dec(str(got[k])) == dec(sealed[k]), 'custody_checkpoint_quantity', 'FAIL')
     return json.loads(json.dumps(actual, default=str))
 
 
@@ -700,6 +714,7 @@ def replay(p, checks):
     results = []
     for round_number in range(2):
         store = Store(p.database, 'alpaca')
+        failures = []
         try:
             if round_number == 0:
                 import_ledger(store, p.ledger)
@@ -715,8 +730,15 @@ def replay(p, checks):
                     and books_equal(projection['net_books'], independent['net_books'])
                     and dec(projection['cash_reconciliation']['cash']) == dec(independent['cash']), 'projected_books_mismatch', 'FAIL')
             results.append({'independent': independent, 'custody': custody, 'execution_sha256': imported_identity(store, p.ledger)})
+        except BaseException as exc:
+            failures.append(exc)
         finally:
-            store.close()
+            try:
+                store.close()
+            except BaseException as exc:
+                failures.append(exc)
+            if failures:
+                raise BaseExceptionGroup('Replay and cleanup failures', failures)
     require(results[0] == results[1], 'duplicate_reopen_changed_economics', 'FAIL')
     for name in ('custody', 'books', 'projection', 'reopen', 'execution_preserved'):
         checks[name] = 'PASS'
@@ -830,6 +852,7 @@ async def compare(p, offline, prior, checks, records, *, settings_loader=None, t
     recorder = RecordingTransport(p, transport)
     records.append(recorder.records)
     broker = None
+    failures = []
     try:
         broker = AlpacaPaper(settings, store, transport=recorder)
         initial = await broker.snapshot()
@@ -854,13 +877,18 @@ async def compare(p, offline, prior, checks, records, *, settings_loader=None, t
         # The historical snapshot and cutoff remain untouched in this disposable
         # ledger. The fresh bracket is retained separately, never relabeled.
         batch, acquisition = await collect_batch(broker, store)
-        require(acquisition.get('complete') is True, 'current_acquisition_incomplete', 'INCOMPLETE')
+        for account in (acquisition.get('before'), acquisition.get('after')):
+            if isinstance(account, dict) and account.get('id') is not None:
+                require(account['id'] == p.request['account'], 'account_mismatch', 'FAIL')
         fresh = {}
+        sealed = offline['independent']['movement_hashes']
         for event in acquisition['events']:
+            require(event.get('account_id', p.request['account']) == p.request['account'], 'account_mismatch', 'FAIL')
             ref, h = event['ref_id'], digest(event)
             require(ref not in fresh or fresh[ref] == h, 'current_conflict', 'FAIL')
             fresh[ref] = h
-        sealed = offline['independent']['movement_hashes']
+        require(all(h == sealed[r] for r, h in fresh.items() if r in sealed), 'current_disappearance_or_revision', 'FAIL')
+        require(acquisition.get('complete') is True, 'current_acquisition_incomplete', 'INCOMPLETE')
         require(all(r in fresh and fresh[r] == h for r, h in sealed.items()), 'current_disappearance_or_revision', 'FAIL')
         require(fresh == sealed, 'sealed_history_stale', 'INCOMPLETE')
         # Exact hashes bind every already independently checked fresh movement.
@@ -881,14 +909,22 @@ async def compare(p, offline, prior, checks, records, *, settings_loader=None, t
                 'fresh_workload': {'bytes': len(acquisition['raw']), 'deliveries': len(acquisition['events']), 'references': len(fresh)},
                 'actual_interval': {'since': acquisition['since'], 'until': acquisition['until']},
                 'claim': 'Stable observed bracket; not an atomic provider snapshot or exclusive ownership.'}
+    except BaseException as exc:
+        failures.append(exc)
     finally:
         try:
             if broker is not None:
                 await broker.close()
             else:
                 await recorder.aclose()
-        finally:
+        except BaseException as exc:
+            failures.append(exc)
+        try:
             store.close()
+        except BaseException as exc:
+            failures.append(exc)
+        if failures:
+            raise BaseExceptionGroup('Comparison and cleanup failures', failures)
 
 
 class Parser(argparse.ArgumentParser):
@@ -918,6 +954,10 @@ def run(argv, *, settings_loader=None, transport=None):
     started, ended = None, None
 
     def failure(exc):
+        if isinstance(exc, BaseExceptionGroup):
+            for cause in exc.exceptions:
+                failure(cause)
+            return
         if isinstance(exc, QualificationError):
             item = {'reason': exc.reason, 'status': exc.status, 'detail': exc.detail}
         elif isinstance(exc, DecimalException):
